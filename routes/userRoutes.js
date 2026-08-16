@@ -539,7 +539,7 @@ router.post("/editOwner", jwtAuthMiddleware, handleMulterError(upload.single("pr
 // ============================================================
 //  SELECT HOSTEL
 // ============================================================
-router.get("/hostel/:id", jwtAuthMiddleware, async (req, res) => {
+router.get("hostelnode.com/hostel/:id", jwtAuthMiddleware, async (req, res) => {
   try {
     const hostelId = clean(req.params.id || "");
     if (!hostelId) return res.redirect("/user");
@@ -1311,7 +1311,7 @@ router.post("/forgot-password", async (req, res) => {
     user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
 
-    const resetLink = `${process.env.BASE_URL || "https://hostelnode.com"}/user/reset-password/${token}`;
+    const resetLink = `${process.env.BASE_URL || "https://manage.hostelnode.com"}/user/reset-password/${token}`;
     sendMail(user.email, "Reset Your Password - HostelNode",
       `<div style="font-family:Arial;padding:20px">
         <h2>🔐 Reset Your Password</h2>
