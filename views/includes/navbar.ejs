@@ -1,0 +1,920 @@
+<!-- ═══════════════════════════════════════════════════════════
+     OWNER NAVBAR — HostelNode
+     Replaces: views/includes/navbar.ejs
+═══════════════════════════════════════════════════════════ -->
+
+<style>
+/* ── TOKENS ── */
+:root {
+  --g:        #09B850;
+  --g-dark:   #067a38;
+  --g-light:  #e8f9ef;
+  --g-glow:   rgba(9,184,80,0.18);
+  --ink:      #0f1117;
+  --ink2:     #1e293b;
+  --muted:    #64748b;
+  --border:   #e2e8f0;
+  --surface:  #ffffff;
+  --nav-h:    62px;
+  --sidebar-w:260px;
+  --font-d:   'Syne', sans-serif;
+  --font-b:   'DM Sans', sans-serif;
+}
+
+/* ── GOOGLE FONTS (inline so navbar is self-contained) ── */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap');
+
+/* ── RESET for nav scope ── */
+.hn-owner-nav *, .hn-sidebar *, .hn-profile-panel * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ════════════════════════════════════════
+   TOP NAVBAR
+════════════════════════════════════════ */
+.hn-owner-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--nav-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 1000;
+  box-shadow: 0 1px 12px rgba(0,0,0,0.06);
+  gap: 12px;
+}
+
+/* Brand */
+.hn-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.hn-nav-brand img {
+  height: 36px;
+  width: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.hn-nav-brand-text {
+  font-family: var(--font-d);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+.hn-nav-brand-text span { color: var(--g); }
+
+/* Hostel selector (center) */
+.hn-hostel-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--g-light);
+  border: 1.5px solid rgba(9,184,80,0.2);
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  position: relative;
+}
+.hn-hostel-selector:hover {
+  border-color: var(--g);
+  background: #d4f5e3;
+}
+.hn-hostel-selector i { color: var(--g); font-size: 0.8rem; }
+.hn-hostel-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink);
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hn-hostel-id {
+  font-size: 0.65rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* Hostel dropdown */
+.hn-hostel-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+  overflow: hidden;
+  z-index: 2000;
+  opacity: 0;
+  transform: translateX(-50%) translateY(-6px);
+  pointer-events: none;
+  transition: opacity 0.18s, transform 0.18s;
+}
+.hn-hostel-selector.open .hn-hostel-dropdown {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: all;
+}
+.hn-hd-header {
+  padding: 12px 14px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  border-bottom: 1px solid var(--border);
+}
+.hn-hd-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  font-size: 0.82rem;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--border);
+}
+.hn-hd-item:last-child { border-bottom: none; }
+.hn-hd-item:hover { background: var(--g-light); color: var(--g); }
+.hn-hd-item.active { background: var(--g-light); color: var(--g-dark); }
+.hn-hd-item i { color: var(--g); width: 16px; text-align: center; }
+.hn-hd-item-name { font-weight: 600; }
+.hn-hd-item-city { font-size: 0.7rem; color: var(--muted); }
+.hn-hd-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--g);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.hn-hd-add:hover { background: var(--g-light); }
+
+/* Nav right actions */
+.hn-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Icon button */
+.hn-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.18s;
+  text-decoration: none;
+  position: relative;
+}
+.hn-icon-btn:hover { border-color: var(--g); color: var(--g); background: var(--g-light); }
+.hn-notif-dot {
+  position: absolute;
+  top: 2px; right: 2px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid var(--surface);
+}
+
+/* Status badge */
+.hn-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.hn-status-pill.active   { background: var(--g-light); color: var(--g-dark); }
+.hn-status-pill.inactive { background: #fee2e2; color: #991b1b; }
+.hn-status-pill.pending  { background: #fffbeb; color: #92400e; }
+.hn-status-pill .dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor;
+}
+
+/* Profile avatar button */
+.hn-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(9,184,80,0.25);
+  background: rgba(9,184,80,0.05);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.hn-profile-btn:hover {
+  border-color: var(--g);
+  background: var(--g-light);
+}
+.hn-profile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--g);
+  flex-shrink: 0;
+}
+.hn-profile-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink);
+  max-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hamburger */
+.hn-hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  flex-shrink: 0;
+}
+.hn-hamburger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--ink);
+  border-radius: 2px;
+  transition: all 0.3s;
+}
+
+/* ════════════════════════════════════════
+   LEFT SIDEBAR
+════════════════════════════════════════ */
+.hn-sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 900;
+  backdrop-filter: blur(2px);
+}
+.hn-sidebar-overlay.open { display: block; }
+
+.hn-sidebar {
+  position: fixed;
+  top: var(--nav-h);
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1.5px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 950;
+  overflow-y: auto;
+  transition: transform 0.3s ease;
+}
+.hn-sidebar::-webkit-scrollbar { width: 4px; }
+.hn-sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Sidebar nav */
+.hn-snav { padding: 12px 10px; flex: 1; }
+.hn-snav-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 14px 10px 6px;
+}
+
+.hn-snav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  transition: all 0.18s;
+  margin-bottom: 2px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  position: relative;
+}
+.hn-snav-item:hover { background: var(--g-light); color: var(--g-dark); }
+.hn-snav-item.active {
+  background: var(--g-light);
+  color: var(--g-dark);
+  font-weight: 700;
+}
+.hn-snav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 20%; height: 60%;
+  width: 3px;
+  background: var(--g);
+  border-radius: 0 3px 3px 0;
+}
+.hn-snav-item i {
+  width: 16px;
+  text-align: center;
+  font-size: 0.82rem;
+  flex-shrink: 0;
+  color: inherit;
+}
+.hn-snav-chevron {
+  margin-left: auto;
+  font-size: 0.65rem;
+  transition: transform 0.2s;
+}
+.hn-snav-item.open .hn-snav-chevron { transform: rotate(90deg); }
+
+/* Submenu */
+.hn-submenu {
+  display: none;
+  padding: 4px 0 4px 28px;
+}
+.hn-submenu.open { display: block; }
+.hn-submenu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  transition: all 0.15s;
+  margin-bottom: 1px;
+}
+.hn-submenu-item:hover { background: var(--g-light); color: var(--g-dark); }
+.hn-submenu-item i { width: 14px; text-align: center; font-size: 0.72rem; color: var(--g); }
+
+/* Sidebar bottom */
+.hn-snav-bottom {
+  padding: 12px 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* ════════════════════════════════════════
+   RIGHT PROFILE PANEL
+════════════════════════════════════════ */
+.hn-profile-panel {
+  position: fixed;
+  top: var(--nav-h);
+  right: 0;
+  bottom: 0;
+  width: 300px;
+  background: var(--surface);
+  border-left: 1.5px solid var(--border);
+  z-index: 950;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+}
+.hn-profile-panel.open { transform: translateX(0); }
+.hn-profile-panel::-webkit-scrollbar { width: 4px; }
+.hn-profile-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Profile header */
+.hn-pp-header {
+  padding: 20px;
+  background: linear-gradient(135deg, #09B850, #067a38);
+  position: relative;
+  overflow: hidden;
+}
+.hn-pp-header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.hn-pp-header-inner { position: relative; z-index: 1; }
+.hn-pp-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(255,255,255,0.4);
+  margin-bottom: 10px;
+}
+.hn-pp-name {
+  font-family: var(--font-d);
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hn-pp-edit {
+  color: rgba(255,255,255,0.7);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color 0.15s;
+  text-decoration: none;
+}
+.hn-pp-edit:hover { color: #fff; }
+.hn-pp-meta {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.72);
+  margin-top: 4px;
+  line-height: 1.7;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hn-pp-meta span { display: flex; align-items: center; gap: 6px; }
+.hn-pp-meta i { width: 12px; color: rgba(255,255,255,0.6); font-size: 0.7rem; }
+
+/* Profile panel body */
+.hn-pp-body { padding: 12px 14px; flex: 1; }
+.hn-pp-section-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 10px 2px 5px;
+}
+.hn-pp-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: none;
+  transition: all 0.15s;
+  margin-bottom: 2px;
+}
+.hn-pp-link:hover { background: var(--g-light); color: var(--g-dark); }
+.hn-pp-link i { width: 16px; text-align: center; color: var(--g); font-size: 0.8rem; flex-shrink: 0; }
+.hn-pp-link .hn-status-pill { margin-left: auto; }
+
+/* Close button */
+.hn-pp-close {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: #fff;
+  font-size: 0.78rem;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.hn-pp-close:hover { background: rgba(255,255,255,0.35); }
+
+/* Profile panel footer */
+.hn-pp-footer {
+  padding: 14px;
+  border-top: 1px solid var(--border);
+}
+.hn-logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  color: #dc2626;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.18s;
+  cursor: pointer;
+}
+.hn-logout-btn:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
+
+/* ════════════════════════════════════════
+   PAGE BODY OFFSET
+════════════════════════════════════════ */
+.hn-page-body {
+  margin-top: var(--nav-h);
+  margin-left: var(--sidebar-w);
+  min-height: calc(100vh - var(--nav-h));
+  transition: margin-left 0.3s;
+}
+
+/* ════════════════════════════════════════
+   RESPONSIVE
+════════════════════════════════════════ */
+@media (max-width: 991px) {
+  .hn-sidebar {
+    transform: translateX(-100%);
+  }
+  .hn-sidebar.open {
+    transform: translateX(0);
+  }
+  .hn-page-body {
+    margin-left: 0;
+  }
+  .hn-hamburger { display: flex; }
+  .hn-hostel-name { max-width: 100px; }
+  .hn-profile-name { display: none; }
+}
+
+@media (max-width: 576px) {
+  .hn-hostel-selector { padding: 5px 10px; }
+  .hn-hostel-id { display: none; }
+  .hn-nav-brand-text { display: none; }
+  .hn-profile-panel { width: 100%; }
+}
+</style>
+
+<!-- ── SIDEBAR OVERLAY ── -->
+<div class="hn-sidebar-overlay" id="hnSidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- ════════════════════════════════════════
+     TOP NAVBAR
+════════════════════════════════════════ -->
+<nav class="hn-owner-nav" id="hnOwnerNav">
+
+  <!-- LEFT: Hamburger + Brand -->
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="hn-hamburger" id="hnHamburger" onclick="toggleSidebar()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <a href="/user" class="hn-nav-brand">
+      <img src="/images/hostelnode-logo-cutout.png" alt="HostelNode">
+      <span class="hn-nav-brand-text">Hostel<span>Node</span></span>
+    </a>
+  </div>
+
+  <!-- CENTER: Hostel Selector -->
+  <div class="hn-hostel-selector" id="hnHostelSelector" onclick="toggleHostelDropdown()">
+    <i class="fa-solid fa-hotel"></i>
+    <div>
+      <div class="hn-hostel-name">
+        <%= selectedHostel?.hostelName || 'Select Hostel' %>
+      </div>
+      <div class="hn-hostel-id">
+        <%= selectedHostel?.hostelId || 'No hostel' %>
+      </div>
+    </div>
+    <i class="fa-solid fa-chevron-down" style="font-size:0.65rem;color:var(--muted);margin-left:4px"></i>
+
+    <!-- Hostel Dropdown -->
+    <div class="hn-hostel-dropdown" id="hnHostelDropdown">
+      <div class="hn-hd-header">Switch Hostel</div>
+      <% if (hostels && hostels.length > 0) { %>
+        <% hostels.forEach(h => { %>
+          <a href="/user/hostel/<%= h._id %>"
+             class="hn-hd-item <%= selectedHostel?._id?.toString() === h._id?.toString() ? 'active' : '' %>">
+            <i class="fa-solid fa-building"></i>
+            <div>
+              <div class="hn-hd-item-name"><%= h.hostelName %></div>
+              <div class="hn-hd-item-city"><%= h.city %> · <%= h.hostelId %></div>
+            </div>
+            <% if (selectedHostel?._id?.toString() === h._id?.toString()) { %>
+              <i class="fa-solid fa-circle-check" style="margin-left:auto;color:var(--g)"></i>
+            <% } %>
+          </a>
+        <% }) %>
+      <% } else { %>
+        <div class="hn-hd-item" style="color:var(--muted);cursor:default">
+          <i class="fa-solid fa-circle-info"></i> No hostels yet
+        </div>
+      <% } %>
+      <a href="/user/addnewhostel" class="hn-hd-add">
+        <i class="fa-solid fa-plus"></i> Add New Hostel
+      </a>
+    </div>
+  </div>
+
+  <!-- RIGHT: Actions + Profile -->
+  <div class="hn-nav-right">
+
+    <!-- Quick links (desktop only) -->
+    <a href="/user/list-property" class="hn-icon-btn" title="List Property" style="display:flex">
+      <i class="fa-solid fa-plus"></i>
+    </a>
+
+    <!-- Notifications -->
+    <button class="hn-icon-btn" title="Notifications">
+      <i class="fa-solid fa-bell"></i>
+      <div class="hn-notif-dot"></div>
+    </button>
+
+    <!-- Profile button -->
+    <div class="hn-profile-btn" onclick="toggleProfilePanel()" style="cursor:pointer">
+      <img class="hn-profile-avatar"
+           src="/profile-image/<%= user.profileImage %>"
+           alt="<%= user.name %>"
+           onerror="this.src='/images/hostelnode-logo-cutout.png'">
+      <span class="hn-profile-name"><%= user.name.split(' ')[0] %></span>
+      <i class="fa-solid fa-chevron-down" style="font-size:0.6rem;color:var(--muted)"></i>
+    </div>
+
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════
+     LEFT SIDEBAR
+════════════════════════════════════════ -->
+<aside class="hn-sidebar" id="hnSidebar">
+  <nav class="hn-snav">
+
+    <!-- MAIN -->
+    <div class="hn-snav-label">Main</div>
+
+    <a href="/user" class="hn-snav-item">
+      <i class="fa-solid fa-gauge-high"></i> Dashboard
+    </a>
+
+    <a href="/user/revenue" class="hn-snav-item">
+      <i class="fa-solid fa-chart-pie"></i> Revenue Reports
+    </a>
+
+    <!-- MEMBERS -->
+    <div class="hn-snav-label">Members</div>
+
+    <div class="hn-snav-item" onclick="toggleSubmenu('sub-members', this)">
+      <i class="fa-solid fa-users"></i> Members
+      <i class="fa-solid fa-chevron-right hn-snav-chevron"></i>
+    </div>
+    <div class="hn-submenu" id="sub-members">
+      <a href="/user/newmember"    class="hn-submenu-item"><i class="fa-solid fa-user-plus"></i> Add Member</a>
+      <a href="/user/activeMember" class="hn-submenu-item"><i class="fa-solid fa-circle-check"></i> Active Members</a>
+      <a href="/user/members"      class="hn-submenu-item"><i class="fa-solid fa-list"></i> All Members</a>
+    </div>
+
+    <!-- PAYMENTS -->
+    <div class="hn-snav-label">Finance</div>
+
+    <div class="hn-snav-item" onclick="toggleSubmenu('sub-payments', this)">
+      <i class="fa-solid fa-indian-rupee-sign"></i> Payments
+      <i class="fa-solid fa-chevron-right hn-snav-chevron"></i>
+    </div>
+    <div class="hn-submenu" id="sub-payments">
+      <a href="/user/allfeesrecords"   class="hn-submenu-item"><i class="fa-solid fa-file-invoice-dollar"></i> Fees Structure</a>
+      <a href="/user/upcomingPayments" class="hn-submenu-item"><i class="fa-solid fa-clock"></i> Upcoming</a>
+      <a href="/user/deureports"       class="hn-submenu-item"><i class="fa-solid fa-money-bill-wave"></i> Dues</a>
+    </div>
+
+    <!-- PROPERTY -->
+    <div class="hn-snav-label">Property</div>
+
+    <div class="hn-snav-item" onclick="toggleSubmenu('sub-rooms', this)">
+      <i class="fa-solid fa-bed"></i> Rooms
+      <i class="fa-solid fa-chevron-right hn-snav-chevron"></i>
+    </div>
+    <div class="hn-submenu" id="sub-rooms">
+      <a href="/user/allrooms"    class="hn-submenu-item"><i class="fa-solid fa-border-all"></i> All Rooms</a>
+      <a href="/user/managerooms" class="hn-submenu-item"><i class="fa-solid fa-sliders"></i> Manage Rooms</a>
+    </div>
+
+    <div class="hn-snav-item" onclick="toggleSubmenu('sub-floors', this)">
+      <i class="fa-solid fa-layer-group"></i> Floors
+      <i class="fa-solid fa-chevron-right hn-snav-chevron"></i>
+    </div>
+    <div class="hn-submenu" id="sub-floors">
+      <a href="/user/floors"      class="hn-submenu-item"><i class="fa-solid fa-border-all"></i> All Floors</a>
+      <a href="/user/managefloor" class="hn-submenu-item"><i class="fa-solid fa-sliders"></i> Manage Floors</a>
+    </div>
+
+    <!-- LISTINGS -->
+    <div class="hn-snav-label">Listings</div>
+
+    <a href="/user/list-property" class="hn-snav-item">
+      <i class="fa-solid fa-file-circle-plus"></i> List Property
+    </a>
+    <a href="/user/my-listings" class="hn-snav-item">
+      <i class="fa-solid fa-house-chimney"></i> My Listings
+    </a>
+
+    <!-- TEAM -->
+    <div class="hn-snav-label">Team</div>
+
+    <a href="/wardens" class="hn-snav-item">
+      <i class="fa-solid fa-user-tie"></i> Manage Wardens
+    </a>
+
+    <!-- SUPPORT -->
+    <div class="hn-snav-label">Support</div>
+
+    <a href="https://mail.google.com/mail/?view=cm&fs=1&to=hostelnodehelp@gmail.com"
+       target="_blank" class="hn-snav-item">
+      <i class="fa-solid fa-comment-dots"></i> Send Feedback
+    </a>
+    <a href="tel:+918828397001" class="hn-snav-item">
+      <i class="fa-solid fa-headset"></i> Call Support
+    </a>
+
+  </nav>
+
+  <!-- Sidebar bottom -->
+  <div class="hn-snav-bottom">
+    <div style="font-size:0.72rem;color:var(--muted);text-align:center;padding:4px 0">
+      HostelNode &nbsp;·&nbsp; v2.0 &nbsp;·&nbsp;
+      <a href="/account/settings" style="color:var(--muted)">Settings</a>
+    </div>
+  </div>
+</aside>
+
+<!-- ════════════════════════════════════════
+     RIGHT PROFILE PANEL
+════════════════════════════════════════ -->
+<div class="hn-profile-panel" id="hnProfilePanel">
+
+  <!-- Header -->
+  <div class="hn-pp-header">
+    <div class="hn-pp-header-inner">
+      <button class="hn-pp-close" onclick="closeProfilePanel()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <img class="hn-pp-avatar"
+           src="/profile-image/<%= user.profileImage %>"
+           alt="<%= user.name %>"
+           onerror="this.src='/images/hostelnode-logo-cutout.png'">
+      <div class="hn-pp-name">
+        <%= user.name %>
+        <a href="/user/editOwner" class="hn-pp-edit" title="Edit Profile">
+          <i class="fa-solid fa-pen-to-square"></i>
+        </a>
+      </div>
+      <div class="hn-pp-meta">
+        <span><i class="fa-solid fa-user-tie"></i> <%= user.role %> · <%= user.businessName %></span>
+        <span><i class="fa-solid fa-phone"></i> <%= user.phone %></span>
+        <span><i class="fa-solid fa-envelope"></i> <%= user.email %></span>
+        <span><i class="fa-solid fa-location-dot"></i> <%= user.location %></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="hn-pp-body">
+
+    <div class="hn-pp-section-label">Account</div>
+
+    <a href="/billing" class="hn-pp-link">
+      <i class="fa-solid fa-credit-card"></i> Billing
+      <span class="hn-status-pill <%= user.status==='Active'?'active':user.status==='Inactive'?'inactive':'pending' %> ms-auto">
+        <span class="dot"></span> <%= user.status %>
+      </span>
+    </a>
+
+    <a href="/account/settings" class="hn-pp-link">
+      <i class="fa-solid fa-gear"></i> Settings
+    </a>
+
+    <a href="/user/editOwner" class="hn-pp-link">
+      <i class="fa-solid fa-user-pen"></i> Edit Profile
+    </a>
+
+    <div class="hn-pp-section-label">Property</div>
+
+    <a href="/user/list-property" class="hn-pp-link">
+      <i class="fa-solid fa-file-circle-plus"></i> List New Property
+    </a>
+
+    <a href="/user/my-listings" class="hn-pp-link">
+      <i class="fa-solid fa-house-chimney"></i> My Listings
+    </a>
+
+    <div class="hn-pp-section-label">Hostels</div>
+
+    <% if (hostels && hostels.length > 0) { %>
+      <% hostels.forEach(h => { %>
+        <a href="/user/hostel/<%= h._id %>" class="hn-pp-link">
+          <i class="fa-solid fa-hotel"></i>
+          <span><%= h.hostelName %> <span style="font-size:0.68rem;color:var(--muted)">· <%= h.city %></span></span>
+        </a>
+      <% }) %>
+    <% } %>
+
+    <a href="/user/addnewhostel" class="hn-pp-link">
+      <i class="fa-solid fa-plus"></i> Add New Hostel
+    </a>
+
+    <div class="hn-pp-section-label">Help</div>
+
+    <a href="tel:+917879884375" class="hn-pp-link">
+      <i class="fa-solid fa-phone"></i> Call Support
+    </a>
+    <a href="https://mail.google.com/mail/?view=cm&fs=1&to=hostelnodehelp@gmail.com"
+       target="_blank" class="hn-pp-link">
+      <i class="fa-solid fa-envelope"></i> Email Support
+    </a>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="hn-pp-footer">
+    <a href="/user/logout" class="hn-logout-btn">
+      <i class="fa-solid fa-right-from-bracket"></i> Logout
+    </a>
+  </div>
+</div>
+
+<script>
+/* ── Sidebar ── */
+function toggleSidebar() {
+  const sidebar  = document.getElementById('hnSidebar');
+  const overlay  = document.getElementById('hnSidebarOverlay');
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('hnSidebar').classList.remove('open');
+  document.getElementById('hnSidebarOverlay').classList.remove('open');
+}
+
+/* ── Submenu ── */
+function toggleSubmenu(id, btn) {
+  const sub = document.getElementById(id);
+  const isOpen = sub.classList.contains('open');
+  document.querySelectorAll('.hn-submenu').forEach(s => s.classList.remove('open'));
+  document.querySelectorAll('.hn-snav-item').forEach(b => b.classList.remove('open'));
+  if (!isOpen) {
+    sub.classList.add('open');
+    btn.classList.add('open');
+  }
+}
+
+/* ── Hostel dropdown ── */
+function toggleHostelDropdown() {
+  document.getElementById('hnHostelSelector').classList.toggle('open');
+}
+document.addEventListener('click', function(e) {
+  const sel = document.getElementById('hnHostelSelector');
+  if (sel && !sel.contains(e.target)) sel.classList.remove('open');
+});
+
+/* ── Profile panel ── */
+function toggleProfilePanel() {
+  document.getElementById('hnProfilePanel').classList.toggle('open');
+  document.getElementById('hnSidebarOverlay').classList.toggle('open');
+}
+function closeProfilePanel() {
+  document.getElementById('hnProfilePanel').classList.remove('open');
+  document.getElementById('hnSidebarOverlay').classList.remove('open');
+}
+
+/* ── Active nav item ── */
+const path = window.location.pathname;
+document.querySelectorAll('.hn-snav-item, .hn-submenu-item').forEach(link => {
+  if (link.href && link.href.includes(path) && path !== '/') {
+    link.classList.add('active');
+    const submenu = link.closest('.hn-submenu');
+    if (submenu) {
+      submenu.classList.add('open');
+      const parentBtn = submenu.previousElementSibling;
+      if (parentBtn) parentBtn.classList.add('open');
+    }
+  }
+});
+
+/* ── Close sidebar on overlay click ── */
+document.getElementById('hnSidebarOverlay').addEventListener('click', function() {
+  closeSidebar();
+  closeProfilePanel();
+});
+</script>

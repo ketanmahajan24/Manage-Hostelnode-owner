@@ -1,0 +1,1154 @@
+<% layout("/layouts/boilerplate") -%>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3J9E7QW77B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3J9E7QW77B');
+</script>
+<style>
+  .inq-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  color: #555;
+}
+
+.inq-meta i {
+  color: #4CAF50;
+}
+
+.info-badge {
+  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 12px;
+  color: #222;
+}
+  .wa-btn {
+  background: #25D366;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+  .call-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #22c55e;
+  color: #fff;
+  border-radius: 20px;
+  font-size: 12px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: 0.2s;
+}
+
+.call-btn:hover {
+  background: #16a34a;
+}
+</style>
+<style>
+  :root {
+    --g:       #09B850;
+    --g-dark:  #078040;
+    --g-dim:   rgba(9,184,80,.12);
+    --g-glow:  rgba(9,184,80,.22);
+    --ink:     #0f1117;
+    --ink2:    #3a3d47;
+    --muted:   #7c8090;
+    --surface: #ffffff;
+    --bg:      #f4f5f7;
+    --border:  #e2e4ea;
+    --radius:  14px;
+    --panel-l: 300px;
+    --hdr:     64px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .ml-shell {
+    width: 80%; margin-top: 50px; 
+    display: flex; height: calc(100vh - var(--hdr));
+    background: var(--bg); font-family: 'DM Sans', sans-serif; overflow: hidden;
+  }
+ 
+  /* ═══ LEFT PANEL ═══ */
+  .ml-left {
+    width: var(--panel-l); min-width: var(--panel-l);
+    background: var(--surface); border-right: 1.5px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .ml-left-head { padding: 20px 18px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .ml-left-head h2 { font-family: sans-serif; font-size: 1.05rem; font-weight: 800; color: var(--ink); }
+  .ml-left-head p  { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+  .ml-add-btn {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 12px; padding: 9px 14px;
+    background: var(--g); color: #fff; border: none; border-radius: 10px;
+    font-size: 0.78rem; font-weight: 600; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; text-decoration: none; width: 100%; justify-content: center;
+    transition: background .18s, transform .12s;
+  }
+  .ml-add-btn:hover { background: var(--g-dark); transform: translateY(-1px); color: #fff; }
+
+  /* Status filter tabs */
+  .ml-filter-tabs {
+    display: flex; gap: 4px; padding: 10px 12px;
+    border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap;
+  }
+  .ml-ftab {
+    font-size: 0.68rem; font-weight: 600; padding: 4px 10px;
+    border-radius: 20px; border: 1.5px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: all .15s;
+  }
+  .ml-ftab:hover { border-color: var(--g); color: var(--g); }
+  .ml-ftab.active { background: var(--g); color: #fff; border-color: var(--g); }
+  .ml-ftab.f-pending.active  { background: #d97706; border-color: #d97706; }
+  .ml-ftab.f-approved.active { background: #059669; border-color: #059669; }
+  .ml-ftab.f-rejected.active { background: #dc2626; border-color: #dc2626; }
+
+  .ml-search { padding: 10px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .ml-search-wrap {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--bg); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 7px 11px;
+  }
+  .ml-search-wrap i { color: var(--muted); font-size: 0.78rem; }
+  .ml-search-wrap input {
+    border: none; background: transparent; outline: none;
+    font-size: 0.78rem; color: var(--ink);
+    font-family: 'DM Sans', sans-serif; width: 100%;
+  }
+
+  .ml-cards-scroll { flex: 1; overflow-y: auto; padding: 10px 10px 20px; }
+  .ml-cards-scroll::-webkit-scrollbar { width: 4px; }
+  .ml-cards-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .ml-card {
+    display: flex; gap: 10px; padding: 11px 10px; border-radius: 12px;
+    cursor: pointer; transition: background .15s, box-shadow .15s;
+    border: 1.5px solid transparent; margin-bottom: 4px; position: relative;
+  }
+  .ml-card:hover { background: var(--bg); }
+  .ml-card.active { background: var(--g-dim); border-color: var(--g); }
+  .ml-card.active::before {
+    content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 60%; background: var(--g); border-radius: 0 3px 3px 0;
+  }
+  .ml-card-thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+  .ml-card-thumb-placeholder {
+    width: 56px; height: 56px; border-radius: 10px; background: var(--border);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .ml-card-thumb-placeholder i { color: var(--muted); font-size: 1rem; }
+  .ml-card-info { flex: 1; min-width: 0; }
+  .ml-card-title { font-size: 0.8rem; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: sans-serif; }
+  .ml-card-loc   { font-size: 0.7rem; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ml-card-meta  { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
+  .ml-card-price { font-size: 0.72rem; font-weight: 600; color: var(--g); }
+  .status-pill { font-size: 0.62rem; font-weight: 600; padding: 2px 7px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .status-pill.Pending  { background: #FFF3CD; color: #856404; }
+  .status-pill.Approved { background: #D1FAE5; color: #065f46; }
+  .status-pill.Rejected { background: #FEE2E2; color: #991b1b; }
+  .ml-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 0.8rem; }
+  .ml-empty i { font-size: 2rem; display: block; margin-bottom: 8px; color: var(--border); }
+
+  /* ═══ RIGHT PANEL ═══ */
+  .ml-right { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+  .ml-placeholder {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px; color: var(--muted);
+  }
+  .ml-placeholder .ph-icon {
+    width: 72px; height: 72px; border-radius: 50%; background: var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: var(--muted);
+  }
+
+  /* Detail panel */
+  .ml-detail { flex: 1; overflow-y: auto; display: none; flex-direction: column; }
+  .ml-detail.visible { display: flex; }
+  .ml-detail::-webkit-scrollbar { width: 5px; }
+  .ml-detail::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* Hero slider */
+  .ml-hero { position: relative; height: 230px; flex-shrink: 0; overflow: hidden; background: var(--ink); }
+  .ml-slider { position: relative; width: 100%; height: 100%; }
+  .ml-slide { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.7s ease; }
+  .ml-slide.active { opacity: 1; position: relative; z-index: 1; }
+  .ml-slide-btn {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    background: rgba(255,255,255,0.92); border: none; width: 34px; height: 34px;
+    border-radius: 50%; cursor: pointer; z-index: 20; font-size: 0.75rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .18s, color .18s; box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  }
+  .ml-slide-btn:hover { background: var(--g); color: #fff; }
+  .ml-slide-btn.prev { left: 12px; }
+  .ml-slide-btn.next { right: 12px; }
+  .ml-dots { position: absolute; bottom: 14px; width: 100%; text-align: center; z-index: 20; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .ml-dot { height: 6px; width: 6px; background: rgba(255,255,255,0.5); border-radius: 50%; cursor: pointer; transition: width .3s, background .3s; display: inline-block; }
+  .ml-dot.active { width: 18px; border-radius: 10px; background: #fff; }
+  .ml-hero-overlay { position: absolute; inset: 0; z-index: 5; background: linear-gradient(to bottom, transparent 35%, rgba(0,0,0,.65)); pointer-events: none; }
+  .ml-hero-title { position: absolute; bottom: 16px; left: 16px; right: 16px; z-index: 10; pointer-events: none; }
+  .ml-hero-title h1 { font-family: sans-serif; font-size: 1.35rem; font-weight: 800; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.4); }
+
+  /* Action bar */
+  .ml-action-bar {
+    display: flex; align-items: center; gap: 8px; padding: 14px 20px;
+    background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap;
+  }
+  .action-btn {
+    display: flex; align-items: center; gap: 6px; padding: 8px 15px; border-radius: 9px;
+    font-size: 0.78rem; font-weight: 600; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; border: 1.5px solid transparent; text-decoration: none; transition: all .16s;
+  }
+  .action-btn.primary { background: var(--g); color: #fff; }
+  .action-btn.primary:hover { background: var(--g-dark); color: #fff; }
+  .action-btn.outline { background: #fff; color: var(--ink); border-color: var(--border); }
+  .action-btn.outline:hover { border-color: var(--g); color: var(--g); }
+  .action-btn.danger  { background: #fff; color: #dc2626; border-color: #fecaca; }
+  .action-btn.danger:hover { background: #fee2e2; }
+  .action-btn.ghost   { background: transparent; color: var(--muted); }
+  .action-btn.ghost:hover { color: var(--ink); }
+  .ml-action-spacer { flex: 1; }
+  .ml-status-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
+  .ml-status-badge.Pending  { background: #fef3c7; color: #92400e; }
+  .ml-status-badge.Approved { background: #d1fae5; color: #065f46; }
+  .ml-status-badge.Rejected { background: #fee2e2; color: #991b1b; }
+
+  /* Tabs inside detail */
+  .ml-tabs {
+    display: flex; gap: 0; border-bottom: 1.5px solid var(--border);
+    background: var(--surface); flex-shrink: 0;
+  }
+  .ml-tab {
+    padding: 11px 18px; font-size: 0.78rem; font-weight: 600;
+    color: var(--muted); cursor: pointer; border-bottom: 2.5px solid transparent;
+    transition: color .15s, border-color .15s; white-space: nowrap;
+    font-family: 'DM Sans', sans-serif; background: none; border-top: none;
+    border-left: none; border-right: none;
+  }
+  .ml-tab:hover { color: var(--ink); }
+  .ml-tab.active { color: var(--g); border-bottom-color: var(--g); }
+
+  /* Tab panels */
+  .ml-tab-panel { display: none; }
+  .ml-tab-panel.active { display: block; }
+
+  /* Body */
+  .ml-body { padding: 22px 22px 40px; }
+  .ml-info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .ml-info-card { background: var(--surface); border-radius: var(--radius); padding: 14px; border: 1px solid var(--border); }
+  .ml-info-card .label { font-size: 0.67rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; margin-bottom: 4px; }
+  .ml-info-card .value { font-size: 1rem; font-weight: 700; color: var(--ink); font-family: sans-serif; }
+  .ml-info-card .value.green { color: var(--g); }
+  .ml-section { margin-bottom: 20px; }
+  .ml-section-title { font-family: sans-serif; font-size: 0.82rem; font-weight: 800; color: var(--ink); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
+  .ml-section-title i { color: var(--g); font-size: 0.8rem; }
+  .ml-rooms-table { width: 100%; border-collapse: collapse; }
+  .ml-rooms-table th { text-align: left; font-size: 0.68rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 10px; background: var(--bg); border-bottom: 1.5px solid var(--border); }
+  .ml-rooms-table td { padding: 10px; font-size: 0.78rem; color: var(--ink2); border-bottom: 1px solid var(--border); }
+  .ml-rooms-table tbody tr:last-child td { border-bottom: none; }
+  .ml-rooms-table tbody tr:hover td { background: var(--bg); }
+  .ml-rooms-wrap { background: var(--surface); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+  .ml-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ml-chip { display: flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 20px; font-size: 0.72rem; font-weight: 500; background: var(--surface); border: 1px solid var(--border); color: var(--ink2); }
+  .ml-chip i { color: var(--g); font-size: 0.72rem; }
+  .ml-rule { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--ink2); }
+  .ml-rule:last-child { border-bottom: none; }
+  .ml-rule i { color: var(--g); font-size: 0.7rem; margin-top: 3px; flex-shrink: 0; }
+  .ml-contact-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .ml-contact-item { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); font-size: 0.78rem; color: var(--ink2); }
+  .ml-contact-item i { color: var(--g); }
+  .ml-loc-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; font-size: 0.78rem; color: var(--ink2); line-height: 1.7; }
+  .ml-loc-box span { color: var(--muted); font-size: 0.7rem; }
+
+  /* ── ANALYTICS ── */
+  .ml-analytics { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-bottom: 22px; }
+  .ml-analytic { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; text-align: center; }
+  .ml-analytic .an-val { font-family: sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--ink); }
+  .ml-analytic .an-label { font-size: 0.68rem; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
+  .chart-wrap canvas { max-height: 220px; }
+
+  /* ── REVIEWS ── */
+  .rev-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .rev-card:hover { border-color: var(--g); }
+  .rev-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--g); color: #fff; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.95rem; flex-shrink: 0; overflow: hidden;
+  }
+  .rev-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .rev-body { flex: 1; min-width: 0; }
+  .rev-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .rev-name { font-size: 0.82rem; font-weight: 700; color: var(--ink); }
+  .rev-date { font-size: 0.7rem; color: var(--muted); }
+  .rev-stars i { color: #f59e0b; font-size: 0.72rem; }
+  .rev-stars .se { color: #d1d5db; }
+  .rev-text { font-size: 0.78rem; color: var(--ink2); line-height: 1.6; margin-top: 5px; }
+  .rev-del-btn {
+    background: none; border: 1.5px solid #fecaca; color: #dc2626;
+    padding: 5px 10px; border-radius: 8px; font-size: 0.7rem; font-weight: 600;
+    cursor: pointer; flex-shrink: 0; transition: all .15s; font-family: 'DM Sans', sans-serif;
+  }
+  .rev-del-btn:hover { background: #fee2e2; }
+  .rev-empty { text-align: center; padding: 32px; color: var(--muted); font-size: 0.8rem; }
+  .rev-empty i { font-size: 1.8rem; display: block; margin-bottom: 8px; color: var(--border); }
+  .rev-summary { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--g-dim); border: 1.5px solid rgba(9,184,80,.2); border-radius: var(--radius); margin-bottom: 16px; }
+  .rev-summary .rs-num { font-family: sans-serif; font-size: 2rem; font-weight: 800; color: var(--g); line-height: 1; }
+  .rev-summary .rs-label { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+  .rev-summary .rs-stars i { color: #f59e0b; font-size: 0.82rem; }
+
+  /* ── enquirIES ── */
+  .inq-empty { text-align: center; padding: 40px; color: var(--muted); font-size: 0.82rem; }
+  .inq-empty i { font-size: 2rem; display: block; margin-bottom: 10px; color: var(--border); }
+  .inq-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px;
+  }
+  .inq-card:hover { border-color: var(--g); }
+  .inq-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .inq-name { font-size: 0.82rem; font-weight: 700; color: var(--ink); }
+  .inq-date { font-size: 0.7rem; color: var(--muted); }
+  .inq-room { display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 600; padding: 3px 9px; border-radius: 20px; background: var(--g-dim); color: var(--g-dark); margin-bottom: 7px; }
+  .inq-row  { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.75rem; color: var(--ink2); }
+  .inq-row span { display: flex; align-items: center; gap: 4px; }
+  .inq-row i { color: var(--g); font-size: 0.7rem; }
+  .inq-msg  { font-size: 0.85rem; color: var(--muted); margin-top: 7px; font-style: italic; line-height: 1.5; border-top: 1px solid var(--border); padding-top: 7px; }
+  .inq-badge { font-size: 0.62rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+  .inq-badge.new  { background: #d1fae5; color: #065f46; }
+  .inq-badge.seen { background: var(--bg); color: var(--muted); }
+
+  /* modal */
+  .ml-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000; display: none; align-items: center; justify-content: center; }
+  .ml-modal-bg.open { display: flex; }
+  .ml-modal { background: var(--surface); border-radius: 18px; padding: 28px 28px 22px; max-width: 380px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,.18); animation: modalIn .2s ease; }
+  @keyframes modalIn { from { opacity:0; transform: scale(.94) translateY(10px); } to { opacity:1; transform: none; } }
+  .ml-modal h3 { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--ink); margin-bottom: 8px; }
+  .ml-modal p  { font-size: 0.82rem; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+  .ml-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+  .no-results { display: none; padding: 20px; text-align: center; color: var(--muted); font-size: 0.78rem; }
+
+  @media (max-width: 700px) {
+    .ml-shell { width: 100%; margin: 20px auto; flex-direction: column; height: auto; }
+    .ml-left  { width: 100%; min-width: unset; height: auto; max-height: 45vh; border-right: none; border-bottom: 1.5px solid var(--border); }
+    .ml-right { min-height: 60vh; }
+  }
+</style>
+
+<div class="ml-shell">
+
+  <!-- ════ LEFT PANEL ════ -->
+  <div class="ml-left">
+    <div class="ml-left-head">
+      <h2>My Properties</h2>
+      <p><span id="visibleCount"><%= listings.length %></span> listing<%= listings.length !== 1 ? 's' : '' %></p>
+      <a href="/user/list-property" class="ml-add-btn">
+        <i class="fa-solid fa-plus"></i> Add New Listing
+      </a>
+    </div>
+
+    <!-- Status filter tabs -->
+    <div class="ml-filter-tabs">
+      <button class="ml-ftab active" onclick="filterByStatus('all', this)">All</button>
+      <button class="ml-ftab f-pending"  onclick="filterByStatus('Pending', this)">Pending</button>
+      <button class="ml-ftab f-approved" onclick="filterByStatus('Approved', this)">Approved</button>
+      <button class="ml-ftab f-rejected" onclick="filterByStatus('Rejected', this)">Rejected</button>
+    </div>
+
+    <div class="ml-search">
+      <div class="ml-search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="listingSearch" placeholder="Search by name, city…" oninput="filterCards()">
+      </div>
+    </div>
+
+    <div class="ml-cards-scroll" id="cardsScroll">
+      <% if (listings.length === 0) { %>
+        <div class="ml-empty">
+          <i class="fa-solid fa-house-circle-xmark"></i>
+          <p>No listings yet.<br>Add your first property!</p>
+        </div>
+      <% } else { %>
+        <% listings.forEach((l, idx) => { %>
+          <div class="ml-card <%= idx === 0 ? 'active' : '' %>"
+               id="card-<%= l._id %>"
+               data-status="<%= l.status %>"
+               data-title="<%= l.title.toLowerCase() %>"
+               data-city="<%= (l.location?.city || '').toLowerCase() %>"
+               onclick="selectListing('<%= l._id %>')">
+            <% if (l.images && l.images.length > 0) { %>
+              <img class="ml-card-thumb" src="/listing-images/<%= l.images[0] %>" alt="<%= l.title %>"
+                   onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+              <div class="ml-card-thumb-placeholder" style="display:none"><i class="fa-solid fa-image"></i></div>
+            <% } else { %>
+              <div class="ml-card-thumb-placeholder"><i class="fa-solid fa-image"></i></div>
+            <% } %>
+            <div class="ml-card-info">
+              <div class="ml-card-title"><%= l.title %></div>
+              <div class="ml-card-loc"><i class="fa-solid fa-location-dot" style="font-size:0.6rem"></i> <%= l.location?.city || '—' %></div>
+              <div class="ml-card-meta">
+                <span class="ml-card-price">₹<%= l.startingPrice?.toLocaleString('en-IN') %>/mo</span>
+                <span class="status-pill <%= l.status %>"><%= l.status %></span>
+              </div>
+            </div>
+          </div>
+        <% }) %>
+        <div class="no-results" id="noResults">No listings match.</div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- ════ RIGHT PANEL ════ -->
+  <div class="ml-right">
+
+    <div class="ml-placeholder" id="mlPlaceholder"
+         style="<%= listings.length > 0 ? 'display:none' : '' %>">
+      <div class="ph-icon"><i class="fa-solid fa-house"></i></div>
+      <p>Select a property to view details</p>
+    </div>
+
+    <% listings.forEach((l, idx) => { %>
+    <div class="ml-detail <%= idx === 0 ? 'visible' : '' %>" id="detail-<%= l._id %>">
+
+      <!-- Hero Slider -->
+      <div class="ml-hero">
+        <% if (l.images && l.images.length > 0) { %>
+          <div class="ml-slider" data-slider-id="<%= l._id %>" data-current="0">
+            <% l.images.forEach((img, i) => { %>
+              <img src="/listing-images/<%= img %>"
+                   class="ml-slide <%= i === 0 ? 'active' : '' %>"
+                   alt="<%= l.title %> photo <%= i+1 %>"
+                   loading="<%= i === 0 ? 'eager' : 'lazy' %>"
+                   onerror="this.src='/images/hostelnode-logo-cutout.png'">
+            <% }) %>
+            <% if (l.images.length > 1) { %>
+              <button type="button" class="ml-slide-btn prev" onclick="event.stopPropagation(); sliderNav('<%= l._id %>', -1)">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <button type="button" class="ml-slide-btn next" onclick="event.stopPropagation(); sliderNav('<%= l._id %>', 1)">
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+              <div class="ml-dots">
+                <% l.images.forEach((_, i) => { %>
+                  <span class="ml-dot <%= i === 0 ? 'active' : '' %>"
+                        onclick="event.stopPropagation(); sliderGoTo('<%= l._id %>', <%= i %>)"></span>
+                <% }) %>
+              </div>
+            <% } %>
+          </div>
+        <% } else { %>
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#1a1d25">
+            <i class="fa-solid fa-image" style="font-size:2.5rem;color:#3a3d47"></i>
+          </div>
+        <% } %>
+        <div class="ml-hero-overlay"></div>
+        <div class="ml-hero-title">
+          <h1><%= l.title %></h1>
+          <h4 class="badge bg-success" style="padding:8px"><%= l.propertyType %> | <%= l.gender %></h4>
+        </div>
+      </div>
+
+      <!-- Action Bar -->
+      <div class="ml-action-bar">
+        <a href="/user/listing/<%= l._id %>/edit" class="action-btn primary">
+          <i class="fa-solid fa-pen-to-square"></i> Edit
+        </a>
+        <button class="action-btn outline" onclick="copyLink('<%= l.slug %>')">
+          <i class="fa-solid fa-link"></i> Copy Link
+        </button>
+        <% if (l.status === 'Approved') { %>
+          <a href="/hostel/<%= l.slug %>" target="_blank" class="action-btn outline">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> Preview
+          </a>
+        <% } %>
+        <button class="action-btn ghost" onclick="boostListing('<%= l._id %>')">
+          <i class="fa-solid fa-bolt"></i> Boost
+        </button>
+        <div class="ml-action-spacer"></div>
+        <span class="ml-status-badge <%= l.status %>">
+          <% if (l.status === 'Pending')  { %><i class="fa-solid fa-clock"></i><% } %>
+          <% if (l.status === 'Approved') { %><i class="fa-solid fa-circle-check"></i><% } %>
+          <% if (l.status === 'Rejected') { %><i class="fa-solid fa-circle-xmark"></i><% } %>
+          &nbsp;<%= l.status %>
+        </span>
+        <button class="action-btn danger"
+                onclick="openDelete('<%= l._id %>', '<%= l.title.replace(/'/g, "\\'") %>')">
+          <i class="fa-solid fa-trash"></i> Delete
+        </button>
+      </div>
+
+      <!-- ── TAB BAR ── -->
+      <div class="ml-tabs">
+        <button class="ml-tab active" onclick="switchTab(this, 'overview-<%= l._id %>')">
+          <i class="fa-solid fa-house"></i> Overview
+        </button>
+        <button class="ml-tab" onclick="switchTab(this, 'analytics-<%= l._id %>')">
+          <i class="fa-solid fa-chart-line"></i> Analytics
+        </button>
+        <button class="ml-tab" onclick="switchTab(this, 'enquiries-<%= l._id %>')">
+          <i class="fa-solid fa-inbox"></i> Enquiries
+          <% if (l.enquiries && l.enquiries.filter(i => !i.seen).length > 0) { %>
+            <span style="background:#dc2626;color:#fff;font-size:0.6rem;padding:1px 6px;border-radius:10px;margin-left:4px">
+              <%= l.enquiries.filter(i => !i.seen).length %>
+            </span>
+          <% } %>
+        </button>
+        <button class="ml-tab" onclick="switchTab(this, 'reviews-<%= l._id %>')">
+          <i class="fa-solid fa-star"></i> Reviews
+          <% if (l.reviewCount > 0) { %>
+            <span style="background:var(--g);color:#fff;font-size:0.6rem;padding:1px 6px;border-radius:10px;margin-left:4px">
+              <%= l.reviewCount %>
+            </span>
+          <% } %>
+        </button>
+      </div>
+
+      <!-- ══ TAB: OVERVIEW ══ -->
+      <div class="ml-tab-panel active" id="overview-<%= l._id %>">
+        <div class="ml-body">
+          <div class="ml-info-grid">
+            <div class="ml-info-card">
+              <div class="label">Starting price</div>
+              <div class="value green">₹<%= l.startingPrice?.toLocaleString('en-IN') %></div>
+            </div>
+            <% if (l.deposit) { %>
+            <div class="ml-info-card">
+              <div class="label">Deposit</div>
+              <div class="value">₹<%= l.deposit?.toLocaleString('en-IN') %></div>
+            </div>
+            <% } %>
+            <% if (l.capacity) { %>
+            <div class="ml-info-card">
+              <div class="label">Capacity</div>
+              <div class="value"><%= l.capacity %> beds</div>
+            </div>
+            <% } %>
+            <div class="ml-info-card">
+              <div class="label">Rooms listed</div>
+              <div class="value"><%= l.rooms?.length || 0 %></div>
+            </div>
+            <div class="ml-info-card">
+              <div class="label">Rating</div>
+              <div class="value"><%= l.rating > 0 ? l.rating.toFixed(1) + ' ★' : '—' %></div>
+            </div>
+            <div class="ml-info-card">
+              <div class="label">Listed on</div>
+              <div class="value" style="font-size:0.75rem">
+                <%= new Date(l.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) %>
+              </div>
+            </div>
+          </div>
+
+          <% if (l.description) { %>
+          <div class="ml-section">
+            <div class="ml-section-title"><i class="fa-solid fa-align-left"></i> Description</div>
+            <div class="ml-loc-box"><%= l.description %></div>
+          </div>
+          <% } %>
+
+          <div class="ml-section">
+            <div class="ml-section-title"><i class="fa-solid fa-location-dot"></i> Location</div>
+            <div class="ml-loc-box">
+              <div><%= l.location?.address %></div>
+              <div><%= l.location?.city %>, <%= l.location?.state %> — <%= l.location?.pincode %></div>
+              <% if (l.location?.nearCollege) { %>
+                <div style="margin-top:6px"><strong>Near <%= l.location.nearCollege %></strong></div>
+              <% } %>
+            </div>
+          </div>
+
+          <% if (l.rooms && l.rooms.length > 0) { %>
+          <div class="ml-section">
+            <div class="ml-section-title"><i class="fa-solid fa-bed"></i> Rooms & Pricing</div>
+            <div class="ml-rooms-wrap">
+              <table class="ml-rooms-table">
+                <thead>
+                  <tr><th>Type</th><th>Price/mo</th><th>Deposit</th><th>Features</th><th>Available</th></tr>
+                </thead>
+                <tbody>
+                  <% l.rooms.forEach(r => { %>
+                  <tr>
+                    <td><strong><%= r.type %></strong></td>
+                    <td style="color:var(--g);font-weight:600">₹<%= r.price?.toLocaleString('en-IN') %></td>
+                    <td>₹<%= r.deposit?.toLocaleString('en-IN') || '0' %></td>
+                    <td><%= r.features?.join(', ') || '—' %></td>
+                    <<td>
+  <%- r.available 
+      ? '<span style="color:#059669;font-weight:600">✓ Yes</span>' 
+      : '<span style="color:#dc2626;font-weight:600">✗ No</span>' 
+  %>
+</td>
+                  </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <% } %>
+
+          <% if (l.amenities && l.amenities.length > 0) { %>
+          <div class="ml-section">
+            <div class="ml-section-title"><i class="fa-solid fa-star"></i> Amenities (<%= l.amenities.length %>)</div>
+            <div class="ml-chips">
+              <% l.amenities.forEach(a => { %>
+                <span class="ml-chip"><i class="fa-solid fa-check"></i> <%= a %></span>
+              <% }) %>
+            </div>
+          </div>
+          <% } %>
+
+          <% const cleanRules = (l.rules || []).filter(r => r && r.trim()); %>
+          <% if (cleanRules.length > 0) { %>
+          <div class="ml-section">
+            <div class="ml-section-title"><i class="fa-solid fa-circle-info"></i> House Rules</div>
+            <div class="ml-loc-box" style="padding:4px 16px">
+              <% cleanRules.forEach(r => { %>
+                <div class="ml-rule"><i class="fa-solid fa-angles-right"></i> <%= r %></div>
+              <% }) %>
+            </div>
+          </div>
+          <% } %>
+
+          <div class="ml-section">
+            <div class="ml-section-title"><i class="fa-solid fa-phone"></i> Contact</div>
+            <div class="ml-contact-row">
+              <% if (l.contact?.phone) { %>
+                <div class="ml-contact-item"><i class="fa-solid fa-phone"></i> +91 <%= l.contact.phone %></div>
+              <% } %>
+              <% if (l.contact?.whatsapp) { %>
+                <div class="ml-contact-item"><i class="fa-brands fa-whatsapp" style="color:#25D366"></i> +91 <%= l.contact.whatsapp %></div>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ TAB: ANALYTICS ══ -->
+      <div class="ml-tab-panel" id="analytics-<%= l._id %>">
+        <div class="ml-body">
+
+          <!-- Stat cards -->
+          <div class="ml-analytics">
+            <div class="ml-analytic">
+              <div class="an-val"><%= l.views %></div>
+              <div class="an-label">Total Views</div>
+            </div>
+            <div class="ml-analytic">
+              <div class="an-val"><%= l.shortlisted %></div>
+              <div class="an-label">Shortlisted</div>
+            </div>
+            <div class="ml-analytic">
+              <div class="an-val"><%= l.reviewCount %></div>
+              <div class="an-label">Reviews</div>
+            </div>
+            <div class="ml-analytic">
+              <div class="an-val"><%= l.rating > 0 ? l.rating.toFixed(1) : '—' %></div>
+              <div class="an-label">Avg Rating</div>
+            </div>
+            <div class="ml-analytic">
+              <div class="an-val"><%= l.isVerified ? '✓' : '—' %></div>
+              <div class="an-label">Verified</div>
+            </div>
+            <div class="ml-analytic">
+              <div class="an-val"><%= l.enquiries ? l.enquiries.length : 0 %></div>
+              <div class="an-label">enquiries</div>
+            </div>
+          </div>
+
+          <!-- Bar chart: views vs shortlisted vs reviews -->
+          <div class="chart-wrap">
+            <div class="ml-section-title" style="margin-bottom:14px">
+              <i class="fa-solid fa-chart-bar"></i> Performance overview
+            </div>
+            <canvas id="chart-<%= l._id %>"></canvas>
+          </div>
+
+          <!-- Conversion rate -->
+          <div class="ml-loc-box">
+            <div style="font-size:0.78rem;font-weight:700;color:var(--ink);margin-bottom:8px">
+              <i class="fa-solid fa-percent" style="color:var(--g)"></i> Conversion insights
+            </div>
+            <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:0.78rem;color:var(--ink2)">
+              <div>
+                <div style="font-weight:700;font-size:1rem;color:var(--ink)">
+                  <%= l.views > 0 ? Math.round((l.shortlisted / l.views) * 100) : 0 %>%
+                </div>
+                <div style="color:var(--muted)">Shortlist rate</div>
+              </div>
+              <div>
+                <div style="font-weight:700;font-size:1rem;color:var(--ink)">
+                  <%= l.views > 0 ? Math.round((l.reviewCount / l.views) * 100) : 0 %>%
+                </div>
+                <div style="color:var(--muted)">Review rate</div>
+              </div>
+              <div>
+                <div style="font-weight:700;font-size:1rem;color:var(--ink)">
+                  <%= l.enquiries ? Math.round((l.enquiries.length / Math.max(l.views, 1)) * 100) : 0 %>%
+                </div>
+                <div style="color:var(--muted)">Enquiry rate</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══ TAB: EnquirIES ══ -->
+      <div class="ml-tab-panel" id="enquiries-<%= l._id %>">
+        <div class="ml-body">
+          <% const enquiries = l.enquiries || []; %>
+          <% if (enquiries.length === 0) { %>
+            <div class="inq-empty">
+              <i class="fa-regular fa-inbox"></i>
+              <p>No enquiries yet.<br>They'll appear here when students reach out.</p>
+            </div>
+          <% } else { %>
+            <div style="font-size:0.75rem;color:var(--muted);margin-bottom:14px">
+              <%= enquiries.length %> total · <%= enquiries.filter(i => !i.seen).length %> unread
+            </div>
+            <% enquiries.slice().reverse().forEach(inq => { %>
+            <div class="inq-card">
+              <div class="inq-top">
+                <div class="inq-name">
+                 <img 
+                  src="/student-images/<%= inq.avatar %>" 
+                  alt="Avatar"
+                  style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+                    <%= inq.name || 'Anonymous' %>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="inq-badge <%= inq.seen ? 'seen' : 'new' %>">
+                    <%= inq.seen ? 'Seen' : 'New' %>
+                  </span>
+                  <span class="inq-date">
+                    <%= new Date(inq.createdAt || inq.date || Date.now()).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %>
+                  </span>
+                </div>
+              </div>
+              <% if (inq.roomType) { %>
+                <div class="inq-room"><i class="fa-solid fa-bed"></i> <%= inq.roomType %></div>
+              <% } %>
+              <div class="inq-row">
+                <% if (inq.phone) { %>
+                  <span> <a href="tel:<%= inq.phone %>" class="call-btn">
+                    <i class="fa-solid fa-phone" style="color:#fff;"></i> <%= inq.phone %>
+                  </a></span>
+                   
+                  <span> <a href="https://wa.me/91<%= inq.phone %>" target="_blank" class="wa-btn">
+                    <i class="fa-brands fa-whatsapp" style="color:#fff;"></i> WhatsApp
+                  </a></span>
+                <% } %>
+                <% if (inq.moveIn) { %>
+                  <span><i class="fa-solid fa-calendar" ></i> Move-in: <h4 class="info-badge"><%= inq.moveIn %></h4></span>
+                <% } %>
+               
+                <% if (inq. contactMethod || inq.preferredDate) { %>
+                  <div class="inq-meta">
+  <i class="fa-solid fa-calendar-days"></i>
+
+  <span>
+    Wants contact via:
+    <strong class="info-badge"><%= inq.contactMethod %></strong>
+  </span>
+
+  <% if (inq.preferredDate) { %>
+    <span>
+      on
+      <strong class="info-badge">
+        <%= new Date(inq.preferredDate).toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        }) %>
+      </strong>
+    </span>
+  <% } %>
+</div>
+                <% } %>   
+                <% if (inq.college) { %>
+                  <span><i class="fa-solid fa-school"></i> <%= inq.college %> </span>
+                <% } %>
+              </div>
+              <% if (inq.message) { %>
+                <div class="inq-msg">"message : <%= inq.message %>"</div>
+              <% } %>
+            </div>
+            <% }) %>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- ══ TAB: REVIEWS ══ -->
+      <div class="ml-tab-panel" id="reviews-<%= l._id %>">
+        <div class="ml-body">
+
+          <% if (l.reviews && l.reviews.length > 0) { %>
+            <!-- Rating summary -->
+            <div class="rev-summary">
+              <div class="rs-num"><%= l.rating.toFixed(1) %></div>
+              <div>
+                <div class="rs-stars">
+                  <% for(let s=1; s<=5; s++) { %>
+                    <i class="fa-solid fa-star<%= s <= Math.round(l.rating) ? '' : ' se' %>"></i>
+                  <% } %>
+                </div>
+                <div class="rs-label" id="rev-count-<%= l._id %>">
+                  Based on <%= l.reviewCount %> review<%= l.reviewCount !== 1 ? 's' : '' %>
+                </div>
+              </div>
+
+              <!-- Rating breakdown bars -->
+              <div style="flex:1;min-width:0">
+                <% for(let s=5; s>=1; s--) { %>
+                  <% const cnt = l.reviews.filter(r => r.rating === s).length; %>
+                  <% const pct = l.reviews.length > 0 ? Math.round((cnt / l.reviews.length) * 100) : 0; %>
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+                    <span style="font-size:0.65rem;color:var(--muted);width:10px"><%= s %></span>
+                    <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+                      <div style="height:100%;width:<%= pct %>%;background:#f59e0b;border-radius:3px"></div>
+                    </div>
+                    <span style="font-size:0.65rem;color:var(--muted);width:22px"><%= cnt %></span>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+
+            <!-- Review cards -->
+            <div id="rev-list-<%= l._id %>">
+              <% l.reviews.slice().reverse().forEach(rev => { %>
+              <div class="rev-card" id="rev-<%= rev._id %>">
+                <div class="rev-avatar">
+                  <% if (rev.avatar) { %>
+                    <img src="/student-images/<%= rev.avatar %>" alt="<%= rev.userName %>"
+                         onerror="this.style.display='none';this.parentElement.textContent='<%= rev.userName?.charAt(0) || '?' %>'">
+                  <% } else { %>
+                    <%= rev.userName?.charAt(0) || '?' %>
+                  <% } %>
+                </div>
+                <div class="rev-body">
+                  <div class="rev-top">
+                    <div>
+                      <div class="rev-name"><%= rev.userName %></div>
+                      <div class="rev-date">
+                        <%= new Date(rev.date).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) %>
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <div class="rev-stars">
+                        <% for(let s=1; s<=5; s++) { %>
+                          <i class="fa-solid fa-star<%= s <= rev.rating ? '' : ' se' %>"></i>
+                        <% } %>
+                      </div>
+                      <button class="rev-del-btn"
+                        onclick="deleteReview('<%= l._id %>', '<%= rev._id %>')">
+                        <i class="fa-solid fa-trash-can"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <% if (rev.comment) { %>
+                    <p class="rev-text"><%= rev.comment %></p>
+                  <% } %>
+                </div>
+              </div>
+              <% }) %>
+            </div>
+
+          <% } else { %>
+            <div class="rev-empty" id="rev-list-<%= l._id %>">
+              <i class="fa-regular fa-star"></i>
+              <p>No reviews yet for this listing.</p>
+            </div>
+          <% } %>
+
+        </div>
+      </div>
+
+    </div><!-- /ml-detail -->
+    <% }) %>
+
+  </div><!-- /ml-right -->
+</div>
+
+<!-- DELETE LISTING MODAL -->
+<div class="ml-modal-bg" id="deleteModal">
+  <div class="ml-modal">
+    <h3>Delete Listing?</h3>
+    <p id="deleteMsg">This will permanently remove your listing.</p>
+    <div class="ml-modal-btns">
+      <button class="action-btn outline" onclick="closeDelete()">Cancel</button>
+      <form id="deleteForm" method="POST">
+        <input type="hidden" name="_method" value="DELETE">
+        <button type="submit" class="action-btn danger">
+          <i class="fa-solid fa-trash"></i> Yes, delete
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── SLIDER ─── */
+const sliderState = {};
+
+function sliderGoTo(id, index) {
+  const slider = document.querySelector(`.ml-slider[data-slider-id="${id}"]`);
+  if (!slider) return;
+  const slides = slider.querySelectorAll('.ml-slide');
+  const dots   = slider.querySelectorAll('.ml-dot');
+  const prev   = sliderState[id]?.current ?? 0;
+  slides[prev]?.classList.remove('active');
+  dots[prev]?.classList.remove('active');
+  const next = (index + slides.length) % slides.length;
+  slides[next].classList.add('active');
+  dots[next]?.classList.add('active');
+  sliderState[id] = { ...sliderState[id], current: next };
+}
+
+function sliderNav(id, dir) {
+  const slider = document.querySelector(`.ml-slider[data-slider-id="${id}"]`);
+  if (!slider) return;
+  const slides = slider.querySelectorAll('.ml-slide');
+  sliderGoTo(id, (sliderState[id]?.current ?? 0) + dir);
+  sliderResetAuto(id, slides.length);
+}
+
+function sliderStartAuto(id, total) {
+  if (total <= 1) return;
+  const timer = setInterval(() => sliderGoTo(id, (sliderState[id]?.current ?? 0) + 1), 3500);
+  sliderState[id] = { ...(sliderState[id] || {}), timer };
+}
+function sliderStopAuto(id) {
+  if (sliderState[id]?.timer) { clearInterval(sliderState[id].timer); sliderState[id].timer = null; }
+}
+function sliderResetAuto(id, total) { sliderStopAuto(id); sliderStartAuto(id, total); }
+
+function initAllSliders() {
+  document.querySelectorAll('.ml-slider').forEach(slider => {
+    const id = slider.dataset.sliderId;
+    const slides = slider.querySelectorAll('.ml-slide');
+    if (!id || !slides.length) return;
+    sliderState[id] = { current: 0, timer: null };
+    slider.addEventListener('mouseenter', () => sliderStopAuto(id));
+    slider.addEventListener('mouseleave', () => sliderStartAuto(id, slides.length));
+    const detail = slider.closest('.ml-detail');
+    if (detail?.classList.contains('visible')) sliderStartAuto(id, slides.length);
+  });
+}
+
+/* ─── TABS ─── */
+function switchTab(btn, panelId) {
+  const detail = btn.closest('.ml-detail');
+  detail.querySelectorAll('.ml-tab').forEach(t => t.classList.remove('active'));
+  detail.querySelectorAll('.ml-tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(panelId)?.classList.add('active');
+}
+
+/* ─── SELECT LISTING ─── */
+function selectListing(id) {
+  document.querySelectorAll('.ml-card').forEach(c => c.classList.remove('active'));
+  document.getElementById('card-' + id)?.classList.add('active');
+  Object.keys(sliderState).forEach(sid => sliderStopAuto(sid));
+  document.querySelectorAll('.ml-detail').forEach(d => d.classList.remove('visible'));
+  const detail = document.getElementById('detail-' + id);
+  if (detail) { detail.classList.add('visible'); detail.scrollTop = 0; }
+  document.getElementById('mlPlaceholder').style.display = 'none';
+  const slider = detail?.querySelector('.ml-slider');
+  if (slider) sliderStartAuto(id, slider.querySelectorAll('.ml-slide').length);
+}
+
+/* ─── STATUS FILTER ─── */
+let activeStatus = 'all';
+function filterByStatus(status, btn) {
+  activeStatus = status;
+  document.querySelectorAll('.ml-ftab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterCards();
+}
+
+/* ─── SEARCH + STATUS FILTER ─── */
+function filterCards() {
+  const q = document.getElementById('listingSearch').value.toLowerCase().trim();
+  let visible = 0;
+  document.querySelectorAll('.ml-card').forEach(card => {
+    const matchStatus = activeStatus === 'all' || card.dataset.status === activeStatus;
+    const matchSearch = !q || card.dataset.title.includes(q) || card.dataset.city.includes(q);
+    const show = matchStatus && matchSearch;
+    card.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  document.getElementById('noResults').style.display = visible === 0 ? 'block' : 'none';
+  document.getElementById('visibleCount').textContent = visible;
+}
+
+/* ─── CHARTS ─── */
+const chartInstances = {};
+
+function initChart(id, views, shortlisted, reviews, enquiries) {
+  const ctx = document.getElementById('chart-' + id);
+  if (!ctx) return;
+  if (chartInstances[id]) chartInstances[id].destroy();
+
+  chartInstances[id] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Views', 'Shortlisted', 'Reviews', 'enquiries'],
+      datasets: [{
+        label: 'Count',
+        data: [views, shortlisted, reviews, enquiries],
+        backgroundColor: [
+          'rgba(9,184,80,0.18)',
+          'rgba(9,184,80,0.35)',
+          'rgba(245,158,11,0.30)',
+          'rgba(59,130,246,0.28)'
+        ],
+        borderColor: [
+          '#09b850', '#09b850', '#f59e0b', '#3b82f6'
+        ],
+        borderWidth: 1.5,
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.y } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11, family: 'DM Sans' } } },
+        y: { beginAtZero: true, grid: { color: '#e2e4ea' }, ticks: { precision: 0, font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+/* Init all charts for all listings */
+function initAllCharts() {
+  <% listings.forEach(l => { %>
+    initChart(
+      '<%= l._id %>',
+      <%= l.views || 0 %>,
+      <%= l.shortlisted || 0 %>,
+      <%= l.reviewCount || 0 %>,
+      <%= l.enquiries ? l.enquiries.length : 0 %>
+    );
+  <% }) %>
+}
+
+/* ─── DELETE REVIEW ─── */
+async function deleteReview(listingId, reviewId) {
+  if (!confirm('Delete this review? This cannot be undone.')) return;
+
+  try {
+    const res  = await fetch(`/user/listing/${listingId}/review/${reviewId}`, { method: 'DELETE' });
+    const data = await res.json();
+
+    if (data.success) {
+      // Remove card from DOM
+      document.getElementById('rev-' + reviewId)?.remove();
+
+      // Update count label
+      const countEl = document.getElementById('rev-count-' + listingId);
+      if (countEl) {
+        countEl.textContent = `Based on ${data.newReviewCount} review${data.newReviewCount !== 1 ? 's' : ''}`;
+      }
+
+      // If no reviews left, show empty state
+      const list = document.getElementById('rev-list-' + listingId);
+      if (list && list.querySelectorAll('.rev-card').length === 0) {
+        list.innerHTML = `<div class="rev-empty"><i class="fa-regular fa-star"></i><p>No reviews yet.</p></div>`;
+      }
+
+      showToast('Review deleted');
+
+      // Refresh chart
+      initChart(
+        listingId,
+        parseInt(document.querySelector(`#analytics-${listingId} .an-val`)?.textContent) || 0,
+        0, data.newReviewCount, 0
+      );
+    } else {
+      showToast(data.error || 'Could not delete', true);
+    }
+  } catch (err) {
+    showToast('Network error', true);
+  }
+}
+
+/* ─── COPY LINK ─── */
+function copyLink(slug) {
+  navigator.clipboard.writeText(window.location.origin + '/hostel/' + slug)
+    .then(() => showToast('Link copied!'))
+    .catch(() => showToast('Could not copy', true));
+}
+
+/* ─── BOOST ─── */
+function boostListing(id) { showToast('Boost feature coming soon!'); }
+
+/* ─── DELETE LISTING MODAL ─── */
+function openDelete(id, name) {
+  document.getElementById('deleteMsg').textContent = `"${name}" will be permanently removed. This cannot be undone.`;
+  document.getElementById('deleteForm').action = '/user/listing/' + id + '/delete';
+  document.getElementById('deleteModal').classList.add('open');
+}
+function closeDelete() { document.getElementById('deleteModal').classList.remove('open'); }
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+  if (e.target === this) closeDelete();
+});
+
+/* ─── TOAST ─── */
+function showToast(msg, err = false) {
+  let t = document.getElementById('mlToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'mlToast';
+    Object.assign(t.style, {
+      position:'fixed', bottom:'24px', right:'24px',
+      padding:'10px 18px', borderRadius:'10px',
+      fontSize:'0.78rem', fontWeight:'600',
+      fontFamily:"'DM Sans', sans-serif",
+      zIndex:'9999', transition:'opacity .3s',
+      boxShadow:'0 4px 20px rgba(0,0,0,.15)'
+    });
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = err ? '#dc2626' : '#09B850';
+  t.style.color = '#fff';
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.opacity = '0', 2800);
+}
+
+/* ─── INIT ─── */
+document.addEventListener('DOMContentLoaded', () => {
+  initAllSliders();
+  initAllCharts();
+});
+
+</script>

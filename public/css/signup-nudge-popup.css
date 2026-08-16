@@ -1,0 +1,165 @@
+/* ═══════════════════════════════════════
+   SIGNUP NUDGE POPUP — HostelNode
+═══════════════════════════════════════ */
+.hn-nudge-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(3px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease;
+}
+.hn-nudge-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+.hn-nudge-box {
+  background: #fff;
+  border-radius: 22px;
+  width: 100%;
+  max-width: 400px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+  transform: scale(0.88) translateY(20px);
+  transition: transform .32s cubic-bezier(.34,1.56,.64,1);
+}
+.hn-nudge-overlay.open .hn-nudge-box {
+  transform: scale(1) translateY(0);
+}
+.hn-nudge-header {
+  background: linear-gradient(135deg, #0a1628 0%, #1a3a5c 100%);
+  padding: 32px 28px 26px;
+  text-align: center;
+  position: relative;
+}
+.hn-nudge-close {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  border: none;
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+}
+.hn-nudge-close:hover { background: rgba(255,255,255,0.22); }
+.hn-nudge-emoji {
+  font-size: 46px;
+  display: block;
+  margin-bottom: 14px;
+  animation: hn-float 3s ease-in-out infinite;
+}
+@keyframes hn-float {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+.hn-nudge-header h3 {
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 21px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 6px;
+  line-height: 1.3;
+}
+.hn-nudge-header p {
+  font-size: 13px;
+  color: rgba(255,255,255,0.65);
+  margin: 0;
+  line-height: 1.5;
+}
+.hn-nudge-perks {
+  padding: 20px 22px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hn-perk {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #f5fbf7;
+  border-radius: 12px;
+  border: 1px solid #d4eedd;
+}
+.hn-perk-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: #09B850;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+.hn-perk-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0a1628;
+}
+.hn-perk-sub {
+  font-size: 11.5px;
+  color: #64748b;
+  margin-top: 1px;
+}
+.hn-nudge-cta {
+  padding: 6px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hn-nudge-btn-primary {
+  width: 100%;
+  padding: 13px;
+  background: #09B850;
+  color: #fff;
+  border: none;
+  border-radius: 13px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'Instrument Sans', sans-serif;
+  cursor: pointer;
+  transition: background .18s, transform .14s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.hn-nudge-btn-primary:hover  { background: #078a3c; }
+.hn-nudge-btn-primary:active { transform: scale(.98); }
+.hn-nudge-btn-later {
+  width: 100%;
+  padding: 9px;
+  background: none;
+  color: #94a3b8;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color .15s;
+}
+.hn-nudge-btn-later:hover { color: #64748b; }
+.hn-nudge-footer {
+  text-align: center;
+  font-size: 11.5px;
+  color: #b0bec5;
+  padding: 0 22px 18px;
+}
+.hn-nudge-footer strong { color: #09B850; }
+
+@media (max-width: 420px) {
+  .hn-nudge-header { padding: 26px 20px 22px; }
+  .hn-nudge-perks  { padding: 16px 16px 10px; }
+  .hn-nudge-cta    { padding: 4px 16px 18px; }
+}

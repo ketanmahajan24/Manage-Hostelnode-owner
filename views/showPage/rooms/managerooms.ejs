@@ -1,0 +1,156 @@
+<% layout("/layouts/boilerplate") -%> 
+
+<style>
+
+/* 🌟 Page */
+.main-body-page {
+    background: #F8FAFC;
+    padding: 25px;
+}
+
+/* 🌟 Title */
+.page-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #0F172A;
+    margin-bottom: 15px;
+}
+
+/* 🌟 Table Wrapper */
+.table-wrapper {
+    background: #FFFFFF;
+    border-radius: 14px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    overflow: hidden;
+    animation: fadeUp 0.4s ease;
+}
+
+/* 🌟 Table */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* 🌟 Header */
+th {
+    background: linear-gradient(135deg, #09B850, #22C55E);
+    color: white;
+    padding: 14px;
+    font-size: 13px;
+    text-align: left;
+}
+
+/* 🌟 Rows */
+td {
+    padding: 14px;
+    font-size: 14px;
+    color: #0F172A;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+/* 🌟 Hover */
+tbody tr:hover {
+    background: #F8FAFC;
+}
+
+/* 🌟 Icons */
+.action-icon {
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+/* Edit */
+.edit-icon {
+    color: #09B850;
+}
+.edit-icon:hover {
+    color: #059669;
+}
+
+/* Delete */
+.delete-icon {
+    color: #EF4444;
+}
+.delete-icon:hover {
+    color: #DC2626;
+}
+
+/* 🌟 Animation */
+@keyframes fadeUp {
+    from {opacity: 0; transform: translateY(15px);}
+    to {opacity: 1; transform: translateY(0);}
+}
+
+/* 🌟 Responsive */
+@media(max-width:768px){
+    th, td {
+        font-size: 12px;
+        padding: 10px;
+    }
+}
+
+</style>
+
+<br><br>
+
+<div class="main-body-page">
+
+    <div class="page-title">
+        <i class="fa-solid fa-building" style="color:#09B850;"></i>
+        Manage Rooms
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Room No.</th>
+                    <th>Room Fees</th>
+                    <th>Sharing</th>
+                    <th>Edit</th>
+                    <th>Delete</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                <% for (let Room of allRooms){%>       
+                <tr> 
+
+                    <td><strong><%=Room.room_number%></strong></td>
+
+                    <td>
+                        <i class="fa-solid fa-indian-rupee-sign"></i> 
+                        <%=Room.room_fees%>
+                    </td>
+
+                    <td><%=Room.sharing_capacity%> Sharing</td>
+
+                    <!-- Edit -->
+                    <td>
+                        <a href="/user/managerooms/<%=Room._id%>/edit">
+                            <i class="fa-solid fa-pen-to-square action-icon edit-icon"></i>
+                        </a>
+                    </td>
+
+                    <!-- Delete -->
+                    <td>
+                        <form method="POST" action="/user/managerooms/<%=Room._id%>?_method=DELETE">
+                            <button class="btn p-0 border-0 bg-transparent">
+                                <i class="fa-solid fa-trash-can action-icon delete-icon"></i>
+                            </button>
+                        </form>
+                    </td>
+
+                </tr>
+                <%}%>   
+
+            </tbody>
+
+        </table>
+    </div>
+
+</div>

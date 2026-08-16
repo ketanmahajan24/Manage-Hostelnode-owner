@@ -1,0 +1,180 @@
+<% layout("/layouts/boilerplate") -%>
+
+<style>
+.main-body-page {
+    background: #F8FAFC;
+    padding: 20px;
+    border-radius: 10px;
+    animation: fadeIn 0.5s ease;
+}
+
+.new-form-heading {
+    font-size: 22px;
+    font-weight: 600;
+    color: #0F172A;
+}
+
+.btn-back {
+    color: #09B850;
+    border: 1px solid #09B850;
+    border-radius: 30px;
+    padding: 6px 14px;
+    transition: 0.3s;
+}
+.btn-back:hover {
+    background: #09B850;
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+.student-box {
+    background: #FFFFFF;
+    border-radius: 12px;
+    padding: 25px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    animation: slideUp 0.5s ease;
+}
+
+.form-control, .form-select {
+    border-radius: 10px;
+    border: 1px solid #CBD5E1;
+    padding: 10px;
+    transition: 0.25s;
+}
+
+.form-control:focus {
+    border-color: #09B850;
+    box-shadow: 0 0 0 3px rgba(9,184,80,0.15);
+}
+
+.form-label {
+    color: #475569;
+    font-weight: 500;
+}
+
+.btn-submit {
+    background: linear-gradient(135deg, #09B850, #22C55E);
+    color: #fff;
+    border-radius: 30px;
+    padding: 12px;
+    border: none;
+    font-weight: 600;
+    transition: 0.3s;
+}
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(9,184,80,0.25);
+}
+
+@keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+@keyframes slideUp { from {opacity:0; transform:translateY(25px);} to {opacity:1;} }
+</style>
+
+<br><br>
+
+<div class="main-body-page">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <p class="new-form-heading">Edit Profile</p>
+        <a href="/user" class="btn btn-back">
+            <i class="fa-solid fa-chevron-left"></i> Back
+        </a>
+    </div>
+
+    <hr>
+
+    <div class="container student-box">
+
+        <form method="POST" action="/user/editOwner" enctype="multipart/form-data" class="row g-4">
+
+            <!-- PROFILE IMAGE -->
+            <div class="col-12 text-center">
+                <img id="previewImg"
+                     src="/profile-image/<%= user.profileImage %>"
+                     class="rounded-circle shadow"
+                     style="width:110px;height:110px;object-fit:cover;">
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Change Profile Image</label>
+                <input type="file" name="profileImage" class="form-control" onchange="previewImage(event)">
+            </div>
+
+            <!-- NAME -->
+            <div class="col-md-6">
+                <label class="form-label">Name</label>
+                <input type="text" name="name" value="<%= user.name %>" class="form-control" required>
+            </div>
+
+            <!-- PHONE -->
+            <div class="col-md-4">
+                <label class="form-label">Phone</label>
+                <input type="text" name="phone" value="<%= user.phone %>" class="form-control">
+            </div>
+
+            <!-- WHATSAPP -->
+            <div class="col-md-4">
+                <label class="form-label">WhatsApp</label>
+                <input type="text" name="whatsapp" value="<%= user.whatsapp %>" class="form-control">
+            </div>
+
+            <!-- EMAIL (readonly 🔒) -->
+            <div class="col-md-4">
+                <label class="form-label">Email</label>
+                <input type="email" value="<%= user.email %>" class="form-control" readonly>
+            </div>
+
+            <!-- BUSINESS -->
+            <div class="col-md-6">
+                <label class="form-label">Business Name</label>
+                <input type="text" name="businessName" value="<%= user.businessName %>" class="form-control">
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Business Type</label>
+                <input type="text" name="businessType" value="<%= user.businessType %>" class="form-control">
+            </div>
+
+            <!-- LOCATION -->
+            <div class="col-md-3">
+                <label class="form-label">City</label>
+                <input type="text" name="city" value="<%= user.city %>" class="form-control">
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">State</label>
+                <input type="text" name="state" value="<%= user.state %>" class="form-control">
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Country</label>
+                <input type="text" name="country" value="<%= user.country %>" class="form-control">
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Pincode</label>
+                <input type="text" name="pincode" value="<%= user.pincode %>" class="form-control">
+            </div>
+
+            <!-- SUBMIT -->
+            <div class="col-12 text-center">
+                <button class="col-6 btn btn-submit">
+                    <i class="fa-solid fa-pen me-2"></i> Update Profile
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<script>
+function previewImage(event) {
+    const reader = new FileReader();
+    reader.onload = function(){
+        document.getElementById('previewImg').src = reader.result;
+    }
+    reader.readAsDataURL(event.target.files[0]);
+}
+</script>

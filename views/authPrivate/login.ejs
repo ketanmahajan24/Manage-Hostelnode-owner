@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3J9E7QW77B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3J9E7QW77B');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Owner Login | HostelNode</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<style>
+:root {
+  --g:      #09B850;
+  --g-dark: #078040;
+  --g-light:#e8f9ef;
+  --ink:    #0f1117;
+  --muted:  #64748b;
+  --border: #e2e8f0;
+  --font-d: 'Syne', sans-serif;
+  --font-b: 'DM Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-b);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #0a1f12 0%, #09B850 50%, #0a1f12 100%);
+  position: relative;
+  overflow: hidden;
+}
+body::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.04) 1.5px, transparent 1.5px);
+  background-size: 32px 32px;
+  pointer-events: none;
+}
+body::after {
+  content: '';
+  position: absolute;
+  width: 500px; height: 500px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(9,184,80,0.25) 0%, transparent 70%);
+  top: -120px; left: -120px; pointer-events: none;
+}
+
+.login-card {
+  position: relative; z-index: 1;
+  background: rgba(255,255,255,0.97);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 44px 40px;
+  width: 100%; max-width: 440px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1);
+  animation: cardIn 0.5s cubic-bezier(.22,.68,0,1.2) both;
+}
+@keyframes cardIn {
+  from { opacity:0; transform:translateY(28px) scale(0.97); }
+  to   { opacity:1; transform:none; }
+}
+
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  justify-content: center; margin-bottom: 24px;
+}
+.brand img { height: 44px; }
+.brand span { font-family: var(--font-d); font-size: 1.2rem; font-weight: 800; color: var(--ink); }
+
+.owner-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #fef3c7; border: 1px solid #fde68a;
+  padding: 5px 14px; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #92400e;
+  margin-bottom: 14px;
+}
+.owner-badge i { color: #f59e0b; }
+
+.card-title { font-family: var(--font-d); font-size: 1.55rem; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; margin-bottom: 4px; }
+.card-sub   { font-size: 0.83rem; color: var(--muted); margin-bottom: 26px; line-height: 1.5; }
+
+/* Role tabs */
+.role-tabs {
+  display: flex; background: #f1f5f9; border-radius: 12px;
+  padding: 4px; gap: 4px; margin-bottom: 22px;
+}
+.role-tab-input { display: none; }
+.role-tab-label {
+  flex: 1; text-align: center; padding: 9px 8px;
+  border-radius: 9px; font-size: 0.78rem; font-weight: 600;
+  color: var(--muted); cursor: pointer; transition: all .2s;
+  font-family: var(--font-b);
+}
+.role-tab-label:hover { color: var(--ink); }
+.role-tab-input:checked + .role-tab-label {
+  background: white; color: var(--g);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.input-group { margin-bottom: 14px; }
+.input-label { font-size: 0.78rem; font-weight: 600; color: var(--muted); display: block; margin-bottom: 5px; }
+
+.hn-input {
+  width: 100%; padding: 12px 14px;
+  border: 1.5px solid var(--border); border-radius: 12px;
+  font-family: var(--font-b); font-size: 0.88rem; color: var(--ink);
+  background: #f8fafc; outline: none; transition: all 0.2s;
+}
+.hn-input:hover { border-color: #94a3b8; }
+.hn-input:focus { border-color: var(--g); box-shadow: 0 0 0 3px rgba(9,184,80,0.12); background: #fff; }
+.hn-input::placeholder { color: #94a3b8; }
+
+.pass-wrap { position: relative; }
+.pass-wrap .hn-input { padding-right: 44px; }
+.pass-eye {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  color: #94a3b8; cursor: pointer; font-size: 0.9rem; transition: color .18s;
+}
+.pass-eye:hover { color: var(--g); }
+
+.forgot-link {
+  display: block; text-align: right; margin-top: 6px;
+  font-size: 0.75rem; color: var(--muted); text-decoration: none; font-weight: 600;
+}
+.forgot-link:hover { color: var(--g); }
+
+.btn-main {
+  width: 100%; padding: 14px;
+  border: none; border-radius: 12px;
+  background: linear-gradient(135deg, var(--g), #22c55e);
+  color: #fff; font-family: var(--font-d); font-size: 0.95rem; font-weight: 700;
+  cursor: pointer; transition: all 0.2s; margin-top: 8px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 4px 16px rgba(9,184,80,0.3);
+}
+.btn-main:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(9,184,80,0.38); }
+.btn-main:active { transform: scale(0.98); }
+
+.alert {
+  padding: 10px 14px; border-radius: 10px; margin-bottom: 16px;
+  font-size: 0.8rem; font-weight: 500;
+  display: flex; align-items: center; gap: 7px;
+  animation: shake 0.35s ease;
+}
+.alert.error   { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
+.alert.success { background: var(--g-light); border: 1px solid #a8e6bf; color: #065f46; }
+@keyframes shake {
+  0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)}
+}
+
+.links-row { text-align: center; margin-top: 18px; font-size: 0.82rem; color: var(--muted); }
+.links-row a { color: var(--g); font-weight: 600; text-decoration: none; }
+.links-row a:hover { text-decoration: underline; }
+
+.student-note {
+  margin-top: 16px; padding: 11px 14px;
+  background: #f8fafc; border: 1px solid var(--border);
+  border-radius: 10px; text-align: center;
+  font-size: 0.77rem; color: var(--muted);
+}
+.student-note a { color: var(--ink); font-weight: 600; text-decoration: none; }
+.student-note a:hover { color: var(--g); }
+
+@media (max-width: 480px) {
+  .login-card { padding: 28px 20px; }
+}
+</style>
+</head>
+<body>
+
+<div class="login-card">
+
+  <div class="brand">
+    <img src="/images/hostelnode-logo-cutout.png" alt="HostelNode">
+    <span>HostelNode</span>
+  </div>
+
+  <div class="owner-badge"><i class="fa-solid fa-crown"></i> Owner / Manager Portal</div>
+
+  <div class="card-title">Welcome back 👋</div>
+  <div class="card-sub">Sign in to manage your hostel properties.</div>
+
+  <!-- Server error -->
+  <% if (typeof error !== 'undefined' && error) { %>
+  <div class="alert error">
+    <i class="fa-solid fa-triangle-exclamation"></i> <%= error %>
+  </div>
+  <% } %>
+
+  <!-- JS alert -->
+  <div class="alert" id="alertBox" style="display:none"></div>
+
+  <form method="POST" action="/user/login">
+
+    <!-- Role selector -->
+    <div class="role-tabs">
+      <input type="radio" name="user[role]" id="rOwner" class="role-tab-input" value="Owner" checked>
+      <label for="rOwner" class="role-tab-label">
+        <i class="fa-solid fa-crown"></i> Owner
+      </label>
+
+      <input type="radio" name="user[role]" id="rManager" class="role-tab-input" value="Manager">
+      <label for="rManager" class="role-tab-label">
+        <i class="fa-solid fa-user-gear"></i> Manager
+      </label>
+
+       
+    </div>
+
+    <!-- Email -->
+    <div class="input-group">
+      <label class="input-label">Email address</label>
+      <input type="email" name="user[email]" class="hn-input"
+             placeholder="owner@example.com" maxlength="50" required>
+    </div>
+
+    <!-- Password -->
+    <div class="input-group">
+      <label class="input-label">Password</label>
+      <div class="pass-wrap">
+        <input type="password" id="passInput" name="user[password]"
+               class="hn-input" placeholder="Your password" maxlength="30" required>
+        <i class="fa-solid fa-eye pass-eye" id="passToggle"></i>
+      </div>
+      <a href="/user/forgot-password" class="forgot-link">Forgot password?</a>
+    </div>
+
+    <button type="submit" class="btn-main">
+      <i class="fa-solid fa-right-to-bracket"></i> Login
+    </button>
+
+  </form>
+
+  <div class="links-row" style="margin-top:16px">
+    Don't have an account? <a href="/signup">Sign up →</a>
+  </div>
+
+  <div class="student-note">
+    Looking for a hostel? <a href="/student/login">Student Login →</a>
+  </div>
+
+</div>
+
+<script>
+document.getElementById('passToggle').addEventListener('click', function () {
+  const inp = document.getElementById('passInput');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  this.classList.toggle('fa-eye-slash');
+});
+</script>
+</body>
+</html>

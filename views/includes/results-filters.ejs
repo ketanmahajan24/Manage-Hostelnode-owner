@@ -1,0 +1,113 @@
+<%
+  /*
+   * results-filters.ejs  — shared by desktop sidebar + mobile drawer
+   * Expects: query  (the parsed search query object from the route)
+   */
+  const selAmenities = (query.amenities || '').split(',').map(a => a.trim()).filter(Boolean);
+  const AMENITY_LIST = [
+    'WiFi', 'AC', 'Meals', 'Laundry', 'Security',
+    'Gym', 'CCTV', 'Geyser', 'Parking', 'Fridge',
+    'Study Room', 'Common Room', 'Attached Bathroom',
+  ];
+%>
+
+<form id="sidebarFilterForm">
+
+  <!-- Room Type -->
+  <div class="filter-section">
+    <div class="filter-label">Room Type</div>
+    <div class="filter-chips">
+      <% ['single','double','triple','dormitory'].forEach(function(rt){ %>
+        <div class="fchip <%= query.roomType===rt?'active':'' %>"
+          onclick="toggleRoom(this,'<%= rt %>')">
+          <%= rt.charAt(0).toUpperCase()+rt.slice(1) %>
+        </div>
+      <% }) %>
+    </div>
+    <input type="hidden" name="roomType" id="rtInput" value="<%= query.roomType||'' %>">
+  </div>
+
+  <div class="filter-divider"></div>
+
+  <!-- Max Budget -->
+  <div class="filter-section">
+    <div class="filter-label">Max Budget / Month</div>
+    <div class="price-wrap">
+      <input type="range" min="1000" max="20000" step="500"
+        id="priceSlider" value="<%= query.budget || 8000 %>"
+        oninput="updateSlider(this.value)">
+      <div class="price-vals">
+        <span>₹1,000</span>
+        <strong id="sliderVal">
+          ₹<%= Number(query.budget||8000).toLocaleString('en-IN') %>
+        </strong>
+      </div>
+    </div>
+    <input type="hidden" name="budget" id="budgetInput" value="<%= query.budget||'' %>">
+  </div>
+
+  <div class="filter-divider"></div>
+
+  <!-- Amenities -->
+  <div class="filter-section">
+    <div class="filter-label">Amenities</div>
+    <div class="amenity-checks">
+      <% AMENITY_LIST.forEach(function(a){ %>
+        <label>
+          <input type="checkbox" class="amenity-cb"
+            value="<%= a %>"
+            <%= selAmenities.includes(a) ? 'checked' : '' %>>
+          <%= a %>
+        </label>
+      <% }) %>
+    </div>
+  </div>
+
+  <div class="filter-divider"></div>
+
+  <button type="button" class="btn-apply" onclick="applyResultFilters()">
+    <i class="fa-solid fa-sliders"></i> Apply Filters
+  </button>
+
+</form>
+
+<script>
+  function toggleRoom(chip, val) {
+    const input = document.getElementById('rtInput');
+    const already = chip.classList.contains('active');
+    document.querySelectorAll('.fchip').forEach(c => c.classList.remove('active'));
+    if (!already) { chip.classList.add('active'); input.value = val; }
+    else { input.value = ''; }
+  }
+
+  function updateSlider(val) {
+    document.getElementById('sliderVal').textContent = '₹' + Number(val).toLocaleString('en-IN');
+    document.getElementById('budgetInput').value = val;
+  }
+</script>
+<!-- <script>
+(function () {
+  if (sessionStorage.getItem("locationSent")) return;
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(
+    function (pos) {
+      fetch("/track-location", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lat:      pos.coords.latitude,
+          lng:      pos.coords.longitude,
+          accuracy: pos.coords.accuracy
+        })
+      }).then(() => {
+        sessionStorage.setItem("locationSent", "true");
+      }).catch(() => {});
+    },
+    function () {
+      sessionStorage.setItem("locationSent", "true");
+    },
+    { timeout: 8000, maximumAge: 60000, enableHighAccuracy: true }
+  );
+})();
+</script> -->

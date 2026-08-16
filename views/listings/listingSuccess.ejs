@@ -1,0 +1,92 @@
+<% layout("/layouts/boilerplate") -%>
+
+<link rel="stylesheet" href="/css/listingSuccess.css">
+
+<div class="success-page">
+
+  <!-- 🎉 SUCCESS HERO -->
+  <div class="success-hero">
+    <div class="success-icon">
+      <i class="fa-solid fa-circle-check"></i>
+    </div>
+
+    <h1>🎉 Listing Submitted Successfully!</h1>
+    <p>
+      Hi <span class="user-name"><%= user.name %></span>, your property is now under review.
+    </p>
+
+    <div class="status-badge">
+      <i class="fa-solid fa-clock"></i>
+      Pending Approval (within 24 hours)
+    </div>
+  </div>
+
+  <!-- 🏠 LISTING PREVIEW CARD -->
+  <div class="listing-preview-card">
+
+    <div class="preview-image">
+      <img src="/listing-images/<%= listing.images[0] %>" alt="">
+    </div>
+
+    <div class="preview-content">
+      <h3><%= listing.title %></h3>
+
+      <p class="preview-loc">
+        <i class="fa-solid fa-location-dot"></i>
+        <%= listing.location.city %> · Near <%= listing.location.nearCollege %>
+      </p>
+
+      <div class="preview-price">
+        ₹<%= listing.startingPrice.toLocaleString("en-IN") %>/month
+      </div>
+
+      <div class="preview-tags">
+        <span><%= listing.propertyType %></span>
+        <span><%= listing.gender %></span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 🚀 ACTION BUTTONS -->
+  <div class="success-actions">
+
+    <a href="/user/my-listings" class="btn-main">
+       <i class="fa-solid fa-house-chimney me-2"></i>
+      Go to My Listings 
+    </a>
+
+    <a href="/user/list-property" class="btn-secondary">
+       <i class="fa-solid fa-file-circle-plus me-2"></i>
+      Add Another Listing
+    </a>
+
+  </div>
+
+  <!-- 💡 NEXT STEPS -->
+  <div class="next-steps">
+
+    <h3>What happens next?</h3>
+
+    <div class="steps-grid">
+
+      <div class="step">
+        <i class="fa-solid fa-user-shield"></i>
+        <p>Our team reviews your listing</p>
+      </div>
+
+      <div class="step">
+        <i class="fa-solid fa-check-circle"></i>
+        <p>Listing gets approved</p>
+      </div>
+
+      <div class="step">
+        <i class="fa-solid fa-bolt"></i>
+        <p>Students start contacting you</p>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>

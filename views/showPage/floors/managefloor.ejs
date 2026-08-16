@@ -1,0 +1,117 @@
+<% layout("/layouts/boilerplate") -%> 
+
+<style>
+
+/* 🌟 Page */
+.main-body-page {
+    background: #F8FAFC;
+    padding: 25px;
+}
+
+/* 🌟 Heading */
+.revenue-heading {
+    color: #0F172A;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+/* 🌟 Table Container */
+.table-container {
+    background: #FFFFFF;
+    border-radius: 14px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+/* 🌟 Table */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* 🌟 Header */
+th {
+    background: linear-gradient(135deg, #09B850, #22C55E);
+    color: #fff;
+    padding: 14px;
+    font-size: 13px;
+    text-align: left;
+}
+
+/* 🌟 Rows */
+td {
+    padding: 14px;
+    border-top: 1px solid #E2E8F0;
+    font-size: 14px;
+    color: #0F172A;
+}
+
+/* 🌟 Row Hover */
+tbody tr {
+    transition: 0.25s;
+}
+
+tbody tr:hover {
+    background: #F8FAFC;
+}
+
+/* 🌟 Delete Button */
+.btn-delete {
+    color: #EF4444;
+    font-size: 16px;
+    transition: 0.3s;
+}
+
+.btn-delete:hover {
+    color: #DC2626;
+    transform: scale(1.1);
+}
+
+/* 🌟 Responsive */
+@media(max-width:768px){
+    th, td {
+        padding: 10px;
+        font-size: 12px;
+    }
+}
+
+</style>
+
+<br><br>
+
+<div class="main-body-page">
+
+    <h3 class="revenue-heading">
+        <i class="fa-solid fa-layer-group" style="color:#09B850;"></i>
+        Manage Floors
+    </h3>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Floor Name</th>
+                    <th>Delete</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <% for (let Floor of allFloors){%>               
+                <tr>
+                    <td><%=Floor.floor_name%></td>
+
+                    <td>
+                        <form method="POST" action="/user/managefloor/<%=Floor._id%>?_method=DELETE">
+                            <button class="btn p-0 border-0 bg-transparent btn-delete">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                <%}%>            
+            </tbody>
+        </table>
+    </div>
+
+</div>

@@ -1,0 +1,157 @@
+<% layout("/layouts/boilerplate") -%>
+
+<style>
+/* 🌟 Page */
+.main-body-page {
+    background: #F8FAFC;
+    padding: 20px;
+    border-radius: 10px;
+    animation: fadeIn 0.5s ease;
+}
+
+/* 🌟 Heading */
+.new-form-heading {
+    font-size: 22px;
+    font-weight: 600;
+    color: #0F172A;
+}
+
+/* 🌟 Back Button */
+.btn-back {
+    color: #09B850;
+    border: 1px solid #09B850;
+    border-radius: 30px;
+    padding: 6px 14px;
+    transition: 0.3s;
+}
+.btn-back:hover {
+    background: #09B850;
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+/* 🌟 Card */
+.student-box {
+    background: #FFFFFF;
+    border-radius: 12px;
+    padding: 25px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    animation: slideUp 0.5s ease;
+}
+
+/* 🌟 Inputs */
+.form-control {
+    border-radius: 10px;
+    border: 1px solid #CBD5E1;
+    padding: 10px;
+    transition: 0.25s;
+    background: #FFFFFF;
+    color: #0F172A;
+}
+
+.form-control:hover {
+    border-color: #22C55E;
+}
+
+.form-control:focus {
+    border-color: #09B850;
+    box-shadow: 0 0 0 3px rgba(9,184,80,0.15);
+}
+
+/* 🌟 Labels */
+.form-label {
+    color: #475569;
+    font-weight: 500;
+}
+
+/* 🌟 Button */
+.btn-submit {
+    background: linear-gradient(135deg, #09B850, #22C55E);
+    color: #fff;
+    border-radius: 30px;
+    padding: 12px;
+    border: none;
+    font-weight: 600;
+    transition: 0.3s;
+}
+.btn-submit:hover {
+    background: linear-gradient(135deg, #059669, #16A34A);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(9,184,80,0.25);
+}
+
+/* 🌟 Animations */
+@keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+}
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(25px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+
+<br><br>
+
+<div class="main-body-page">
+
+    <!-- HEADER -->
+    <div class="d-flex gap-2 cols m-1">
+        <div class="col-7">
+            <p class="new-form-heading">Create New Hostel</p>
+        </div>
+
+        <div class="col-6">
+            <a href="./" class="col-8 btn btn-back">
+                <i class="fa-solid fa-chevron-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <hr>
+
+    <!-- FORM -->
+    <div class="container student-box">
+        <form method="POST" action="/user/create-hostel" class="row g-4">
+
+            <div class="col-md-6">
+                <label class="form-label">Hostel Name</label>
+                <input type="text" name="hostelName" class="form-control" placeholder="Enter hostel name" required>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">City</label>
+                <input type="text" name="city" class="form-control" placeholder="Enter city" required>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">State</label>
+                <input type="text" name="state" class="form-control" placeholder="Enter state" required>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Country</label>
+                <input type="text" name="country" class="form-control" value="India" required>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Pincode</label>
+                <input type="number" name="pincode" class="form-control" placeholder="Enter pincode" required>
+            </div>
+
+            <div class="col-12 d-flex justify-content-center">
+                <button type="submit" class="col-6 btn btn-submit">
+                    <i class="fa-solid fa-building me-2"></i> Create Hostel
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>

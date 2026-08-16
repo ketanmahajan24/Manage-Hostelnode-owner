@@ -1,0 +1,818 @@
+<!-- findHostels-results.ejs -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3J9E7QW77B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3J9E7QW77B');
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>
+    <%= query.college ? `Hostels near ${query.college}` : 'Search Results' %> | HostelNode
+  </title>
+  <link rel="icon" type="image/png" href="/images/hostelnode-logo-cutout.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Inter:opsz,wght@14..32,300..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/findhostel.css">
+  <link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/findHostel-results.css">
+  <style>
+  </style>
+</head>
+<body>
+
+  <%- include("../includes/navbar-user.ejs") %>
+
+  <!-- ── STICKY TOPBAR ── -->
+  <div class="results-topbar">
+    <div class="container">
+      <form action="/findHostels/results" method="GET" id="topSearchForm" style="display:contents">
+
+        <div class="tb-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" name="college" id="topCollegeInput"
+            placeholder="College, area, city…"
+            value="<%= query.college %>"
+            autocomplete="off">
+        </div>
+
+        <!-- Gender pill -->
+        <div class="tb-pill">
+          <i class="fa-solid fa-venus-mars" style="color:var(--green)"></i>
+          <select name="gender" onchange="document.getElementById('topSearchForm').submit()">
+            <option value="">Any gender</option>
+            <option value="boys"  <%= query.gender==='boys'  ? 'selected' : '' %>>Boys</option>
+            <option value="girls" <%= query.gender==='girls' ? 'selected' : '' %>>Girls</option>
+            <option value="coed"  <%= query.gender==='coed'  ? 'selected' : '' %>>Co-ed</option>
+          </select>
+        </div>
+
+        <!-- Type pill -->
+        <div class="tb-pill">
+          <i class="fa-solid fa-building" style="color:var(--green)"></i>
+          <select name="type" onchange="document.getElementById('topSearchForm').submit()">
+            <option value="">Any type</option>
+            <option value="hostel" <%= query.type==='hostel' ? 'selected' : '' %>>Hostel</option>
+            <option value="pg"     <%= query.type==='pg'     ? 'selected' : '' %>>PG</option>
+            <option value="flat"   <%= query.type==='flat'   ? 'selected' : '' %>>Flat</option>
+          </select>
+        </div>
+
+        <!-- Budget pill -->
+        <div class="tb-pill">
+          <i class="fa-solid fa-indian-rupee-sign" style="color:var(--green)"></i>
+          <select name="budget" onchange="document.getElementById('topSearchForm').submit()">
+            <option value="">Any budget</option>
+            <option value="3000"  <%= query.budget==='3000'  ? 'selected' : '' %>>Under ₹3k</option>
+            <option value="5000"  <%= query.budget==='5000'  ? 'selected' : '' %>>Under ₹5k</option>
+            <option value="8000"  <%= query.budget==='8000'  ? 'selected' : '' %>>Under ₹8k</option>
+            <option value="12000" <%= query.budget==='12000' ? 'selected' : '' %>>Under ₹12k</option>
+          </select>
+        </div>
+
+        <!-- Preserve sidebar filter state -->
+        <input type="hidden" name="amenities" id="amenitiesHidden" value="<%= query.amenities || '' %>">
+        <input type="hidden" name="roomType"  id="roomTypeHidden"  value="<%= query.roomType  || '' %>">
+        <input type="hidden" name="sort"      id="sortHidden"      value="<%= query.sort      || 'newest' %>">
+
+        <button type="button" class="mob-filter-btn" onclick="openMobFilter()">
+          <i class="fa-solid fa-sliders"></i> Filters
+        </button>
+
+        <button type="submit" class="tb-search-btn">
+          <i class="fa-solid fa-magnifying-glass"></i> Search
+        </button>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- ── MAIN LAYOUT ── -->
+  <div class="results-layout">
+
+    <!-- ── SIDEBAR ── -->
+    <aside class="results-sidebar" id="sidebarInner">
+      <%- include("../includes/results-filters.ejs", { query }) %>
+    </aside>
+
+    <!-- ── RESULTS AREA ── -->
+    <main>
+
+      <!-- Header row -->
+      <div class="results-head">
+        <div>
+          <div class="results-count-txt">
+            <span><%= total %></span> hostels found
+            <% if (query.college) { %> near "<%= query.college %>"<% } %>
+          </div>
+          <div class="results-sub">
+            Showing page <%= currentPage %> of <%= totalPages || 1 %> · Zero broker fees
+          </div>
+        </div>
+
+        <!-- Sort buttons -->
+        <div class="sort-row">
+          <% const sorts = [
+            { key:'newest',     label:'Newest' },
+            { key:'price_asc',  label:'Price ↑' },
+            { key:'price_desc', label:'Price ↓' },
+            { key:'rating',     label:'⭐ Rating' },
+            { key:'views',      label:'🔥 Popular' },
+          ]; %>
+          <% sorts.forEach(function(s){ %>
+            <button class="sort-btn <%= query.sort===s.key ? 'active' : '' %>"
+              onclick="setSort('<%= s.key %>')">
+              <%= s.label %>
+            </button>
+          <% }) %>
+        </div>
+      </div>
+
+      <!-- Active filter tags -->
+      <div class="active-filters" id="activeTags">
+        <% if (query.college) { %>
+          <div class="af-tag">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            "<%= query.college %>"
+            <button onclick="removeFilter('college')">×</button>
+          </div>
+        <% } %>
+        <% if (query.gender) { %>
+          <div class="af-tag">
+            <i class="fa-solid fa-venus-mars"></i>
+            <%= query.gender.charAt(0).toUpperCase() + query.gender.slice(1) %>
+            <button onclick="removeFilter('gender')">×</button>
+          </div>
+        <% } %>
+        <% if (query.budget) { %>
+          <div class="af-tag">
+            <i class="fa-solid fa-indian-rupee-sign"></i>
+            Under ₹<%= Number(query.budget).toLocaleString('en-IN') %>
+            <button onclick="removeFilter('budget')">×</button>
+          </div>
+        <% } %>
+        <% if (query.type) { %>
+          <div class="af-tag">
+            <i class="fa-solid fa-building"></i>
+            <%= query.type.charAt(0).toUpperCase() + query.type.slice(1) %>
+            <button onclick="removeFilter('type')">×</button>
+          </div>
+        <% } %>
+        <% if (query.roomType) { %>
+          <div class="af-tag">
+            <i class="fa-solid fa-bed"></i>
+            <%= query.roomType.charAt(0).toUpperCase() + query.roomType.slice(1) %> room
+            <button onclick="removeFilter('roomType')">×</button>
+          </div>
+        <% } %>
+        <% if (query.amenities) { %>
+          <% query.amenities.split(',').forEach(function(a){ %>
+            <div class="af-tag">
+              <i class="fa-solid fa-check"></i>
+              <%= a.trim() %>
+              <button onclick="removeAmenity('<%= a.trim() %>')">×</button>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+
+      <!-- Cards Grid -->
+      <div class="rg-grid">
+        <% if (listings && listings.length > 0) { %>
+          <% listings.forEach(function(l) { %>
+
+            <div class="r-card" onclick="viewHostel('<%= l.slug %>')">
+
+              <!-- Image slider -->
+              <div class="r-card-img">
+                <% if (l.images && l.images.length > 0) { %>
+                  <% l.images.forEach(function(img, i) { %>
+                    <div class="slide <%= i===0?'active':'' %>">
+                      <img src="/listing-images/<%= img %>" alt="<%= l.title %>">
+                    </div>
+                  <% }) %>
+                  <% if (l.images.length > 1) { %>
+                    <button class="slide-btn prev" onclick="slide(event,this,-1)">
+                      <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button class="slide-btn next" onclick="slide(event,this,1)">
+                      <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                  <% } %>
+                <% } else { %>
+                  <div class="slide active">
+                    <img src="/images/placeholder.jpg" alt="<%= l.title %>">
+                  </div>
+                <% } %>
+
+                <span class="r-badge badge-<%= (l.gender||'').toLowerCase().replace(' ','-') %>">
+                  <%= l.gender %>
+                </span>
+
+                <% if (l.isVerified) { %>
+                  <span class="r-verified"><i class="fa-solid fa-shield-halved"></i> Verified</span>
+                <% } %>
+
+                <button class="r-wish" onclick="wishToggle(event,this,'<%= l._id %>')">
+                  <i class="fa-regular fa-heart"></i>
+                </button>
+
+                <div class="r-dist">
+                  <i class="fa-solid fa-location-dot"></i>
+                  <%= l.location?.nearCollege || l.location?.city %>
+                </div>
+              </div><!-- /img -->
+
+              <!-- Body -->
+              <div class="r-body">
+                <div class="r-row">
+                  <div>
+                    <div class="r-name"><%= l.title %></div>
+                    <div class="r-type"><i class="fa-solid fa-bolt"></i> <%= l.propertyType %></div>
+                  </div>
+                  <div class="r-rating">
+                    <i class="fa-solid fa-star"></i>
+                    <%= l.rating || 4.2 %>
+                    <span>(<%= l.reviewCount || 0 %>)</span>
+                  </div>
+                </div>
+                
+
+                <div class="r-loc">
+                  <i class="fa-solid fa-location-dot"></i>
+                  <%= l.location?.address %>, <%= l.location?.city %>
+                </div>
+
+                <div class="r-amenities">
+                  <% if (l.amenities) { %>
+                    <% l.amenities.slice(0,4).forEach(function(a){ %>
+                      <span class="r-tag"><%= a %></span>
+                    <% }) %>
+                    <% if (l.amenities.length > 4) { %>
+                      <span class="r-tag">+<%= l.amenities.length-4 %> more</span>
+                    <% } %>
+                  <% } %>
+                </div>
+
+             <div class="r-footer">
+  <div>
+    <div class="r-price-val">
+      ₹<%= Number(l.startingPrice).toLocaleString('en-IN') %>
+      <span>/mo</span>
+    </div>
+    <div class="r-price-label"><%= l.rooms?.[0]?.type || 'Room' %></div>
+  </div>
+  <div class="r-rating">
+    <i class="fa-solid fa-star"></i>
+    <%= l.rating || 4.2 %>
+  </div>
+</div>
+
+<div class="btn-wrap">
+  <button class="btn-see-more"
+    onclick="event.stopPropagation(); viewHostel('<%= l.slug %>')">
+    <span class="btn-gloss"></span>
+    <span class="btn-sheen"></span>
+    <span class="btn-inner">
+      <span class="dot"></span>
+      <span class="btn-label">See More Details</span>
+      <span class="btn-arrow">
+        <i class="fa-solid fa-arrow-right" style="font-size:11px"></i>
+      </span>
+    </span>
+  </button>
+</div>
+              </div>
+            </div>
+
+          <% }) %>
+
+        <% } else { %>
+          <div class="no-results">
+            <div class="no-results-icon">🔍</div>
+            <h3>No hostels found</h3>
+            <p>Try a different college name, city, or loosen your filters to see more options.</p>
+            <a href="/findHostels">← Back to search</a>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Pagination -->
+      <% if (totalPages > 1) { %>
+        <div class="pagination-wrap">
+          <% if (currentPage > 1) { %>
+            <button class="pg-btn" onclick="goPage(<%= currentPage-1 %>)">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+          <% } %>
+          <% for(let p=1;p<=totalPages;p++) { %>
+            <button class="pg-btn <%= p===currentPage?'active':'' %>"
+              onclick="goPage(<%= p %>)"><%= p %></button>
+          <% } %>
+          <% if (currentPage < totalPages) { %>
+            <button class="pg-btn" onclick="goPage(<%= currentPage+1 %>)">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          <% } %>
+        </div>
+      <% } %>
+
+    </main>
+  </div><!-- /results-layout -->
+
+  <!-- ── MOBILE FILTER OVERLAY ── -->
+  <div class="mob-filter-overlay" id="mobFilterOverlay" onclick="closeMobFilter(event)">
+    <div class="mob-filter-drawer">
+      <div class="mob-drawer-handle"></div>
+      <%- include("../includes/results-filters.ejs", { query }) %>
+    </div>
+  </div>
+ 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // ── Current query state ──────────────────────────────
+    const Q = {
+      college:  "<%= (query.college||'').replace(/\"/g,'&quot;') %>",
+      budget:   "<%= query.budget  || '' %>",
+      gender:   "<%= query.gender  || '' %>",
+      type:     "<%= query.type    || '' %>",
+      sort:     "<%= query.sort    || 'newest' %>",
+      amenities:"<%= query.amenities || '' %>",
+      roomType: "<%= query.roomType  || '' %>",
+      page:     1,
+    };
+
+    function buildURL(overrides = {}) {
+      const p = { ...Q, ...overrides };
+      const u = new URLSearchParams();
+      Object.entries(p).forEach(([k,v]) => { if(v) u.set(k, v); });
+      return '/findHostels/results?' + u.toString();
+    }
+
+    // ── Sort ─────────────────────────────────────────────
+    function setSort(key) {
+      window.location.href = buildURL({ sort: key, page: 1 });
+    }
+
+    // ── Remove filter tag ────────────────────────────────
+    function removeFilter(key) {
+      window.location.href = buildURL({ [key]: '', page: 1 });
+    }
+    function removeAmenity(name) {
+      const list = Q.amenities.split(',').filter(a => a.trim() !== name.trim());
+      window.location.href = buildURL({ amenities: list.join(','), page: 1 });
+    }
+
+    // ── Pagination ───────────────────────────────────────
+    function goPage(p) {
+      window.location.href = buildURL({ page: p });
+    }
+
+    // ── View / contact ───────────────────────────────────
+    function viewHostel(slug) { window.location.href = '/hostel/' + slug; }
+    function call(ph)  { if(ph) window.location.href = 'tel:' + ph; }
+    function wa(ph)    {
+      const n = (ph||'').replace(/\D/g,'');
+      if(!n) return;
+      window.open('https://wa.me/' + n + '?text=' +
+        encodeURIComponent('Hi! I found your hostel on HostelNode. Can you share room details?'), '_blank');
+    }
+
+    // ── Wishlist ─────────────────────────────────────────
+    async function wishToggle(e, btn, id) {
+      e.stopPropagation();
+      try {
+        const r = await fetch('/student/wishlist/toggle/'+id, { method:'POST' });
+        if(r.redirected || r.status===401) { window.location.href='/student/login'; return; }
+        const d = await r.json();
+        if(d.success) {
+          btn.classList.toggle('saved', d.saved);
+          btn.querySelector('i').className = d.saved ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
+          showToast(d.saved ? '❤️ Saved to wishlist' : '🤍 Removed from wishlist');
+        }
+      } catch(err) { console.error(err); }
+    }
+
+    // ── Image slider ─────────────────────────────────────
+    function slide(e, btn, dir) {
+      e.stopPropagation();
+      const wrap   = btn.closest('.r-card-img');
+      const slides = [...wrap.querySelectorAll('.slide')];
+      let idx = slides.findIndex(s => s.classList.contains('active'));
+      slides[idx].classList.remove('active');
+      slides[(idx + dir + slides.length) % slides.length].classList.add('active');
+    }
+
+    // ── Mobile filter ────────────────────────────────────
+    function openMobFilter()  { document.getElementById('mobFilterOverlay').classList.add('open'); }
+    function closeMobFilter(e) {
+      if(e.target.classList.contains('mob-filter-overlay'))
+        document.getElementById('mobFilterOverlay').classList.remove('open');
+    }
+
+    // ── Sidebar filter apply (from results-filters partial) ──
+    function applyResultFilters() {
+      const form = document.getElementById('sidebarFilterForm') ||
+                   document.querySelector('#mobFilterOverlay form');
+      if(!form) return;
+      const data = new FormData(form);
+      const amenities = [...form.querySelectorAll('.amenity-cb:checked')].map(c=>c.value).join(',');
+      window.location.href = buildURL({
+        roomType:  data.get('roomType')  || '',
+        amenities: amenities,
+        page: 1,
+      });
+    }
+
+    // ── Toast ────────────────────────────────────────────
+    function showToast(msg) {
+      let t = document.getElementById('hn-toast');
+      if(!t) {
+        t = document.createElement('div'); t.id='hn-toast';
+        t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a2e;color:#fff;padding:12px 22px;border-radius:12px;font-size:14px;font-weight:500;z-index:9999;transition:.3s;opacity:0;pointer-events:none;';
+        document.body.appendChild(t);
+      }
+      t.textContent=msg; t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
+      clearTimeout(t._t);
+      t._t=setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(80px)'; },2500);
+    }
+
+    // ── Navbar scroll ────────────────────────────────────
+    window.addEventListener('scroll', () => {
+      document.getElementById('hnNav')?.classList.toggle('scrolled', scrollY > 10);
+    }, { passive:true });
+  </script>
+
+<% if (!student) { %>
+
+<!-- ══ ENQUIRY/SIGNUP MODAL (same as hostel-view) ══ -->
+<style>
+.enq-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(3px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .22s;}
+.enq-overlay.open{opacity:1;pointer-events:all;}
+.enq-box{background:#fff;border-radius:22px;width:100%;max-width:460px;max-height:92vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.22);transform:translateY(20px);transition:transform .25s;scrollbar-width:thin;}
+.enq-overlay.open .enq-box{transform:translateY(0);}
+.enq-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,.08);color:#555;font-size:15px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;}
+.enq-header{padding:28px 24px 22px;text-align:center;}
+.enq-header-auth{background:linear-gradient(135deg,#0a1628,#1a3a5c);}
+.enq-header h3{font-family:'Instrument Sans',sans-serif;font-size:20px;font-weight:700;color:#fff;margin:0 0 4px;}
+.enq-header p{color:rgba(255,255,255,.75);font-size:13px;margin:0;}
+.enq-header-icon{font-size:32px;margin-bottom:10px;}
+.enq-body{padding:22px 24px 24px;}
+.enq-alert{display:none;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:14px;}
+.enq-alert.show{display:block;}
+.enq-alert.error{background:#fff5f5;color:#c53030;border:1px solid #feb2b2;}
+.enq-alert.success{background:#e8faf0;color:#078a3c;border:1px solid #9ae6b4;}
+.enq-field{margin-bottom:14px;}
+.enq-field label{display:block;font-size:12px;font-weight:600;color:#3d4f63;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;}
+.enq-field input[type="text"],.enq-field input[type="tel"]{width:100%;padding:11px 13px;border:1.5px solid #d6e4d9;border-radius:12px;font-size:14.5px;font-family:inherit;color:#0a1628;background:#fff;outline:none;box-sizing:border-box;}
+.enq-field input:focus{border-color:#09B850;box-shadow:0 0 0 3px rgba(9,184,80,.12);}
+.enq-otp-row{display:flex;gap:10px;}
+.enq-btn-otp{padding:10px 14px;background:#e8faf0;color:#078a3c;border:1.5px solid #09B850;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;flex-shrink:0;}
+.enq-btn-otp:hover{background:#09B850;color:white;}
+.enq-btn-otp:disabled{opacity:.5;cursor:not-allowed;}
+.enq-countdown{font-size:12px;color:#64748b;margin-top:5px;}
+.enq-countdown span{color:#09B850;font-weight:600;}
+.enq-verified-badge{display:inline-flex;align-items:center;gap:5px;background:#e8faf0;color:#078a3c;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;}
+.enq-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.enq-btn-primary{width:100%;padding:13px;background:#09B850;color:white;border:none;border-radius:13px;font-size:15px;font-weight:700;font-family:'Instrument Sans',sans-serif;cursor:pointer;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:8px;}
+.enq-btn-primary:hover{background:#078a3c;}
+.enq-btn-primary:disabled{opacity:.6;cursor:not-allowed;}
+.enq-login-note{text-align:center;font-size:13px;color:#64748b;margin-top:14px;}
+.enq-login-note a{color:#09B850;font-weight:600;text-decoration:none;}
+.enq-success{text-align:center;padding:48px 24px;}
+.enq-success-icon{font-size:56px;margin-bottom:16px;}
+.enq-success h3{font-family:'Instrument Sans',sans-serif;font-size:22px;font-weight:700;color:#0a1628;margin-bottom:8px;}
+.enq-success p{color:#64748b;font-size:15px;max-width:300px;margin:0 auto 24px;}
+@media(max-width:480px){.enq-body{padding:18px 18px 22px;}.enq-row-2{grid-template-columns:1fr;}}
+</style>
+
+<div class="enq-overlay" id="enqOverlay">
+  <div class="enq-box" onclick="event.stopPropagation()">
+    <button class="enq-close" onclick="closeNudgeModal()">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    <!-- AUTH STEP -->
+    <div id="nudgeStepAuth">
+      <div class="enq-header enq-header-auth">
+        <div class="enq-header-icon">🔑</div>
+        <h3>Quick login to explore</h3>
+        <p>30 seconds — save hostels, send enquiries, get alerts</p>
+      </div>
+      <div class="enq-body">
+        <div class="enq-alert" id="nudgeAlert"></div>
+
+        <!-- Signup Panel -->
+        <div id="nudgePanel1">
+          <div class="enq-row-2">
+            <div class="enq-field">
+              <label>First Name *</label>
+              <input type="text" id="nudgeFirst" placeholder="Rahul">
+            </div>
+            <div class="enq-field">
+              <label>Last Name *</label>
+              <input type="text" id="nudgeLast" placeholder="Sharma">
+            </div>
+          </div>
+          <div class="enq-field">
+            <label>WhatsApp Mobile *</label>
+            <div class="enq-otp-row">
+              <input type="tel" id="nudgePhone" placeholder="10-digit number" maxlength="10" inputmode="numeric" style="flex:1">
+              <button class="enq-btn-otp" id="nudgeSendBtn" onclick="nudgeSendOtp()">Send OTP</button>
+            </div>
+            <div class="enq-countdown" id="nudgeCountdown" style="display:none">
+              Resend in <span id="nudgeTimer">60</span>s
+            </div>
+          </div>
+          <div class="enq-field" id="nudgeOtpField" style="display:none">
+            <label>OTP (WhatsApp) *</label>
+            <div class="enq-otp-row">
+              <input type="text" id="nudgeOtp" placeholder="————" maxlength="4" inputmode="numeric"
+                style="flex:1;letter-spacing:5px;font-size:20px;font-weight:700;text-align:center">
+              <button class="enq-btn-otp" id="nudgeVerifyBtn" onclick="nudgeVerifyOtp()">Verify</button>
+            </div>
+            <div id="nudgeVerifiedBadge" style="display:none;margin-top:6px">
+              <span class="enq-verified-badge">✅ Verified</span>
+            </div>
+          </div>
+          <button class="enq-btn-primary" id="nudgeSignupBtn" onclick="nudgeSignup()" disabled>
+            🚀 Create Account & Explore →
+          </button>
+          <p class="enq-login-note">Already have an account? <a href="#" onclick="nudgeSwitchLogin()">Login instead</a></p>
+        </div>
+
+        <!-- Login Panel -->
+        <div id="nudgePanel2" style="display:none">
+          <div class="enq-field">
+            <label>Your Mobile *</label>
+            <div class="enq-otp-row">
+              <input type="tel" id="nudgeLoginPhone" placeholder="10-digit number" maxlength="10" inputmode="numeric" style="flex:1">
+              <button class="enq-btn-otp" id="nudgeLoginSendBtn" onclick="nudgeLoginSendOtp()">Send OTP</button>
+            </div>
+            <div class="enq-countdown" id="nudgeLoginCountdown" style="display:none">
+              Resend in <span id="nudgeLoginTimer">60</span>s
+            </div>
+          </div>
+          <div class="enq-field" id="nudgeLoginOtpField" style="display:none">
+            <label>OTP (WhatsApp) *</label>
+            <input type="text" id="nudgeLoginOtp" placeholder="————" maxlength="4" inputmode="numeric"
+              style="letter-spacing:5px;font-size:20px;font-weight:700;text-align:center;width:100%;padding:11px 13px;border:1.5px solid #d6e4d9;border-radius:12px;outline:none">
+            <div id="nudgeLoginVerifiedBadge" style="display:none;margin-top:6px">
+              <span class="enq-verified-badge">✅ Verified</span>
+            </div>
+          </div>
+          <button class="enq-btn-primary" id="nudgeLoginBtn" onclick="nudgeLogin()" disabled>
+            Login & Continue →
+          </button>
+          <p class="enq-login-note">New here? <a href="#" onclick="nudgeSwitchSignup()">Sign up instead</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUCCESS STEP -->
+    <div id="nudgeStepSuccess" style="display:none">
+      <div class="enq-success">
+        <div class="enq-success-icon">🎉</div>
+        <h3>Welcome to HostelNode!</h3>
+        <p>You're all set. Explore verified hostels near your college.</p>
+        <button class="enq-btn-primary" onclick="closeNudgeModal()">Start Exploring →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  if (sessionStorage.getItem('hn_nudge_shown')) return;
+
+  var timer = null;
+  function startTimer() {
+    if (timer) return;
+    timer =  setTimeout(openNudgeModal, 30000);
+  }
+
+  ['mousemove','scroll','click','touchstart','keydown'].forEach(function(evt) {
+    window.addEventListener(evt, function() { startTimer(); }, { once: true });
+  });
+})();
+
+function openNudgeModal() {
+  document.getElementById('enqOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  sessionStorage.setItem('hn_nudge_shown', 'true');
+}
+
+function closeNudgeModal() {
+  document.getElementById('enqOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Close on overlay background click
+document.getElementById('enqOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeNudgeModal();
+});
+
+function showNudgeAlert(msg, type) {
+  var el = document.getElementById('nudgeAlert');
+  el.textContent = msg;
+  el.className = 'enq-alert show ' + (type || 'error');
+  setTimeout(function(){ el.classList.remove('show'); }, 4000);
+}
+
+function nudgeSwitchLogin() {
+  document.getElementById('nudgePanel1').style.display = 'none';
+  document.getElementById('nudgePanel2').style.display = 'block';
+}
+function nudgeSwitchSignup() {
+  document.getElementById('nudgePanel1').style.display = 'block';
+  document.getElementById('nudgePanel2').style.display = 'none';
+}
+
+function startNudgeCountdown(timerId, countdownId, btnId) {
+  var s = 60;
+  var cd = document.getElementById(countdownId);
+  var t  = document.getElementById(timerId);
+  var b  = document.getElementById(btnId);
+  cd.style.display = 'block';
+  b.disabled = true;
+  var iv = setInterval(function() {
+    t.textContent = --s;
+    if (s <= 0) {
+      clearInterval(iv);
+      cd.style.display = 'none';
+      b.disabled = false;
+      b.textContent = 'Resend';
+    }
+  }, 1000);
+}
+
+var nudgeOtpVerified = false;
+var nudgeLoginOtpVerified = false;
+
+/* ── SIGNUP OTP ── */
+async function nudgeSendOtp() {
+  var phone = document.getElementById('nudgePhone').value.trim();
+  if (!/^[6-9]\d{9}$/.test(phone)) return showNudgeAlert('Enter a valid 10-digit number');
+  var btn = document.getElementById('nudgeSendBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  var res = await fetch('/student/send-otp', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ phone })
+  }).catch(function(){ return null; });
+  if (!res) { btn.disabled=false; btn.textContent='Send OTP'; return showNudgeAlert('Network error'); }
+  var data = await res.json();
+  if (!data.success) {
+    btn.disabled=false; btn.textContent='Send OTP';
+    if (data.error?.toLowerCase().includes('registered')) {
+      showNudgeAlert('Already registered — switching to login', 'success');
+      return setTimeout(nudgeSwitchLogin, 1200);
+    }
+    return showNudgeAlert(data.error || 'Failed to send OTP');
+  }
+  document.getElementById('nudgeOtpField').style.display = 'block';
+  showNudgeAlert('OTP sent to WhatsApp ✅', 'success');
+  startNudgeCountdown('nudgeTimer', 'nudgeCountdown', 'nudgeSendBtn');
+}
+
+async function nudgeVerifyOtp() {
+  var phone = document.getElementById('nudgePhone').value.trim();
+  var otp   = document.getElementById('nudgeOtp').value.trim();
+  if (otp.length !== 4) return;
+  var res = await fetch('/student/verify-otp', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ phone, otp })
+  }).catch(function(){ return null; });
+  if (!res) return showNudgeAlert('Network error');
+  var data = await res.json();
+  if (!data.success) return showNudgeAlert(data.error || 'Wrong OTP');
+  nudgeOtpVerified = true;
+  document.getElementById('nudgeVerifiedBadge').style.display = 'block';
+  document.getElementById('nudgeOtp').disabled = true;
+  document.getElementById('nudgeVerifyBtn').disabled = true;
+  document.getElementById('nudgeSignupBtn').disabled = false;
+  showNudgeAlert('Verified! Click Create Account ✅', 'success');
+}
+
+async function nudgeSignup() {
+  if (!nudgeOtpVerified) return showNudgeAlert('Verify your mobile first');
+  var firstName = document.getElementById('nudgeFirst').value.trim();
+  var lastName  = document.getElementById('nudgeLast').value.trim();
+  var phone     = document.getElementById('nudgePhone').value.trim();
+  if (firstName.length < 2) return showNudgeAlert('Enter your first name');
+  if (lastName.length  < 2) return showNudgeAlert('Enter your last name');
+  var btn = document.getElementById('nudgeSignupBtn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  var res = await fetch('/student/signup', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ firstName, lastName, phone })
+  }).catch(function(){ return null; });
+  if (!res) { btn.disabled=false; btn.textContent='Create Account →'; return showNudgeAlert('Network error'); }
+  var data = await res.json();
+  if (!data.success) {
+    btn.disabled=false; btn.textContent='Create Account →';
+    return showNudgeAlert(data.error || 'Signup failed');
+  }
+  document.getElementById('nudgeStepAuth').style.display = 'none';
+  document.getElementById('nudgeStepSuccess').style.display = 'block';
+}
+
+/* ── LOGIN OTP ── */
+async function nudgeLoginSendOtp() {
+  var phone = document.getElementById('nudgeLoginPhone').value.trim();
+  if (!/^[6-9]\d{9}$/.test(phone)) return showNudgeAlert('Enter a valid 10-digit number');
+  var btn = document.getElementById('nudgeLoginSendBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  var res = await fetch('/student/send-otp', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ phone })
+  }).catch(function(){ return null; });
+  if (!res) { btn.disabled=false; btn.textContent='Send OTP'; return showNudgeAlert('Network error'); }
+  var data = await res.json();
+  if (!data.success) {
+    btn.disabled=false; btn.textContent='Send OTP';
+    if (data.error?.toLowerCase().includes('no account')) {
+      showNudgeAlert('No account found — switching to signup', 'success');
+      return setTimeout(nudgeSwitchSignup, 1200);
+    }
+    return showNudgeAlert(data.error || 'Failed to send OTP');
+  }
+  document.getElementById('nudgeLoginOtpField').style.display = 'block';
+  showNudgeAlert('OTP sent ✅', 'success');
+  startNudgeCountdown('nudgeLoginTimer', 'nudgeLoginCountdown', 'nudgeLoginSendBtn');
+  document.getElementById('nudgeLoginOtp').addEventListener('input', async function() {
+    if (this.value.length !== 4 || nudgeLoginOtpVerified) return;
+    var r = await fetch('/student/verify-otp', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ phone, otp: this.value })
+    }).catch(function(){ return null; });
+    if (!r) return;
+    var d = await r.json();
+    if (d.success) {
+      nudgeLoginOtpVerified = true;
+      this.disabled = true;
+      document.getElementById('nudgeLoginVerifiedBadge').style.display = 'block';
+      document.getElementById('nudgeLoginBtn').disabled = false;
+      showNudgeAlert('Verified! Click Login ✅', 'success');
+    } else {
+      showNudgeAlert(d.error || 'Wrong OTP');
+    }
+  });
+}
+
+async function nudgeLogin() {
+  if (!nudgeLoginOtpVerified) return showNudgeAlert('Verify OTP first');
+  var phone = document.getElementById('nudgeLoginPhone').value.trim();
+  var btn   = document.getElementById('nudgeLoginBtn');
+  btn.disabled = true; btn.textContent = 'Logging in…';
+  var res = await fetch('/student/login', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ phone })
+  }).catch(function(){ return null; });
+  if (!res) { btn.disabled=false; btn.textContent='Login →'; return showNudgeAlert('Network error'); }
+  var data = await res.json();
+  if (!data.success) {
+    btn.disabled=false; btn.textContent='Login →';
+    return showNudgeAlert(data.error || 'Login failed');
+  }
+  document.getElementById('nudgeStepAuth').style.display = 'none';
+  document.getElementById('nudgeStepSuccess').style.display = 'block';
+}
+</script>
+
+<% } %>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  /* ═════ PROFILE DROPDOWN ════ */
+  function snToggle(e) {
+    e.stopPropagation();
+    const pill = document.getElementById('snPill');
+    if (pill) pill.classList.toggle('open');
+  }
+
+  document.addEventListener('click', function () {
+    const pill = document.getElementById('snPill');
+    if (pill) pill.classList.remove('open');
+  });
+
+  /* ── Areas toggle ── */
+  function toggleAreas() {
+    // ... rest of your code
+  }
+  
+  // ... other functions
+</script>
+
+</body>
+</html>

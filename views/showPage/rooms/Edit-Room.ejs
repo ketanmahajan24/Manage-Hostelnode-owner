@@ -1,0 +1,170 @@
+<% layout("/layouts/boilerplate") -%>
+
+<style>
+
+/* 🌟 Page */
+.main-body-page {
+    background: #F8FAFC;
+    padding: 25px;
+}
+
+/* 🌟 Header */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.page-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #0F172A;
+}
+
+/* 🌟 Back Button */
+.btn-back {
+    border: 1px solid #09B850;
+    color: #09B850;
+    border-radius: 25px;
+    padding: 6px 14px;
+    transition: 0.3s;
+}
+.btn-back:hover {
+    background: #09B850;
+    color: #fff;
+}
+
+/* 🌟 Card */
+.student-box {
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 30px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    animation: fadeUp 0.5s ease;
+}
+
+/* 🌟 Inputs */
+.form-control {
+    border-radius: 10px;
+    border: 1px solid #CBD5E1;
+    padding: 11px;
+}
+
+.form-control:focus {
+    border-color: #09B850;
+    box-shadow: 0 0 0 3px rgba(9,184,80,0.15);
+}
+
+/* 🌟 Labels */
+.form-label {
+    color: #475569;
+    font-weight: 500;
+}
+
+/* 🌟 Static Box */
+.static-box {
+    background: #F1F5F9;
+    border-radius: 10px;
+    padding: 10px;
+    font-weight: 600;
+    color: #0F172A;
+    border: 1px solid #E2E8F0;
+}
+
+/* 🌟 Button */
+.btn-submit {
+    background: linear-gradient(135deg, #09B850, #22C55E);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 12px;
+    font-weight: 600;
+    transition: 0.3s;
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(9,184,80,0.25);
+}
+
+/* 🌟 Animation */
+@keyframes fadeUp {
+    from {opacity: 0; transform: translateY(20px);}
+    to {opacity: 1; transform: translateY(0);}
+}
+
+/* 🌟 Responsive */
+@media(max-width:768px){
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+}
+
+</style>
+
+<br><br>
+
+<div class="main-body-page">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-title">
+            <i class="fa-solid fa-pen" style="color:#09B850;"></i>
+            Edit Room
+        </div>
+
+        <a href="./" class="btn-back">
+            <i class="fa-solid fa-chevron-left"></i> Back
+        </a>
+    </div>
+
+    <!-- Form Card -->
+    <div class="student-box">
+
+        <form method="POST" action="/user/manageroom/<%=room._id%>?_method=PUT" 
+              class="row g-4 needs-validation">
+
+            <!-- FLOOR -->
+            <div class="col-md-4">
+                <label class="form-label">Floor</label>
+                <div class="static-box"><%= room.floor_name %></div>
+            </div>
+
+            <!-- ROOM NUMBER -->
+            <div class="col-md-4">
+                <label class="form-label">Room Number</label>
+                <div class="static-box"><%= room.room_number %></div>
+            </div>
+
+            <!-- FEES -->
+            <div class="col-md-4">
+                <label class="form-label">Fees Per Member</label>
+                <input type="text" name="room[room_fees]" 
+                       value="<%= room.room_fees %>"
+                       class="form-control" required>
+            </div>
+
+            <!-- CAPACITY -->
+            <div class="col-md-4">
+                <label class="form-label">Sharing Capacity</label>
+                <input type="number" name="room[sharing_capacity]" 
+                       value="<%= room.sharing_capacity %>"
+                       class="form-control" required>
+            </div>
+
+            <!-- BUTTON -->
+            <div class="col-12 d-flex justify-content-center mt-3">
+                <button type="submit" class="col-md-5 btn-submit">
+                    <i class="fa-solid fa-pen me-2"></i> Update Room Details
+                </button>
+            </div>
+
+        </form>
+
+    </div>
+
+</div>

@@ -1,0 +1,179 @@
+<!-- ═══════════════════════════════════════════════════════════
+     MOBILE NAV
+═══════════════════════════════════════════════════════════ -->
+<div class="mobile-nav" id="mobileNav" onclick="closeMobileNav(event)">
+  <div class="mobile-nav-drawer">
+
+    <% if (student) { %>
+      <div class="sn-mob-strip">
+        <div class="sn-mob-avatar">
+          <% if (student.profileImage) { %>
+            <img src="/student-images/<%= student.profileImage %>"
+                 alt="<%= student.firstName %>">
+          <% } else { %>
+            🧑‍🎓
+          <% } %>
+        </div>
+        <div>
+          <div class="sn-mob-name"><%= student.firstName %> <%= student.lastName %></div>
+          <div class="sn-mob-phone">+91 <%= student.phone %></div>
+        </div>
+      </div>
+
+      <a href="/findHostels">Find Hostel</a>
+      <a href="/student/wishlist">
+        <i class="fa-solid fa-heart"></i> My Wishlist
+      </a>
+      <a href="/#feature-list">Features</a>
+      <a href="/#cotactus">Contact</a>
+      <a href="/#aboutus">About</a>
+      <div class="divider"></div>
+      <a href="/student/edit-profile">Edit Profile</a>
+      <a href="/student/logout" class="sn-logout-link">Logout</a>
+
+    <% } else { %>
+      <a href="/findHostels">Find Hostel</a>
+      <a href="/student/wishlist">
+        <i class="fa-solid fa-heart"></i> My Wishlist
+      </a>
+      <a href="/#feature-list">Features</a>
+      <a href="/#cotactus">Contact</a>
+      <a href="/#aboutus">About</a>
+      <div class="divider"></div>
+      <a href="/student/login" class="btn-ghost">Login</a>
+      <a href="/student/signup" class="btn-green">Sign up free</a>
+    <% } %>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     NAVBAR
+═══════════════════════════════════════════════════════════ -->
+<nav class="hn-nav" id="hnNav">
+  <div class="hn-nav-inner">
+
+    <a href="/" class="hn-brand">
+      <img src="/images/hostelnode-logo-cutout.png" alt="HostelNode">
+      <span>HostelNode</span>
+    </a>
+
+    <!-- Breadcrumb (hostel-view only) -->
+    <div class="hn-breadcrumb">
+      <a href="/findHostels">Find Hostel</a>
+      <i class="fa-solid fa-chevron-right"></i>
+      <a href="/findHostels?college=<%= locals.hostel?.location?.nearCollege %>">
+        <%= locals.hostel?.location?.nearCollege || 'Search' %>
+      </a>
+      <i class="fa-solid fa-chevron-right"></i>
+      <span><%= locals.hostel?.title %></span>
+    </div>
+
+    <div class="hn-nav-actions">
+
+      <!-- Save button -->
+      <!-- <button class="hn-wish-nav" id="navWishBtn" onclick="toggleWish(event,this)" title="Save hostel">
+        <i class="fa-regular fa-heart"></i>
+        <span>Save</span>
+      </button>
+   -->
+      
+      <!-- ══ LOGGED IN: profile pill ══ -->
+      <% if (student) { %>
+
+        <div class="sn-pill" id="snPill" onclick="snToggle(event)">
+
+          <div class="sn-avatar">
+            <% if (student.profileImage) { %>
+              <img src="/student-images/<%= student.profileImage %>"
+                   alt="<%= student.firstName %>">
+            <% } else { %>
+              🧑‍🎓
+            <% } %>
+          </div>
+
+          <span class="sn-name"><%= student.firstName %></span>
+          <i class="fa-solid fa-chevron-down sn-chevron"></i>
+
+          <div class="sn-dropdown">
+
+            <div class="sn-dd-header">
+              <div class="sn-dd-avatar">
+                <% if (student.profileImage) { %>
+                  <img src="/student-images/<%= student.profileImage %>"
+                       alt="<%= student.firstName %>">
+                <% } else { %>
+                  🧑‍🎓
+                <% } %>
+              </div>
+              <div class="sn-dd-name"><%= student.firstName %> <%= student.lastName %></div>
+              <div class="sn-dd-phone">+91 <%= student.phone %></div>
+            </div>
+
+            <% if (!student.city || !student.collegeName) { %>
+              <a href="/student/edit-profile" class="sn-nudge">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Complete your profile
+              </a>
+            <% } %>
+
+            <div class="sn-dd-items">
+              <a href="/findHostels" class="sn-dd-link">
+                <i class="fa-solid fa-magnifying-glass"></i> Find Hostel
+              </a>
+              <a href="/student/wishlist" class="sn-dd-link">
+                <i class="fa-solid fa-heart"></i> My Wishlist
+              </a>
+              <a href="/student/edit-profile" class="sn-dd-link">
+                <i class="fa-solid fa-user-pen"></i> Edit Profile
+              </a>
+              <div class="sn-dd-divider"></div>
+              <a href="/student/logout" class="sn-dd-logout">
+                <i class="fa-solid fa-right-from-bracket"></i> Logout
+              </a>
+            </div>
+
+          </div>
+        </div>
+
+      <% } else { %>
+      <!-- ══ GUEST: login + signup ══ -->
+        <a href="/student/login" class="btn-nav-ghost">Login</a>
+        <a href="/student/signup" class="btn-nav-green">
+          <i class="fa-solid fa-user-plus"></i> Signup
+        </a>
+      <% } %>
+
+      <button class="hn-hamburger" onclick="openMobileNav()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+
+    </div>
+  </div>
+</nav>
+<!-- <script>
+(function () {
+  if (sessionStorage.getItem("locationSent")) return;
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(
+    function (pos) {
+      fetch("/track-location", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lat:      pos.coords.latitude,
+          lng:      pos.coords.longitude,
+          accuracy: pos.coords.accuracy
+        })
+      }).then(() => {
+        sessionStorage.setItem("locationSent", "true");
+      }).catch(() => {});
+    },
+    function () {
+      sessionStorage.setItem("locationSent", "true");
+    },
+    { timeout: 8000, maximumAge: 60000, enableHighAccuracy: true }
+  );
+})();
+</script> -->
