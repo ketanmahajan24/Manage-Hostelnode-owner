@@ -1684,7 +1684,7 @@ router.post('/listing/:id/edit', jwtAuthMiddleware, listingUploadMiddleware, asy
           const p = path.join(listingUploadDir, img);
           if (fs.existsSync(p)) fs.unlinkSync(p);
         } catch (fe) { console.error("File delete error (non-fatal):", fe.message); }
-      });
+      });const uploadDir = '/secure_uploads/profiles';
     }
 
     listing.status = "Approved";
@@ -1752,3 +1752,7 @@ router.get("/logout", jwtAuthMiddleware, (req, res) => {
 });
 
 module.exports = router;
+
+
+
+
