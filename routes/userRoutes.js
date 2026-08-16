@@ -539,7 +539,7 @@ router.post("/editOwner", jwtAuthMiddleware, handleMulterError(upload.single("pr
 // ============================================================
 //  SELECT HOSTEL
 // ============================================================
-router.get("hostelnode.com/hostel/:id", jwtAuthMiddleware, async (req, res) => {
+router.get("/hostel/:id", jwtAuthMiddleware, async (req, res) => {
   try {
     const hostelId = clean(req.params.id || "");
     if (!hostelId) return res.redirect("/user");
