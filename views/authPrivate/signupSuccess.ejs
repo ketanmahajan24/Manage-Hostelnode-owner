@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signup Successful | HostelNode</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<style>
+:root {
+  --g:      #09B850;
+  --g-dark: #078040;
+  --g-light:#e8f9ef;
+  --ink:    #0f1117;
+  --muted:  #64748b;
+  --border: #e2e8f0;
+  --font-d: 'Syne', sans-serif;
+  --font-b: 'DM Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-b);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #0a1f12 0%, #09B850 50%, #0a1f12 100%);
+  position: relative;
+  overflow: hidden;
+}
+body::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.04) 1.5px, transparent 1.5px);
+  background-size: 32px 32px;
+  pointer-events: none;
+}
+body::after {
+  content: '';
+  position: absolute;
+  width: 500px; height: 500px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(9,184,80,0.25) 0%, transparent 70%);
+  top: -120px; right: -120px; pointer-events: none;
+}
+
+/* Card */
+.success-card {
+  position: relative; z-index: 1;
+  background: rgba(255,255,255,0.97);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 48px 40px;
+  width: 100%; max-width: 440px;
+  text-align: center;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1);
+  animation: cardIn 0.6s cubic-bezier(.22,.68,0,1.2) both;
+}
+@keyframes cardIn {
+  from { opacity:0; transform:translateY(32px) scale(0.96); }
+  to   { opacity:1; transform:none; }
+}
+
+/* Brand */
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  justify-content: center; margin-bottom: 28px;
+}
+.brand img { height: 44px; }
+.brand span { font-family: var(--font-d); font-size: 1.2rem; font-weight: 800; color: var(--ink); }
+
+/* Success icon */
+.success-icon-wrap {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: var(--g-light); border: 3px solid #a8e6bf;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 24px;
+  animation: popIn 0.5s cubic-bezier(.22,.68,0,1.4) 0.3s both;
+}
+@keyframes popIn {
+  from { opacity:0; transform:scale(0.5); }
+  to   { opacity:1; transform:scale(1); }
+}
+.success-icon-wrap i {
+  font-size: 2rem; color: var(--g);
+  animation: checkDraw 0.4s ease 0.6s both;
+}
+@keyframes checkDraw {
+  from { opacity:0; transform:scale(0.5) rotate(-20deg); }
+  to   { opacity:1; transform:none; }
+}
+
+/* Text */
+.success-title {
+  font-family: var(--font-d);
+  font-size: 1.6rem; font-weight: 800; color: var(--ink);
+  letter-spacing: -0.02em; margin-bottom: 8px;
+  animation: fadeUp 0.4s ease 0.5s both;
+}
+.success-name {
+  color: var(--g);
+}
+.success-sub {
+  font-size: 0.88rem; color: var(--muted);
+  line-height: 1.7; margin-bottom: 28px;
+  animation: fadeUp 0.4s ease 0.6s both;
+}
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:none; }
+}
+
+/* Info box */
+.info-box {
+  background: var(--g-light); border: 1px solid #a8e6bf;
+  border-radius: 14px; padding: 16px 18px;
+  margin-bottom: 24px; text-align: left;
+  animation: fadeUp 0.4s ease 0.7s both;
+}
+.info-row {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 0.82rem; color: #065f46; font-weight: 500;
+  padding: 5px 0;
+}
+.info-row:not(:last-child) { border-bottom: 1px solid rgba(168,230,191,0.5); }
+.info-row i { color: var(--g); width: 16px; text-align: center; flex-shrink: 0; }
+
+/* Pending notice */
+.pending-notice {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: #fffbeb; border: 1px solid #fde68a;
+  border-radius: 12px; padding: 13px 15px;
+  margin-bottom: 24px; text-align: left;
+  animation: fadeUp 0.4s ease 0.75s both;
+}
+.pending-notice i { color: #f59e0b; font-size: 1rem; margin-top: 1px; flex-shrink: 0; }
+.pending-notice p { font-size: 0.8rem; color: #92400e; line-height: 1.6; font-weight: 500; }
+
+/* Button */
+.btn-main {
+  width: 100%; padding: 14px;
+  border: none; border-radius: 12px;
+  background: linear-gradient(135deg, var(--g), #22c55e);
+  color: #fff; font-family: var(--font-d); font-size: 0.95rem; font-weight: 700;
+  cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 4px 16px rgba(9,184,80,0.3);
+  text-decoration: none;
+  animation: fadeUp 0.4s ease 0.8s both;
+}
+.btn-main:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(9,184,80,0.38); color: #fff; }
+.btn-main:active { transform: scale(0.98); }
+
+.links-row {
+  margin-top: 16px; font-size: 0.82rem; color: var(--muted);
+  animation: fadeUp 0.4s ease 0.85s both;
+}
+.links-row a { color: var(--g); font-weight: 600; text-decoration: none; }
+.links-row a:hover { text-decoration: underline; }
+
+/* Confetti dots (pure CSS) */
+.confetti {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 0; overflow: hidden;
+}
+.confetti span {
+  position: absolute; top: -10px;
+  width: 8px; height: 8px; border-radius: 2px;
+  animation: fall linear infinite;
+}
+@keyframes fall {
+  to { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+}
+
+@media (max-width: 480px) {
+  .success-card { padding: 32px 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Confetti -->
+<div class="confetti" id="confetti"></div>
+
+<div class="success-card">
+
+  <div class="brand">
+    <img src="/images/hostelnode-logo-cutout.png" alt="HostelNode">
+    <span>HostelNode</span>
+  </div>
+
+  <!-- Success icon -->
+  <div class="success-icon-wrap">
+    <i class="fa-solid fa-check"></i>
+  </div>
+
+  <div class="success-title">
+    Welcome aboard,<br>
+    <span class="success-name"><%= user.name.split(' ')[0] %>! 🎉</span>
+  </div>
+
+  <div class="success-sub">
+    Your owner account has been created successfully. Our team will review and activate it shortly.
+  </div>
+
+  <!-- Account info -->
+  <div class="info-box">
+    <div class="info-row">
+      <i class="fa-solid fa-envelope"></i>
+      <span><%= user.email %></span>
+    </div>
+    <div class="info-row">
+      <i class="fa-solid fa-circle-info"></i>
+      <span>Status: <strong><%= user.status %></strong></span>
+    </div>
+    <!-- <div class="info-row">
+      <i class="fa-solid fa-clock"></i>
+      <span>Review time: usually within 24 hours</span>
+    </div> -->
+  </div>
+
+  <!-- Pending notice
+  <div class="pending-notice">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <p>Your account is under review. You'll receive a confirmation email once it's activated. You can still log in and explore the dashboard.</p>
+  </div> -->
+
+  <!-- CTA -->
+  <!-- <a href="/login" class="btn-main">
+    <i class="fa-solid fa-right-to-bracket"></i> Go to Login
+  </a> -->
+
+   <a href="/login" class="btn-main">
+    <i class="fa-solid fa-right-to-bracket"></i> Go to Login
+  </a>
+ 
+  <div class="links-row">
+    Need help? <a href="mailto:hostelnodehelp@gmail.com">Contact support →</a>
+  </div>
+
+</div>
+
+<script>
+/* ── Confetti ── */
+const colors = ['#09B850','#22c55e','#f59e0b','#3b82f6','#ec4899','#a855f7'];
+const container = document.getElementById('confetti');
+
+for (let i = 0; i < 40; i++) {
+  const span = document.createElement('span');
+  span.style.left        = Math.random() * 100 + 'vw';
+  span.style.background  = colors[Math.floor(Math.random() * colors.length)];
+  span.style.width       = (Math.random() * 8 + 5) + 'px';
+  span.style.height      = (Math.random() * 8 + 5) + 'px';
+  span.style.opacity     = Math.random() * 0.8 + 0.2;
+  span.style.animationDuration  = (Math.random() * 3 + 2) + 's';
+  span.style.animationDelay     = (Math.random() * 3) + 's';
+  span.style.borderRadius       = Math.random() > 0.5 ? '50%' : '2px';
+  container.appendChild(span);
+}
+
+/* Stop confetti after 5s */
+setTimeout(() => container.style.display = 'none', 5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<% layout("/layouts/boilerplate") -%> 
+<br><br>
+<div class="main-body-page bg-light p-2 " style="border-radius: 6px;">
+    <div class="d-flex gap-2 cols m-1">
+        <!-- "Assign Bed to Room" Heading-->
+        <div class="col-7">
+            <p class="new-form-heading">Assign Bed to Room</p>
+        </div>
+        <!-- "<Back" Button-->
+        <div class="col-6">
+            <a href="./" style="color: #021e2b;" class="col-12 btn"> <i class="fa-solid fa-chevron-left"></i>  Back </a>
+        </div>
+    </div>
+<hr>
+
+    <div class="container student-box">
+        <form method="POST" action="/" class="row g-4 needs-validation">
+            
+            
+            <!-- Select Room -->
+            <div class="col-md-4">
+                <label for="roomSelect" class="form-label">Room Number</label>
+                <select name="bed[room]" class="form-select" id="roomSelect" required>
+                    <option selected>Select Room</option>
+                    <option value="101">Room 101</option>
+                    <option value="102">Room 102</option>
+                    <option value="103">Room 103</option>
+                </select>
+                <div class="invalid-feedback">
+                    Please select a valid room.
+                </div>
+            </div>
+
+            <!-- Bed Number -->
+            <div class="col-md-4">
+                <label for="bedNumber" class="form-label">Number of Beds to Assing</label>
+                <input type="number" name="bed[number]" placeholder="Eg: 1, 2, 3 " class="form-control" id="bedNumber" maxlength="10" required>
+                <div class="invalid-feedback">
+                    Please provide a valid bed number.
+                </div>
+            </div>
+             <!-- Submit Button -->
+            <div class="col-12 d-flex justify-content-center">
+                <button type="submit" class="col-6 btn btn-info">Assign Bed</button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- Auto-Set Today's Date for Check-in -->
+<script>
+  let today = new Date();
+  let day = String(today.getDate()).padStart(2, '0');
+  let month = String(today.getMonth() + 1).padStart(2, '0'); 
+  let year = today.getFullYear();
+  let formattedDate = `${year}-${month}-${day}`;
+  document.getElementById("checkInDate").value = formattedDate;
+</script>

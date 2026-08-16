@@ -1,0 +1,284 @@
+<% layout("/layouts/boilerplate") -%>
+
+<style>
+
+/* 🌟 Page */
+.main-body-page {
+    background: #F8FAFC;
+    padding: 25px;
+    min-height: 100vh;
+}
+
+/* 🌟 Header */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.page-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #0F172A;
+}
+
+/* 🌟 Search Box */
+.search-box {
+    background: #FFFFFF;
+    border-radius: 14px;
+    border: 1px solid #E2E8F0;
+    padding: 18px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.04);
+    animation: fadeUp 0.4s ease;
+}
+
+/* 🌟 Input */
+.form-control {
+    border-radius: 10px;
+    border: 1px solid #CBD5E1;
+    padding: 11px;
+}
+
+.form-control:focus {
+    border-color: #09B850;
+    box-shadow: 0 0 0 3px rgba(9,184,80,0.15);
+}
+
+/* 🌟 Button */
+.btn-search {
+    background: linear-gradient(135deg, #09B850, #22C55E);
+    color: white;
+    border-radius: 10px;
+    border: none;
+    padding: 11px;
+    font-weight: 500;
+    transition: 0.3s;
+}
+
+.btn-search:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(9,184,80,0.25);
+}
+
+/* 🌟 Table Wrapper */
+.table-wrapper {
+    background: #FFFFFF;
+    border-radius: 14px;
+    border: 1px solid #E2E8F0;
+    overflow-x: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    animation: fadeUp 0.5s ease;
+}
+
+/* 🌟 Table */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* 🌟 Header */
+th {
+    background: linear-gradient(135deg, #09B850, #22C55E);
+    color: white;
+    padding: 14px;
+    font-size: 13px;
+    text-align: left;
+}
+
+/* 🌟 Rows */
+td {
+    padding: 14px;
+    font-size: 14px;
+    color: #0F172A;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+/* 🌟 Hover */
+tbody tr {
+    transition: 0.25s;
+    animation: fadeInUp 0.4s ease both;
+}
+
+tbody tr:hover {
+    background: #F8FAFC;
+}
+
+/* 🌟 Amount Colors */
+.amount-paid {
+    color: #22C55E;
+    font-weight: 500;
+}
+
+.amount-due {
+    color: #EF4444;
+    font-weight: 500;
+}
+
+/* 🌟 Status Badge */
+.badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.badge-paid {
+    background: #DCFCE7;
+    color: #16A34A;
+}
+
+.badge-pending {
+    background: #FEE2E2;
+    color: #DC2626;
+}
+
+/* 🌟 Action Buttons */
+.btn-action {
+    border: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    transition: 0.3s;
+}
+
+.btn-pay {
+    background: linear-gradient(135deg, #09B850, #22C55E);
+    color: white;
+}
+
+.btn-pay:hover {
+    transform: translateY(-1px);
+}
+
+.btn-history {
+    background: #0F172A;
+    color: white;
+}
+
+.btn-history:hover {
+    background: #020617;
+}
+
+/* 🌟 Empty State */
+.empty-state {
+    text-align: center;
+    padding: 50px;
+    color: #94A3B8;
+}
+
+.empty-state i {
+    font-size: 40px;
+    margin-bottom: 10px;
+    color: #CBD5E1;
+}
+
+.error-text {
+    color: #EF4444;
+    font-weight: 500;
+}
+
+/* 🌟 Animations */
+@keyframes fadeUp {
+    from {opacity:0; transform:translateY(20px);}
+    to {opacity:1; transform:translateY(0);}
+}
+
+@keyframes fadeInUp {
+    from {opacity:0; transform:translateY(10px);}
+    to {opacity:1; transform:translateY(0);}
+}
+
+/* 🌟 Responsive */
+@media(max-width:900px){
+    th, td {
+        padding: 10px;
+        font-size: 12px;
+    }
+}
+
+</style>
+
+
+<div class="main-body-page">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-title">
+            <i class="fa-solid fa-money-bill-wave" style="color:#09B850;"></i>
+            All Members Fees Records
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="search-box">
+        <form action="/user/searchfeesrecords" method="post">
+            <div class="row g-2">
+                <div class="col-md-8">
+                    <input 
+                        name="searchQuery" 
+                        type="text" 
+                        class="form-control" 
+                        placeholder="Search by Name or Mobile..."
+                        required
+                    >
+                </div>
+                <div class="col-md-4">
+                    <button class="btn-search w-100">
+                        <i class="fa-solid fa-magnifying-glass"></i> Search
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrapper">
+        <table>
+
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Mobile</th>
+                    <th>Total</th>
+                    <th>Advance</th>
+                    <th>Paid</th>
+                    <th>Due</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+            <% if (errorMessage) { %>
+
+                <tr>
+                    <td colspan="9">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                            <div class="error-text"><%= errorMessage %></div>
+                        </div>
+                    </td>
+                </tr>
+
+            <% } else { %>
+
+                <tr>
+                    <td colspan="9">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <div>Search members to view fee records</div>
+                        </div>
+                    </td>
+                </tr>
+
+            <% } %>
+
+            </tbody>
+
+        </table>
+    </div>
+
+</div>

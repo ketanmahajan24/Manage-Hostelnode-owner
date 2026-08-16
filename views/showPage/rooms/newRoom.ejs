@@ -1,0 +1,217 @@
+<% layout("/layouts/boilerplate") -%>
+
+<style>
+/* 🌟 Page */
+.main-body-page {
+    background: #F8FAFC;
+    padding: 20px;
+    border-radius: 10px;
+    animation: fadeIn 0.5s ease;
+}
+
+/* 🌟 Heading */
+.new-form-heading {
+    font-size: 22px;
+    font-weight: 600;
+    color: #0F172A;
+}
+
+/* 🌟 Back Button */
+.btn-back {
+    color: #09B850;
+    border: 1px solid #09B850;
+    border-radius: 30px;
+    padding: 6px 14px;
+    transition: 0.3s;
+}
+.btn-back:hover {
+    background: #09B850;
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+/* 🌟 Card */
+.student-box {
+    background: #FFFFFF;
+    border-radius: 12px;
+    padding: 25px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    animation: slideUp 0.5s ease;
+}
+
+/* 🌟 Inputs */
+.form-control,
+.form-select {
+    border-radius: 10px;
+    border: 1px solid #CBD5E1;
+    padding: 10px;
+    transition: 0.25s;
+    background: #FFFFFF;
+    color: #0F172A;
+}
+
+/* hover */
+.form-control:hover,
+.form-select:hover {
+    border-color: #22C55E;
+}
+
+/* focus */
+.form-control:focus,
+.form-select:focus {
+    border-color: #09B850;
+    box-shadow: 0 0 0 3px rgba(9,184,80,0.15);
+}
+
+/* 🌟 Labels */
+.form-label {
+    color: #475569;
+    font-weight: 500;
+}
+
+/* 🌟 Button */
+.btn-submit {
+    background: linear-gradient(135deg, #09B850, #22C55E);
+    color: #fff;
+    border-radius: 30px;
+    padding: 12px;
+    border: none;
+    font-weight: 600;
+    transition: 0.3s;
+}
+
+.btn-submit:hover {
+    background: linear-gradient(135deg, #059669, #16A34A);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(9,184,80,0.25);
+}
+
+/* 🌟 HR */
+hr {
+    border-color: #E2E8F0;
+}
+
+/* 🌟 Animations */
+@keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(25px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 🌟 Stagger Animation */
+.col-md-4 {
+    animation: fadeInUp 0.4s ease both;
+}
+
+.col-md-4:nth-child(1) { animation-delay: 0.05s; }
+.col-md-4:nth-child(2) { animation-delay: 0.1s; }
+.col-md-4:nth-child(3) { animation-delay: 0.15s; }
+.col-md-4:nth-child(4) { animation-delay: 0.2s; }
+.col-md-4:nth-child(5) { animation-delay: 0.25s; }
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+
+<br>
+
+<div class="main-body-page">
+
+    <div class="d-flex gap-2 cols m-1">
+        <div class="col-7">
+            <p class="new-form-heading">Add New Room</p>
+        </div>
+
+        <div class="col-6">
+            <a href="./" class="col-8 btn btn-back">
+                <i class="fa-solid fa-chevron-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+<hr>
+
+    <div class="container student-box">
+
+        <form method="POST" action="/user/newroom" class="row g-4 needs-validation">
+
+            <!-- FLOOR -->
+            <div class="col-md-4">
+                <label class="form-label">Floor</label>
+                <select name="room[floor_id]" class="form-select" required>
+                    <option value="">Select Floor</option>
+                    <% floors.forEach(floor => { %>
+                    <option value="<%= floor._id %>"><%= floor.floor_name %></option>
+                    <% }) %>
+                </select>
+            </div>
+
+            <!-- ROOM NUMBER -->
+            <div class="col-md-4">
+                <label class="form-label">Room Number</label>
+                <input type="text" name="room[room_number]" 
+                placeholder="Eg: G-01, 101, 202"
+                class="form-control" required>
+            </div>
+
+            <!-- FEES -->
+            <div class="col-md-4">
+                <label class="form-label">Fees Per Member</label>
+                <input type="text" name="room[room_fees]" 
+                placeholder="Eg: 4000, 5000"
+                class="form-control" required>
+            </div>
+
+            <!-- CAPACITY -->
+            <div class="col-md-4">
+                <label class="form-label">Sharing Capacity</label>
+                <input type="number" name="room[sharing_capacity]" 
+                placeholder="Eg: 2, 4, 6"
+                class="form-control" required>
+            </div>
+
+            <!-- DATE -->
+            <div class="col-md-4">
+                <label class="form-label">Date of Create</label>
+                <input type="date" name="room[created_at]" 
+                class="form-control" id="createDate" required>
+            </div>
+
+            <!-- BUTTON -->
+            <div class="col-12 d-flex justify-content-center">
+                <button type="submit" class="col-6 btn btn-submit">
+                    <i class="fa-solid fa-plus me-2"></i> Add Room
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- AUTO DATE -->
+<script>
+let today = new Date();
+let day = String(today.getDate()).padStart(2, '0');
+let month = String(today.getMonth() + 1).padStart(2, '0');
+let year = today.getFullYear();
+document.getElementById("createDate").value = `${year}-${month}-${day}`;
+</script>

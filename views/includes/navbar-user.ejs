@@ -1,0 +1,254 @@
+
+<!-- ═══════════════════════════════════════════════════════════
+     MOBILE NAV
+     student comes from res.student (set by global middleware)
+═══════════════════════════════════════════════════════════ -->
+<div class="mobile-nav" id="mobileNav" onclick="closeMobileNav(event)">
+  <div class="mobile-nav-drawer">
+
+    <% if (student) { %>
+
+      <!-- Logged-in: green profile strip at top -->
+      <div class="sn-mob-strip">
+        <div class="sn-mob-avatar">
+          <% if (student.profileImage) { %>
+            <img src="/student-images/<%= student.profileImage %>"
+                 alt="<%= student.firstName %>">
+          <% } else { %>
+            🧑‍🎓
+          <% } %>
+        </div>
+        <div>
+          <div class="sn-mob-name">
+            <%= student.firstName %> <%= student.lastName %>
+          </div>
+          <div class="sn-mob-phone">+91 <%= student.phone %></div>
+        </div>
+      </div>
+
+      <a href= "/#search-card" class="active">Find Hostel</a>
+      <a href="/student/wishlist" class="sn-dd-link">
+        <i class="fa-solid fa-heart"></i> My Wishlist
+      </a>
+      <a href="/#feature-list">Features</a>
+      <a href="/#cotactus">Contact</a>
+      <a href="/#aboutus">About</a>
+      <div class="divider"></div>
+      <a href="/student/edit-profile">Edit Profile</a>
+      <a href="/student/logout" class="sn-logout-link">Logout</a>
+
+    <% } else { %>
+
+      <!-- Guest links -->
+      <a href= "/#search-card" class="active">Find Hostel</a>
+      <a href="/student/wishlist" class="sn-dd-link">
+        <i class="fa-solid fa-heart"></i> My Wishlist
+      </a>
+      <!-- <a href="/StartManagingYourHostel">Start Managing Your Hostel </a> -->
+       <!-- <a href="/signup">List Your Hostel for Free </a> -->
+      <a href="/#feature-list">Features</a>
+      <a href="/#cotactus">Contact</a>
+      <a href="/#aboutus">About</a>
+      
+      <div class="divider"></div>
+     
+      <a href="#" onclick="openNudgeModal(); return false;" class="btn-ghost">Login</a>
+        <a href="#" onclick="openNudgeModal(); return false;" class="btn-nav-green">Sign up free</a>
+
+    <% } %>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     NAVBAR
+═══════════════════════════════════════════════════════════ -->
+<nav class="hn-nav" id="hnNav">
+
+  <a href="/" class="hn-nav-brand">
+    <img src="/images/hostelnode-logo-cutout.png" alt="HostelNode">
+    HostelNode 
+  </a>
+
+  <ul class="hn-nav-links">
+    <li><a href="/#search-card" class="active">Find Hostel</a></li>
+    <li>
+       <!-- <a href="/signup"> List Your Hostel for Free </a> -->
+    </li>
+    <li><a href="/#feature-list">Features</a></li>
+    <li><a href="/#cotactus">Contact</a></li>
+    <li><a href="/#aboutus">About</a></li>
+    <% if (student) { %>
+    <%} else { %>
+    <li><a href="#" onclick="openNudgeModal(); return false;" class="btn-ghost">Login</a></li>
+    <li>   <a href="#" onclick="openNudgeModal(); return false;" class="btn-nav-green">Sign up free</a></li>
+    <% } %>
+  </ul>
+
+  <div class="hn-nav-actions">
+
+    <% if (student) { %>
+    <!-- ══ LOGGED IN: profile pill with dropdown ══ -->
+
+      <div class="sn-pill" id="snPill" onclick="snToggle(event)">
+
+        <!-- Avatar -->
+        <div class="sn-avatar">
+          <% if (student.profileImage) { %>
+            <img src="/student-images/<%= student.profileImage %>"
+                 alt="<%= student.firstName %>">
+          <% } else { %>
+            🧑‍🎓
+          <% } %>
+        </div>
+
+        <!-- Name -->
+        <span class="sn-name"><%= student.firstName %></span>
+
+        <!-- Chevron -->
+        <i class="fa-solid fa-chevron-down sn-chevron"></i>
+
+        <!-- ── Dropdown ── -->
+        <div class="sn-dropdown">
+
+          <!-- Green header -->
+          <div class="sn-dd-header">
+            <div class="sn-dd-avatar">
+              <% if (student.profileImage) { %>
+                <img src="/student-images/<%= student.profileImage %>"
+                     alt="<%= student.firstName %>">
+              <% } else { %>
+                🧑‍🎓
+              <% } %>
+            </div>
+            <div class="sn-dd-name">
+              <%= student.firstName %> <%= student.lastName %>
+            </div>
+            <div class="sn-dd-phone">+91 <%= student.phone %></div>
+          </div>
+
+          <!-- Profile incomplete nudge -->
+          <% if (!student.city || !student.collegeName) { %>
+            <a href="/student/edit-profile" class="sn-nudge">
+              <i class="fa-solid fa-circle-exclamation"></i>
+              Complete your profile
+            </a>
+          <% } %>
+
+          <!-- Menu items -->
+          <div class="sn-dd-items">
+            
+      <a href="/signup" class="capsule-btn" id="capsule" aria-label="List Property Free">
+         <div class="capsule-face face-front">
+            <i class="fa-solid fa-building"></i>
+            <span class="face-text">List Property</span>
+            <span class="free-tag">
+              <i class="fa-solid fa-bolt"></i> in 2min
+            </span>
+        </div>
+        <div class="capsule-face face-back">
+          <i class="fa-solid fa-chart-line"></i>
+          <span class="back-text">Get More Admissions</span>
+        </div>
+      </a>
+
+            <a href= "/#search-card" class="sn-dd-link">
+              <i class="fa-solid fa-magnifying-glass"></i> Find Hostel
+            </a>
+            <a href="/student/wishlist" class="sn-dd-link">
+              <i class="fa-solid fa-heart"></i> My Wishlist
+            </a>
+            <a href="/student/edit-profile" class="sn-dd-link">
+              <i class="fa-solid fa-user-pen"></i> Edit Profile
+            </a>
+
+            <div class="sn-dd-divider"></div>
+
+            <a href="/student/logout" class="sn-dd-logout">
+              <i class="fa-solid fa-right-from-bracket"></i> Logout
+            </a>
+
+          </div>
+        </div><!-- /sn-dropdown -->
+
+      </div><!-- /sn-pill -->
+
+    <% } else { %>
+        <!-- ══ GUEST: login + signup buttons ══ -->
+    <!-- <a href="#" onclick="openNudgeModal(); closeMobileNav({target:document.getElementById('mobileNav')}); return false;" class="btn-ghost">Login</a>
+    <a href="#" onclick="openNudgeModal(); closeMobileNav({target:document.getElementById('mobileNav')}); return false;" class="btn-green">Sign up free</a> -->
+        <!-- <i class="fa-solid fa-user-plus"></i> List Property *free -->
+      </a>
+      <a href="/signup" class="capsule-btn" id="capsule" aria-label="List Property Free">
+         <div class="capsule-face face-front">
+            <i class="fa-solid fa-building"></i>
+            <span class="face-text">List Property</span>
+            <span class="free-tag">
+              <i class="fa-solid fa-bolt"></i> in 2min
+            </span>
+        </div>
+        <div class="capsule-face face-back">
+          <i class="fa-solid fa-chart-line"></i>
+          <span class="back-text">Get More Admissions</span>
+        </div>
+      </a>
+
+      
+
+    <% } %>
+
+    <button class="hn-hamburger" onclick="openMobileNav()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+
+  </div>
+</nav>
+<!-- <script>
+(function () {
+  if (sessionStorage.getItem("locationSent")) return;
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(
+    function (pos) {
+      fetch("/track-location", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lat:      pos.coords.latitude,
+          lng:      pos.coords.longitude,
+          accuracy: pos.coords.accuracy
+        })
+      }).then(() => {
+        sessionStorage.setItem("locationSent", "true");
+      }).catch(() => {});
+    },
+    function () {
+      sessionStorage.setItem("locationSent", "true");
+    },
+    { timeout: 8000, maximumAge: 60000, enableHighAccuracy: true }
+  );
+})();
+</script> -->
+<script>
+  (function() {
+  var btn   = document.getElementById('capsule');
+  var front = true;
+  var locked = false;
+
+  function flip() {
+    if (locked) return;
+    locked = true;
+    if (front) {
+      btn.classList.add('flipped');
+      btn.classList.remove('unflipping');
+    } else {
+      btn.classList.add('unflipping');
+      btn.classList.remove('flipped');
+    }
+    front = !front;
+    setTimeout(function() { locked = false; }, 700);
+  }
+
+  setInterval(flip, 3000);
+})();
+</script>

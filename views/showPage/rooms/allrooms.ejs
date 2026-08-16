@@ -1,0 +1,189 @@
+<% layout("/layouts/boilerplate") -%>
+
+<style>
+
+/* 🌟 Page */
+.main-body-page {
+    background: #F8FAFC;
+    padding: 25px;
+}
+
+/* 🌟 Top Controls */
+.top-controls {
+    background: #FFFFFF;
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+/* 🌟 Dropdown */
+#floorFilter {
+    border-radius: 10px;
+    border: 1px solid #CBD5E1;
+    padding: 10px;
+}
+
+#floorFilter:focus {
+    border-color: #09B850;
+    box-shadow: 0 0 0 3px rgba(9,184,80,0.15);
+}
+
+/* 🌟 Add Room Button */
+.btn-add-room {
+    background: linear-gradient(135deg, #09B850, #22C55E);
+    color: white;
+    border-radius: 10px;
+    padding: 10px;
+    border: none;
+    transition: 0.3s;
+}
+
+.btn-add-room:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(9,184,80,0.25);
+}
+
+/* 🌟 Room Container */
+.card-container-room {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+/* 🌟 Room Card */
+.card-room {
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 15px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    transition: 0.3s;
+    text-align: center;
+}
+
+.card-room:hover {
+    transform: translateY(-5px);
+}
+
+/* 🌟 Occupied / Available */
+.card-room-occupied {
+    border-left: 5px solid #EF4444;
+}
+
+.card-room-available {
+    border-left: 5px solid #09B850;
+}
+
+/* 🌟 Room Header */
+.room-title {
+    background: linear-gradient(135deg, #09B850, #22C55E);
+    color: white;
+    border-radius: 8px;
+    padding: 6px;
+    font-size: 13px;
+}
+
+/* 🌟 Fees Badge */
+.room-fees {
+    background: #F1F5F9;
+    border-radius: 8px;
+    padding: 6px;
+    font-size: 12px;
+    margin-top: 6px;
+}
+
+/* 🌟 Beds */
+.room-available {
+    margin-top: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #0F172A;
+}
+
+/* 🌟 Animations */
+.card-room {
+    animation: fadeUp 0.4s ease;
+}
+
+@keyframes fadeUp {
+    from {opacity: 0; transform: translateY(20px);}
+    to {opacity: 1; transform: translateY(0);}
+}
+
+</style>
+
+<br><br>
+
+<div class="main-body-page">
+
+    <!-- Top Controls -->
+    <div class="top-controls d-flex gap-2 align-items-center">
+
+        <!-- Select Floor Dropdown -->
+        <div class="col-7">
+            <select id="floorFilter" class="form-select">
+                <option value="all" selected>All Floors</option>
+                <% for (let Floor of allFloors){%>         
+                    <option value="<%=Floor.floor_name%>">
+                        Floor-<%=Floor.floor_name%>
+                    </option>
+                <%}%>   
+            </select>
+        </div>
+
+        <!-- Add Room Button -->
+        <div class="col-5 text-end">
+            <a href="/user/newroom" class="btn-add-room w-100">
+                <i class="fa-solid fa-plus"></i> Add Room
+            </a>
+        </div>
+
+    </div>
+
+    <br>
+
+    <!-- Room Cards -->
+    <div id="roomContainer" class="card-container-room">
+
+        <% for (let Room of allRooms){%>        
+
+        <div class="card-room <%= Room.sharing_capacity === Room.occupied_beds ? 'card-room-occupied' : 'card-room-available' %>" 
+             data-floor="<%=Room.floor_name%>">
+
+            <div class="room-title">
+                <b>Room No. <%=Room.room_number%> / <%=Room.sharing_capacity%> Sharing</b>
+            </div>
+
+            <div class="room-fees">
+                Fees : <i class="fa-solid fa-indian-rupee-sign"></i> <%=Room.room_fees%>
+            </div>
+
+            <div class="room-available">
+                <%=Room.sharing_capacity - Room.occupied_beds%> 
+                <i class="fa-solid fa-bed"></i>
+                <div style="font-size:12px; color:#64748B;">Available</div>
+            </div>
+
+        </div>
+
+        <%}%>        
+
+    </div>
+
+</div>
+
+<script>
+document.getElementById("floorFilter").addEventListener("change", function() {
+    let selectedFloor = this.value;
+    let rooms = document.querySelectorAll(".card-room");
+
+    rooms.forEach(room => {
+        if (selectedFloor === "all" || room.getAttribute("data-floor") === selectedFloor) {
+            room.style.display = "block";
+        } else {
+            room.style.display = "none";
+        }
+    });
+});
+</script>

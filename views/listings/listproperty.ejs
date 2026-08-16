@@ -1,0 +1,1734 @@
+<% layout("/layouts/boilerplate") -%>
+
+<link rel="stylesheet" href="/css/listingProperty.css">
+
+<br><br>
+
+<!-- ══════════════════════════════════════════════════════
+     ERROR / SUCCESS TOAST (replaces alert())
+══════════════════════════════════════════════════════ -->
+<div id="toastMsg" class="toast-msg">
+  <i id="toastIcon" class="fa-solid fa-circle-check"></i>
+  <span id="toastText">Done!</span>
+</div>
+
+<!-- Global error banner (shown when server returns error JSON) -->
+<div id="globalErrBanner" style="
+  display:none;position:fixed;top:70px;left:50%;transform:translateX(-50%);
+  z-index:9999;max-width:520px;width:92%;
+  background:#fff1f1;border:1.5px solid #fca5a5;border-radius:12px;
+  padding:14px 18px;display:none;align-items:flex-start;gap:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.12);font-size:0.85rem;color:#7f1d1d;line-height:1.5">
+  <i class="fa-solid fa-circle-exclamation" style="color:#ef4444;margin-top:2px;flex-shrink:0;font-size:1rem"></i>
+  <div style="flex:1">
+    <div style="font-weight:700;margin-bottom:3px">Submission Error</div>
+    <div id="globalErrText"></div>
+  </div>
+  <button onclick="closeGlobalErr()" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:1rem;padding:0;flex-shrink:0">
+    <i class="fa-solid fa-xmark"></i>
+  </button>
+</div>
+
+<!-- HERO -->
+<div class="lp-hero">
+  <div class="lp-hero-inner">
+    <div class="lp-hero-text">
+      <div class="lp-hero-badge"><div class="dot"></div> New Listing</div>
+      <h1>List your <span>property</span> on HostelNode</h1>
+      <p>Fill in the details below and reach thousands of students searching near your college — free, zero brokerage.</p>
+    </div>
+    <div class="lp-steps-strip">
+      <div class="lp-step active" id="navStep1" onclick="jumpTo('sec-basic')"><div class="step-circle">1</div><span class="step-label">Basic</span></div>
+      <div class="step-sep"></div>
+      <div class="lp-step" id="navStep2" onclick="jumpTo('sec-location')"><div class="step-circle">2</div><span class="step-label">Location</span></div>
+      <div class="step-sep"></div>
+      <div class="lp-step" id="navStep3" onclick="jumpTo('sec-rooms')"><div class="step-circle">3</div><span class="step-label">Rooms</span></div>
+      <div class="step-sep"></div>
+      <div class="lp-step" id="navStep4" onclick="jumpTo('sec-amenities')"><div class="step-circle">4</div><span class="step-label">Amenities</span></div>
+      <div class="step-sep"></div>
+      <div class="lp-step" id="navStep5" onclick="jumpTo('sec-media')"><div class="step-circle">5</div><span class="step-label">Photos</span></div>
+      <div class="step-sep"></div>
+      <div class="lp-step" id="navStep6" onclick="jumpTo('sec-contact')"><div class="step-circle">6</div><span class="step-label">Contact</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN BODY -->
+<div class="lp-body">
+  <div class="lp-form-col">
+  <form id="listingForm" action="/user/new-list-property" method="POST" enctype="multipart/form-data" novalidate>
+
+    <!-- ── SECTION 1: BASIC ── -->
+    <div class="form-section" id="sec-basic">
+      <div class="section-header">
+        <div class="section-icon"><i class="fa-solid fa-house"></i></div>
+        <div class="section-title-text"><h3>Basic Information</h3><p>Tell students what makes your property special</p></div>
+        <span class="section-num">01 / 06</span>
+      </div>
+      <div class="form-group" style="margin-bottom:18px">
+        <label class="form-label">Property Type <span class="label-required">*</span></label>
+        <div class="type-selector">
+          <div><input type="radio" name="propertyType" id="typeHostel" class="type-option" value="Hostel" checked><label for="typeHostel" class="type-label"><div class="type-icon"><i class="fa-solid fa-building"></i></div><div class="type-name">Hostel</div><div class="type-desc">Shared with warden</div></label></div>
+          <div><input type="radio" name="propertyType" id="typePG" class="type-option" value="PG"><label for="typePG" class="type-label"><div class="type-icon"><i class="fa-solid fa-house-user"></i></div><div class="type-name">PG</div><div class="type-desc">With meals & services</div></label></div>
+          <div><input type="radio" name="propertyType" id="typeFlat" class="type-option" value="Flat"><label for="typeFlat" class="type-label"><div class="type-icon"><i class="fa-solid fa-door-open"></i></div><div class="type-name">Flat</div><div class="type-desc">Shared apartment</div></label></div>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:18px">
+        <label class="form-label">For whom? <span class="label-required">*</span></label>
+        <div class="gender-selector">
+          <div><input type="radio" name="gender" id="gBoys" class="gender-option boys" value="Boys" required><label for="gBoys" class="gender-label"><i class="fa-solid fa-mars"></i> Boys only</label></div>
+          <div><input type="radio" name="gender" id="gGirls" class="gender-option girls" value="Girls"><label for="gGirls" class="gender-label"><i class="fa-solid fa-venus"></i> Girls only</label></div>
+          <div><input type="radio" name="gender" id="gCoed" class="gender-option" value="Co-ed"><label for="gCoed" class="gender-label"><i class="fa-solid fa-venus-mars"></i> Co-ed</label></div>
+        </div>
+        <div class="field-err" id="err-gender"></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label class="form-label" for="title">
+            Property Name / Title <span class="label-required">*</span>
+            <span class="label-hint">e.g. "Sai Niwas Boys Hostel"</span>
+          </label>
+          <input type="text" id="title" name="title" class="form-input"
+            placeholder="Give your property a catchy, memorable name"
+            maxlength="80"
+            oninput="updateCharCount('title','titleCount',80);updatePreview();validateField('title')"
+            onblur="validateField('title')"
+            required>
+          <div class="char-counter" id="titleCount">0 / 80</div>
+          <div class="field-err" id="err-title"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="startingPrice">Starting Price / month <span class="label-required">*</span></label>
+          <div class="input-icon-wrap has-prefix">
+            <span class="input-prefix">₹</span>
+            <input type="number" id="startingPrice" name="startingPrice" class="form-input"
+              placeholder="e.g. 4500" min="100" max="500000" required
+              oninput="updatePreview();validateField('startingPrice')"
+              onblur="validateField('startingPrice')">
+          </div>
+          <div class="field-err" id="err-startingPrice"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="deposit">Security Deposit<span class="label-hint">Optional</span></label>
+          <div class="input-icon-wrap has-prefix">
+            <span class="input-prefix">₹</span>
+            <input type="number" id="deposit" name="deposit" class="form-input"
+              placeholder="e.g. 10000" min="0" max="2000000"
+              onblur="validateField('deposit')">
+          </div>
+          <div class="field-err" id="err-deposit"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="capacity">Total Capacity</label>
+          <div class="input-icon-wrap">
+            <i class="input-icon fa-solid fa-users"></i>
+            <input type="number" id="capacity" name="capacity" class="form-input"
+              placeholder="Max residents" min="1" max="1000"
+              onblur="validateField('capacity')">
+          </div>
+          <div class="field-err" id="err-capacity"></div>
+        </div>
+        <div class="form-group full">
+          <label class="form-label" for="description">
+            Description <span class="label-required">*</span>
+            <span class="label-hint">What makes your place great?</span>
+          </label>
+          <textarea id="description" name="description" class="form-textarea"
+            placeholder="Location highlights, safety, meals, ambience, nearby landmarks..."
+            maxlength="1000" rows="4"
+            oninput="updateCharCount('description','descCount',1000);validateField('description')"
+            onblur="validateField('description')"
+            required></textarea>
+          <div class="char-counter" id="descCount">0 / 1000</div>
+          <div class="field-err" id="err-description"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 2: LOCATION + MAP PICKER ── -->
+    <div class="form-section" id="sec-location">
+      <div class="section-header">
+        <div class="section-icon"><i class="fa-solid fa-location-dot"></i></div>
+        <div class="section-title-text"><h3>Location & Map Pin</h3><p>Search or click on the map to drop your pin</p></div>
+        <span class="section-num">02 / 06</span>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:20px">
+        <div class="form-group full">
+          <label class="form-label" for="address">Full Address <span class="label-required">*</span></label>
+          <div class="input-icon-wrap">
+            <i class="input-icon fa-solid fa-location-dot"></i>
+            <input type="text" id="address" name="location[address]" class="form-input"
+              placeholder="Street / building / landmark..." required
+              oninput="updatePreview();validateField('address')"
+              onblur="validateField('address')">
+          </div>
+          <div class="field-err" id="err-address"></div>
+        </div>
+        <div class="form-group full">
+          <label class="form-label" for="nearCollege">
+            Nearest College / Place <span class="label-required">*</span>
+            <span class="label-hint">Students search by this</span>
+          </label>
+          <div class="input-icon-wrap">
+            <i class="input-icon fa-solid fa-graduation-cap"></i>
+            <input type="text" id="nearCollege" name="location[nearCollege]" class="form-input"
+              placeholder="e.g. IIT Bombay, Delhi University..." required
+              oninput="updatePreview();validateField('nearCollege')"
+              onblur="validateField('nearCollege')">
+          </div>
+          <div class="field-err" id="err-nearCollege"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="city">City <span class="label-required">*</span></label>
+          <input type="text" id="city" name="location[city]" class="form-input"
+            placeholder="e.g. Mumbai" required
+            onblur="validateField('city')">
+          <div class="field-err" id="err-city"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="state">State</label>
+          <select id="state" name="location[state]" class="form-select">
+            <option value="">Select state</option>
+            <option>Maharashtra</option><option>Delhi</option><option>Karnataka</option>
+            <option>Tamil Nadu</option><option>Telangana</option><option>Gujarat</option>
+            <option>Rajasthan</option><option>Uttar Pradesh</option><option>West Bengal</option>
+            <option>Madhya Pradesh</option><option>Punjab</option><option>Haryana</option>
+            <option>Kerala</option><option>Andhra Pradesh</option><option>Bihar</option>
+            <option>Jharkhand</option><option>Odisha</option><option>Assam</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pincode">Pincode</label>
+          <input type="text" id="pincode" name="location[pincode]" class="form-input"
+            placeholder="e.g. 400076" maxlength="6" pattern="[0-9]{6}"
+            oninput="this.value=this.value.replace(/\D/g,'')"
+            onblur="validateField('pincode')">
+          <div class="field-err" id="err-pincode"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Country</label>
+          <input type="text" name="location[country]" class="form-input"
+            value="India" readonly style="background:var(--bg2);color:var(--muted)">
+        </div>
+      </div>
+
+      <input type="hidden" id="coordLat" name="location[coordinates][lat]">
+      <input type="hidden" id="coordLng" name="location[coordinates][lng]">
+
+      <label class="form-label" style="margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+        <i class="fa-solid fa-map-pin" style="color:var(--green)"></i>
+        Pin your exact location on the map <span class="label-required">*</span>
+        <span id="confirmedBadge" class="mp-confirmed-badge" style="margin-left:auto">
+          <i class="fa-solid fa-circle-check" style="font-size:0.8rem"></i> Location pinned
+        </span>
+      </label>
+      <div class="field-err" id="err-map" style="margin-bottom:8px"></div>
+
+      <div class="map-picker-wrap" id="mapPickerWrap">
+        <div class="mp-searchbar">
+          <div class="mp-searchbar-inner">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="mpSearchInput" placeholder="Search college, area, landmark..."
+              oninput="onMpInput()" onkeydown="if(event.key==='Enter'){event.preventDefault();doMpSearch()}">
+          </div>
+          <button type="button" class="mp-searchbar-btn green" onclick="doMpSearch()">
+            <i class="fa-solid fa-magnifying-glass"></i> Search
+          </button>
+          <button type="button" class="mp-searchbar-btn ghost" onclick="useGps()" title="Use my GPS location">
+            <i class="fa-solid fa-location-crosshairs" style="color:var(--green)"></i> GPS
+          </button>
+        </div>
+
+        <div class="mp-sugg-outer" id="mpSuggOuter">
+          <div class="mp-sugg-drop" id="mpSuggDrop"></div>
+        </div>
+
+        <div class="mp-toolbar">
+          <button type="button" class="mp-mode-btn active" id="modeClick" onclick="setMode('click')">
+            <i class="fa-solid fa-hand-pointer"></i> Click to pin
+          </button>
+          <button type="button" class="mp-mode-btn" id="modeDrag" onclick="setMode('drag')">
+            <i class="fa-solid fa-up-down-left-right"></i> Pan & explore
+          </button>
+          <div class="mp-toolbar-sep"></div>
+          <button type="button" class="mp-mode-btn" onclick="resetMap()" style="color:#ef4444;border-color:#fecaca">
+            <i class="fa-solid fa-rotate-left"></i> Reset
+          </button>
+          <div class="mp-status-chip">
+            <div class="mp-status-dot" id="mpDot"></div>
+            <span id="mpStatusText">Click on map to drop pin</span>
+          </div>
+        </div>
+
+        <div class="mp-map-container" id="mpMapContainer">
+          <div class="mp-map-loader" id="mpLoader">
+            <div class="mp-spinner"></div>
+            <p>Loading map…</p>
+          </div>
+          <iframe id="mpIframe"
+            src="https://maps.google.com/maps?q=India&z=5&output=embed"
+            onload="onIframeLoad()"
+            title="Location map">
+          </iframe>
+          <div class="mp-click-overlay" id="mpOverlay" onclick="handleMapClick(event)"></div>
+          <div class="mp-pin" id="mpPin">
+            <svg width="36" height="44" viewBox="0 0 36 44" fill="none">
+              <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 26 18 26s18-12.5 18-26C36 8.06 27.94 0 18 0z" fill="#09b850"/>
+              <circle cx="18" cy="18" r="7" fill="white"/>
+              <circle cx="18" cy="18" r="4" fill="#09b850"/>
+            </svg>
+            <div class="mp-pin-pulse"></div>
+          </div>
+          <div class="mp-ripple" id="mpRipple"></div>
+        </div>
+
+        <div class="mp-coords-bar" id="mpCoordsBar">
+          <div class="mp-coord-box">
+            <div class="mp-coord-label">Latitude</div>
+            <div class="mp-coord-value empty" id="dispLat">Not set yet</div>
+          </div>
+          <div class="mp-coord-box">
+            <div class="mp-coord-label">Longitude</div>
+            <div class="mp-coord-value empty" id="dispLng">Not set yet</div>
+          </div>
+          <div class="mp-coord-box">
+            <div class="mp-coord-label">Address</div>
+            <div class="mp-coord-value empty" id="dispAddr" style="font-size:0.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px">Drop pin to detect</div>
+          </div>
+          <button type="button" class="mp-confirm-btn" id="mpConfirmBtn" onclick="confirmPin()" disabled>
+            <i class="fa-solid fa-circle-check"></i> Confirm Pin
+          </button>
+        </div>
+
+        <div class="mp-tip">
+          <i class="fa-solid fa-lightbulb"></i>
+          <span><strong>How to pin:</strong> Search your college / area above, then <strong>click exactly on your hostel's location</strong>. Hit "Confirm Pin" to save.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 3: ROOMS ── -->
+    <div class="form-section" id="sec-rooms">
+      <div class="section-header">
+        <div class="section-icon"><i class="fa-solid fa-bed"></i></div>
+        <div class="section-title-text"><h3>Rooms & Pricing</h3><p>Add each room type you offer</p></div>
+        <span class="section-num">03 / 06</span>
+      </div>
+      <div class="rooms-list" id="roomsList">
+        <div class="room-entry" id="room-0">
+          <div class="room-entry-header">
+            <div class="room-entry-title"><span class="room-num">1</span> Room Type 1</div>
+            <button type="button" class="btn-remove-room" onclick="removeRoom('room-0')"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="room-grid">
+            <div class="form-group">
+              <label class="form-label">Room Type <span class="label-required">*</span></label>
+              <select name="rooms[0][type]" class="form-select room-type-select" required>
+                <option value="">— Select room type —</option>
+                <optgroup label="🛏️ Sharing Rooms">
+                  <option>Single Occupancy</option>
+                  <option>Double Sharing</option>
+                  <option>Triple Sharing</option>
+                  <option>4-Bed Sharing</option>
+                  <option>5-Bed Sharing</option>
+                  <option>6-Bed Sharing</option>
+                  <option>Dormitory (7+ Beds)</option>
+                </optgroup>
+                <optgroup label="❄️ AC Variants">
+                  <option>AC Single</option>
+                  <option>AC Double Sharing</option>
+                  <option>AC Triple Sharing</option>
+                  <option>AC 4-Bed Sharing</option>
+                  <option>AC 5-Bed Sharing</option>
+                  <option>AC 6-Bed Sharing</option>
+                  <option>AC Dormitory</option>
+                </optgroup>
+                <optgroup label="🏠 Flat / Apartment">
+                  <option>1 RK</option>
+                  <option>1 BHK</option>
+                  <option>2 BHK</option>
+                  <option>3 BHK</option>
+                  <option>4 BHK</option>
+                  <option>Studio Apartment</option>
+                </optgroup>
+                <optgroup label="🚪 Room in Shared Flat">
+                  <option>Private Room in 2 BHK</option>
+                  <option>Private Room in 3 BHK</option>
+                  <option>Private Room in 4 BHK</option>
+                  <option>Shared Room in Flat (2 Sharing)</option>
+                  <option>Shared Room in Flat (3 Sharing)</option>
+                </optgroup>
+                <optgroup label="⭐ Premium / Special">
+                  <option>Deluxe Single (Attached Bath)</option>
+                  <option>Deluxe Double (Attached Bath)</option>
+                  <option>Master Bedroom</option>
+                  <option>Bunk Bed Room</option>
+                  <option>Semi-Private Room</option>
+                  <option>Terrace Room</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Price / month <span class="label-required">*</span></label>
+              <div class="input-icon-wrap has-prefix">
+                <span class="input-prefix">₹</span>
+                <input type="number" name="rooms[0][price]" class="form-input room-price-input"
+                  placeholder="5500" min="0" max="500000" required onblur="validateRooms()">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Deposit</label>
+              <div class="input-icon-wrap has-prefix">
+                <span class="input-prefix">₹</span>
+                <input type="number" name="rooms[0][deposit]" class="form-input"
+                  placeholder="10000" min="0" max="2000000">
+              </div>
+            </div>
+          </div>
+          <div class="room-features-row">
+            <div class="room-features-label">Room features</div>
+            <div class="room-features-wrap">
+              <input type="checkbox" id="rf0-ac" name="rooms[0][features][]" value="AC" class="rf-cb"><label for="rf0-ac" class="rf-lbl">AC</label>
+              <input type="checkbox" id="rf0-ab" name="rooms[0][features][]" value="Attached Bathroom" class="rf-cb"><label for="rf0-ab" class="rf-lbl">Attached Bath</label>
+              <input type="checkbox" id="rf0-tv" name="rooms[0][features][]" value="TV" class="rf-cb"><label for="rf0-tv" class="rf-lbl">TV</label>
+              <input type="checkbox" id="rf0-balcony" name="rooms[0][features][]" value="Balcony" class="rf-cb"><label for="rf0-balcony" class="rf-lbl">Balcony</label>
+              <input type="checkbox" id="rf0-wardrobe" name="rooms[0][features][]" value="Wardrobe" class="rf-cb"><label for="rf0-wardrobe" class="rf-lbl">Wardrobe</label>
+              <input type="checkbox" id="rf0-desk" name="rooms[0][features][]" value="Study Desk" class="rf-cb"><label for="rf0-desk" class="rf-lbl">Study Desk</label>
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+            <span style="font-size:0.76rem;font-weight:600;color:var(--muted)">Availability:</span>
+            <input type="checkbox" id="avail-0" name="rooms[0][available]" value="true" class="avail-cb" checked>
+            <label for="avail-0" class="avail-lbl">Available now</label>
+          </div>
+        </div>
+      </div>
+      <div class="field-err" id="err-rooms"></div>
+      <button type="button" class="btn-add-room" onclick="addRoom()">
+        <i class="fa-solid fa-plus"></i> Add another room type
+      </button>
+    </div>
+
+    <!-- ── SECTION 4: AMENITIES & RULES ── -->
+    <div class="form-section" id="sec-amenities">
+      <div class="section-header">
+        <div class="section-icon"><i class="fa-solid fa-star"></i></div>
+        <div class="section-title-text"><h3>Amenities & Rules</h3><p>What you offer and your house policies</p></div>
+        <span class="section-num">04 / 06</span>
+      </div>
+      <div class="form-group" style="margin-bottom:22px">
+        <label class="form-label" style="margin-bottom:10px">
+          <i class="fa-solid fa-check-circle" style="color:var(--green)"></i> What amenities do you provide?
+        </label>
+        <div class="amenities-grid">
+
+          <% [
+  ['WiFi','wifi'],['AC','snowflake'],['Meals','utensils'],['Laundry','shirt'],
+  ['Security','shield-halved'],['Parking','car'],['Gym','dumbbell'],['CCTV','camera'],
+  ['Hot Water','droplet'],['Power Backup','bolt'],['Study Room','book'],
+  ['Attached Bathroom','bath'],['Common Bathroom','bath'],['Water Purifier','droplet'],
+  ['Geyser','fire-flame-simple'],['Housekeeping','broom'],['Cafeteria','mug-saucer'],
+  ['Library','book-open'],['TV','tv'],['Refrigerator','box'],
+
+  // ── NEW AMENITIES ──
+  ['Lift / Elevator','elevator'],
+  ['Night Guard','user-shield'],
+  ['Biometric Entry','fingerprint'],
+  ['Cooking Allowed','fire-burner'],
+  ['Bed with Mattress','bed'],
+  ['Common Room','couch'],
+  ['Bike Parking','bicycle'],
+  ['Bus Stop Nearby','bus'],
+  ['Iron / Ironing','shirt'],
+  ['Drinking Water 24hr','glass-water'],
+  ['Rooftop Access','building'],
+  ['Indoor Games','chess-board'],
+  ['ATM Nearby','money-bill'],
+  ['Grocery Nearby','basket-shopping'],
+  ['Fire Extinguisher','fire-extinguisher'],
+  ['Locker / Safe','lock']
+].forEach((a,i) => { %>
+  
+         
+            <div>
+            <input type="checkbox" id="am-<%=i%>" name="amenities[]" value="<%=a[0]%>" class="amenity-cb">
+            <label for="am-<%=i%>" class="amenity-lbl"><i class="fa-solid fa-<%=a[1]%>"></i> <%=a[0]%></label>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="margin-bottom:9px">
+          <i class="fa-solid fa-circle-info" style="color:var(--green)"></i> House Rules & Policies
+          <span class="label-hint">Recommended</span>
+        </label>
+        <div class="rules-list" id="rulesList">
+          <div class="rule-entry" id="rule-0">
+            <input type="text" name="rules[]" class="form-input" maxlength="200"
+              placeholder="e.g. No smoking on premises"
+              oninput="validateRuleLength(this)">
+            <button type="button" class="btn-del-rule" onclick="removeRule('rule-0')"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="rule-entry" id="rule-1">
+            <input type="text" name="rules[]" class="form-input" maxlength="200"
+              placeholder="e.g. Visitors allowed till 8 PM"
+              oninput="validateRuleLength(this)">
+            <button type="button" class="btn-del-rule" onclick="removeRule('rule-1')"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+        <button type="button" class="btn-add-rule" onclick="addRule()">
+          <i class="fa-solid fa-plus"></i> Add rule
+        </button>
+      </div>
+    </div>
+
+    <!-- ── SECTION 5: PHOTOS ── -->
+    <div class="form-section" id="sec-media">
+      <div class="section-header">
+        <div class="section-icon"><i class="fa-solid fa-images"></i></div>
+        <div class="section-title-text"><h3>Photos & Media</h3><p>Listings with 5+ photos get 3× more inquiries</p></div>
+        <span class="section-num">05 / 06</span>
+      </div>
+
+      <!-- ── Compression info banner ── -->
+      <div style="
+        margin-bottom:12px;padding:10px 13px;
+        background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;
+        display:flex;gap:8px;align-items:flex-start;font-size:0.78rem;color:#14532d;line-height:1.5">
+        <i class="fa-solid fa-wand-magic-sparkles" style="color:#16a34a;margin-top:2px;flex-shrink:0"></i>
+        <span><strong>Auto-optimised for SEO:</strong> Photos are instantly compressed to ≤1280px &amp; WebP format before upload — keeping quality high but file size under 200 KB for fast page loads.</span>
+      </div>
+
+      <!-- Upload status badge -->
+      <div id="uploadStatus" style="
+        display:none;margin-bottom:10px;padding:8px 13px;
+        border-radius:8px;font-size:0.8rem;font-weight:600;
+        background:var(--green-light);color:#1e5c30;border:1.5px solid var(--green-border)">
+        <i class="fa-solid fa-images"></i> <span id="uploadStatusText"></span>
+      </div>
+
+      <!-- Compression progress bar (shown while compressing) -->
+      <div id="compressProgress" style="display:none;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:#1e5c30;font-weight:600;margin-bottom:5px;">
+          <i class="fa-solid fa-spinner fa-spin" style="color:var(--green)"></i>
+          <span id="compressText">Compressing photos…</span>
+        </div>
+        <div style="height:6px;background:#e2f5ea;border-radius:3px;overflow:hidden">
+          <div id="compressBar" style="height:100%;width:0%;background:var(--green);border-radius:3px;transition:width 0.3s ease"></div>
+        </div>
+      </div>
+
+      <div class="upload-zone" id="uploadZone"
+        ondrop="handleDrop(event)"
+        ondragover="handleDragOver(event)"
+        ondragleave="handleDragLeave(event)"
+        onclick="document.getElementById('imagesInput').click()">
+        <input type="file" id="imagesInput" name="images" multiple accept="image/jpeg,image/png,image/webp"
+          onchange="handleFileSelect(event)" style="display:none">
+        <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+        <div class="upload-title">Drag & drop photos here</div>
+        <div class="upload-sub">or click to browse from your device</div>
+        <div class="upload-hint">JPEG, PNG, WebP · Auto-compressed to WebP · Up to 15 photos</div>
+      </div>
+      <div class="field-err" id="err-images" style="margin-top:6px"></div>
+      <div class="upload-preview" id="uploadPreview"></div>
+      <div style="margin-top:12px;padding:10px 13px;background:var(--green-light);border:1.5px solid var(--green-border);border-radius:var(--radius-sm);display:flex;gap:7px;align-items:flex-start;font-size:0.75rem;color:#1e5c30;line-height:1.6">
+        <i class="fa-solid fa-lightbulb" style="color:var(--green);margin-top:2px;flex-shrink:0"></i>
+        <span><strong>Pro tip:</strong> First photo = cover image. Upload bright shots of the room, common area, washroom and building entrance.</span>
+      </div>
+    </div>
+
+    <!-- ── SECTION 6: CONTACT ── -->
+    <div class="form-section" id="sec-contact">
+      <div class="section-header">
+        <div class="section-icon"><i class="fa-solid fa-phone"></i></div>
+        <div class="section-title-text"><h3>Contact Details</h3><p>Students reach out directly on these numbers</p></div>
+        <span class="section-num">06 / 06</span>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="phone">Phone Number <span class="label-required">*</span></label>
+          <div class="input-icon-wrap has-prefix">
+            <span class="input-prefix">+91</span>
+            <input type="tel" id="phone" name="contact[phone]" class="form-input"
+              placeholder="XXXXX XXXXX" maxlength="10" pattern="[0-9]{10}" required
+              oninput="this.value=this.value.replace(/\D/g,'').slice(0,10)"
+              onblur="validateField('phone')">
+          </div>
+          <div class="field-err" id="err-phone"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="whatsapp">WhatsApp Number<span class="label-hint">Leave blank if same</span></label>
+          <div class="input-icon-wrap has-prefix">
+            <span class="input-prefix">+91</span>
+            <input type="tel" id="whatsapp" name="contact[whatsapp]" class="form-input"
+              placeholder="XXXXX XXXXX" maxlength="10"
+              oninput="this.value=this.value.replace(/\D/g,'').slice(0,10)"
+              onblur="validateField('whatsapp')">
+          </div>
+          <div class="field-err" id="err-whatsapp"></div>
+        </div>
+        <div class="form-group full">
+          <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:11px 13px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:var(--bg);transition:all 0.18s">
+            <input type="checkbox" id="sameNumber" onchange="toggleSameNum()" style="accent-color:var(--green);width:15px;height:15px">
+            <span style="font-size:0.82rem;font-weight:500;color:var(--muted)">WhatsApp same as phone number</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRUST STRIP -->
+    <div class="trust-strip">
+      <div class="trust-item"><i class="fa-solid fa-shield-halved"></i> Reviewed before going live</div>
+      <div class="trust-item"><i class="fa-solid fa-ban"></i> Zero broker fee</div>
+      <div class="trust-item"><i class="fa-solid fa-users"></i> 5,000+ students/month</div>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="submit-section">
+      <div class="submit-inner">
+        <div>
+          <div class="submit-note-title">Ready to publish your listing?</div>
+          <div class="submit-note-sub">Our team reviews and approves within 24 hours. You'll get notified by email.</div>
+        </div>
+        <div class="submit-actions">
+          <button type="button" class="btn-draft" onclick="saveDraft()">
+            <i class="fa-solid fa-floppy-disk"></i> Save Draft
+          </button>
+          <button type="submit" id="submitBtn" class="btn-submit-main" onclick="handleSubmit(event)">
+            <i class="fa-solid fa-paper-plane"></i> Submit Listing
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </form>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="lp-sidebar">
+    <div class="progress-card">
+      <div class="progress-title">Completion <span class="progress-pct" id="pctText">0%</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill"></div></div>
+      <div class="progress-steps">
+        <div class="ps-item active" onclick="jumpTo('sec-basic')"><div class="ps-check"><i class="fa-solid fa-check"></i></div><span class="ps-name">Basic Info</span></div>
+        <div class="ps-item" onclick="jumpTo('sec-location')"><div class="ps-check"><i class="fa-solid fa-check"></i></div><span class="ps-name">Location & Map</span></div>
+        <div class="ps-item" onclick="jumpTo('sec-rooms')"><div class="ps-check"><i class="fa-solid fa-check"></i></div><span class="ps-name">Rooms & Pricing</span></div>
+        <div class="ps-item" onclick="jumpTo('sec-amenities')"><div class="ps-check"><i class="fa-solid fa-check"></i></div><span class="ps-name">Amenities & Rules</span></div>
+        <div class="ps-item" onclick="jumpTo('sec-media')"><div class="ps-check"><i class="fa-solid fa-check"></i></div><span class="ps-name">Photos</span></div>
+        <div class="ps-item" onclick="jumpTo('sec-contact')"><div class="ps-check"><i class="fa-solid fa-check"></i></div><span class="ps-name">Contact</span></div>
+      </div>
+    </div>
+    <div class="preview-card">
+      <div class="preview-card-title">Live preview</div>
+      <div class="mini-card">
+        <div class="mini-card-img" id="previewImgWrap">
+          <i class="fa-solid fa-image"></i>
+          <img id="previewImg" src="" alt="">
+        </div>
+        <div class="mini-card-body">
+          <div class="mini-card-name" id="previewName">Your property name</div>
+          <div class="mini-card-loc" id="previewLoc"><i class="fa-solid fa-location-dot"></i> Location · Near College</div>
+          <div class="mini-card-price" id="previewPrice">₹—/mo</div>
+        </div>
+      </div>
+    </div>
+    <div class="tips-card">
+      <div class="tips-header"><i class="fa-solid fa-lightbulb"></i> Listing Tips</div>
+      <div class="tip-item"><i class="fa-solid fa-check"></i> Pin your exact hostel gate location</div>
+      <div class="tip-item"><i class="fa-solid fa-check"></i> Upload bright, well-lit photos of every room</div>
+      <div class="tip-item"><i class="fa-solid fa-check"></i> Add WhatsApp for faster student responses</div>
+      <div class="tip-item"><i class="fa-solid fa-check"></i> Listings with 8+ amenities rank higher</div>
+      <div class="tip-item"><i class="fa-solid fa-check"></i> Be honest about rules — it builds trust</div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-msg" id="toastMsg">
+  <i id="toastIcon" class="fa-solid fa-circle-check"></i>
+  <span id="toastText">Done!</span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+
+<script>
+/* ============================================================
+   CONSTANTS
+============================================================ */
+const MAX_IMAGES    = 15;
+const MAX_IMG_MB    = 5;       // input guard — raw file before compression
+const MAX_TITLE     = 80;
+const MAX_DESC      = 1000;
+const MAX_RULE_LEN  = 200;
+const PHONE_RE      = /^[6-9]\d{9}$/;
+const PINCODE_RE    = /^\d{6}$/;
+const ALLOWED_TYPES = ["image/jpeg","image/png","image/webp"];
+
+// ── Compression settings (tweak here if needed) ──
+const COMPRESS_MAX_W   = 1280;   // max width in px
+const COMPRESS_MAX_H   = 1280;   // max height in px
+const COMPRESS_QUALITY = 0.82;   // 0–1 (0.82 = sweet spot for quality vs size)
+const COMPRESS_FORMAT  = 'image/webp'; // WebP = best for SEO / Core Web Vitals
+
+/* ============================================================
+   MAP PICKER STATE
+============================================================ */
+let mpLat = null, mpLng = null, mpConfirmed = false;
+let currentMode = 'click';
+let mpSearchTimeout = null;
+let iframeReady = false;
+
+const POPULAR_PLACES = [
+  { name:'IIT Bombay', detail:'Powai, Mumbai, Maharashtra', lat:19.1334, lng:72.9133 },
+  { name:'Delhi University North Campus', detail:'Maurice Nagar, Delhi', lat:28.6862, lng:77.2126 },
+  { name:'Christ University Bangalore', detail:'Hosur Road, Bangalore, Karnataka', lat:12.9261, lng:77.6011 },
+  { name:'Pune University', detail:'Ganeshkhind, Pune, Maharashtra', lat:18.5586, lng:73.8075 },
+  { name:'VIT Vellore', detail:'Vellore, Tamil Nadu', lat:12.9692, lng:79.1559 },
+  { name:'BITS Pilani', detail:'Vidya Vihar, Pilani, Rajasthan', lat:28.3623, lng:75.5897 },
+  { name:'NIT Trichy', detail:'Tiruchirappalli, Tamil Nadu', lat:10.7603, lng:78.8125 },
+  { name:'Manipal University', detail:'Manipal, Udupi, Karnataka', lat:13.3494, lng:74.7896 },
+  { name:'SRM University Chennai', detail:'Kattankulathur, Chennai, Tamil Nadu', lat:12.7395, lng:80.0275 },
+  { name:'JNTU Hyderabad', detail:'Kukatpally, Hyderabad, Telangana', lat:17.4933, lng:78.3782 },
+  { name:'Mumbai University', detail:'Fort, Mumbai, Maharashtra', lat:18.9322, lng:72.8353 },
+  { name:'Osmania University', detail:'Amberpet, Hyderabad, Telangana', lat:17.4126, lng:78.5283 },
+  { name:'Calcutta University', detail:'Ballygunge, Kolkata, West Bengal', lat:22.5197, lng:88.3663 },
+  { name:'Anna University Chennai', detail:'Guindy, Chennai, Tamil Nadu', lat:13.0101, lng:80.2337 },
+  { name:'Amity University Noida', detail:'Sector 125, Noida, UP', lat:28.5445, lng:77.3325 },
+];
+
+/* ============================================================
+   ★ IMAGE COMPRESSION UTILITY
+   Canvas-based, runs instantly in the browser before upload.
+   Input : raw File object (JPEG / PNG / WebP)
+   Output: compressed File object (WebP, ≤1280px, quality 0.82)
+   Typical result: 3–6 MB → 100–250 KB  (95%+ reduction)
+============================================================ */
+function compressImage(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    // If anything fails, fall back to the original file so upload still works
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+
+      let { width, height } = img;
+
+      // Scale down proportionally if larger than max dimensions
+      if (width > COMPRESS_MAX_W || height > COMPRESS_MAX_H) {
+        const ratio = Math.min(COMPRESS_MAX_W / width, COMPRESS_MAX_H / height);
+        width  = Math.round(width  * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(file); return; } // fallback
+          const newName = file.name.replace(/\.[^.]+$/, '') + '.webp';
+          const compressed = new File([blob], newName, {
+            type: COMPRESS_FORMAT,
+            lastModified: Date.now(),
+          });
+          resolve(compressed);
+        },
+        COMPRESS_FORMAT,
+        COMPRESS_QUALITY
+      );
+    };
+
+    img.src = objectUrl;
+  });
+}
+
+/* ============================================================
+   INLINE FIELD ERROR HELPERS
+============================================================ */
+function setFieldErr(id, msg) {
+  try {
+    const el = document.getElementById('err-' + id);
+    if (!el) return;
+    el.textContent = msg || '';
+    el.style.display = msg ? 'block' : 'none';
+    const input = document.getElementById(id);
+    if (input) input.classList.toggle('input-error', !!msg);
+  } catch(e) {}
+}
+function clearFieldErr(id) { setFieldErr(id, ''); }
+
+/* ============================================================
+   FIELD-LEVEL VALIDATION
+============================================================ */
+function validateField(id) {
+  try {
+    const el = document.getElementById(id);
+    if (!el) return true;
+    const v = el.value.trim();
+
+    switch (id) {
+      case 'title':
+        if (!v)                   { setFieldErr(id, 'Property title is required.'); return false; }
+        if (v.length > MAX_TITLE) { setFieldErr(id, `Title must be ${MAX_TITLE} characters or less.`); return false; }
+        break;
+      case 'description':
+        if (v.length > MAX_DESC)  { setFieldErr(id, `Description must be ${MAX_DESC} characters or less.`); return false; }
+        break;
+      case 'startingPrice': {
+        const n = Number(v);
+        if (!v || isNaN(n))  { setFieldErr(id, 'Please enter a valid price.'); return false; }
+        if (n < 100)         { setFieldErr(id, 'Price must be at least ₹100/month.'); return false; }
+        if (n > 500000)      { setFieldErr(id, 'Price seems too high. Max ₹5,00,000.'); return false; }
+        break;
+      }
+      case 'deposit': {
+        if (!v) break;
+        const n = Number(v);
+        if (isNaN(n) || n < 0) { setFieldErr(id, 'Please enter a valid deposit amount.'); return false; }
+        if (n > 2000000)       { setFieldErr(id, 'Deposit seems too high. Max ₹20,00,000.'); return false; }
+        break;
+      }
+      case 'capacity': {
+        if (!v) break;
+        const n = Number(v);
+        if (isNaN(n) || n < 1) { setFieldErr(id, 'Capacity must be at least 1.'); return false; }
+        if (n > 1000)          { setFieldErr(id, 'Capacity max is 1000.'); return false; }
+        break;
+      }
+      case 'address':     if (!v) { setFieldErr(id, 'Full address is required.'); return false; } break;
+      case 'nearCollege': if (!v) { setFieldErr(id, 'Nearest college / place is required.'); return false; } break;
+      case 'city':        if (!v) { setFieldErr(id, 'City is required.'); return false; } break;
+      case 'pincode':
+        if (v && !PINCODE_RE.test(v)) { setFieldErr(id, 'Pincode must be exactly 6 digits.'); return false; }
+        break;
+      case 'phone':
+        if (!v)               { setFieldErr(id, 'Phone number is required.'); return false; }
+        if (!PHONE_RE.test(v)) { setFieldErr(id, 'Enter a valid 10-digit Indian mobile number.'); return false; }
+        break;
+      case 'whatsapp':
+        if (v && !PHONE_RE.test(v)) { setFieldErr(id, 'Enter a valid 10-digit WhatsApp number.'); return false; }
+        break;
+    }
+    clearFieldErr(id);
+    return true;
+  } catch(e) { return true; }
+}
+
+function validateGender() {
+  if (!document.querySelector('input[name="gender"]:checked')) {
+    setFieldErr('gender', 'Please select who this property is for.');
+    return false;
+  }
+  clearFieldErr('gender');
+  return true;
+}
+
+function validateMap() {
+  if (!mpConfirmed) {
+    setFieldErr('map', 'Please pin your location on the map and click "Confirm Pin".');
+    return false;
+  }
+  clearFieldErr('map');
+  return true;
+}
+
+function validateRooms() {
+  try {
+    const selects = document.querySelectorAll('.room-type-select');
+    for (const s of selects) {
+      if (!s.value) { setFieldErr('rooms', 'Please select a room type for each room you added.'); return false; }
+    }
+    const priceInputs = document.querySelectorAll('.room-price-input');
+    for (const p of priceInputs) {
+      const n = Number(p.value);
+      if (p.value && (isNaN(n) || n < 0)) { setFieldErr('rooms', 'Room price must be a valid positive number.'); return false; }
+      if (n > 500000) { setFieldErr('rooms', 'Room price seems too high (max ₹5,00,000).'); return false; }
+    }
+    clearFieldErr('rooms');
+    return true;
+  } catch(e) { return true; }
+}
+
+function validateImages() {
+  const active = uploadedFiles.filter(Boolean);
+  if (active.length === 0) {
+    setFieldErr('images', 'Please upload at least one photo of your property.');
+    return false;
+  }
+  clearFieldErr('images');
+  return true;
+}
+
+function validateRuleLength(input) {
+  if (input.value.length >= MAX_RULE_LEN) {
+    showToast(`Rule text is limited to ${MAX_RULE_LEN} characters.`, true);
+    input.value = input.value.slice(0, MAX_RULE_LEN);
+  }
+}
+
+/* ============================================================
+   GLOBAL ERROR BANNER
+============================================================ */
+function showGlobalErr(msg) {
+  const banner = document.getElementById('globalErrBanner');
+  document.getElementById('globalErrText').textContent = msg;
+  banner.style.display = 'flex';
+  banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => closeGlobalErr(), 10000);
+}
+function closeGlobalErr() {
+  const banner = document.getElementById('globalErrBanner');
+  if (banner) banner.style.display = 'none';
+}
+
+/* ============================================================
+   TOAST
+============================================================ */
+let toastTimer = null;
+function showToast(msg, isError = false) {
+  try {
+    const t = document.getElementById('toastMsg');
+    const icon = document.getElementById('toastIcon');
+    document.getElementById('toastText').textContent = msg;
+    icon.className = isError ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
+    icon.style.color = isError ? '#ef4444' : 'var(--green)';
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+  } catch(e) {}
+}
+
+/* ============================================================
+   SUBMIT
+============================================================ */
+async function handleSubmit(e) {
+  e.preventDefault();
+  closeGlobalErr();
+
+  const fieldChecks = [
+    validateField('title'),
+    validateField('startingPrice'),
+    validateField('deposit'),
+    validateField('capacity'),
+    validateField('description'),
+    validateGender(),
+    validateField('address'),
+    validateField('nearCollege'),
+    validateField('city'),
+    validateField('pincode'),
+    validateMap(),
+    validateRooms(),
+    validateImages(),
+    validateField('phone'),
+    validateField('whatsapp'),
+  ];
+
+  if (fieldChecks.includes(false)) {
+    const errEls = document.querySelectorAll('.field-err');
+    let scrolled = false;
+    errEls.forEach(el => {
+      if (!scrolled && el.textContent.trim() && el.style.display !== 'none') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        scrolled = true;
+      }
+    });
+    showToast('Please fix the highlighted errors before submitting.', true);
+    return;
+  }
+
+  const form = document.getElementById('listingForm');
+
+  // Sync compressed files back into the file input via DataTransfer
+  try {
+    const dt = new DataTransfer();
+    uploadedFiles.filter(Boolean).forEach(f => dt.items.add(f));
+    document.getElementById('imagesInput').files = dt.files;
+  } catch (dtErr) { /* fallback — older browsers */ }
+
+  const formData = new FormData(form);
+
+  const btn = document.getElementById('submitBtn');
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+  btn.disabled = true;
+
+  try {
+    const resp = await fetch('/user/new-list-property', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const contentType = resp.headers.get('content-type') || '';
+
+    if (resp.ok) {
+      if (contentType.includes('text/html')) {
+        const html = await resp.text();
+        document.open(); document.write(html); document.close();
+        return;
+      }
+      window.location.href = '/user/my-listings';
+      return;
+    }
+
+    let errMsg = 'Something went wrong. Please try again.';
+    if (contentType.includes('application/json')) {
+      try { const data = await resp.json(); errMsg = data.message || errMsg; } catch(_) {}
+    } else {
+      try { errMsg = await resp.text(); } catch(_) {}
+      if (!errMsg || errMsg.length > 300) errMsg = `Server error (${resp.status}). Please try again.`;
+    }
+    if (resp.status === 401) errMsg = 'Session expired. Please log in again.';
+    if (resp.status === 413) errMsg = 'Uploaded files are too large. Please reduce photo sizes and try again.';
+    if (resp.status === 503) errMsg = 'Server is temporarily unavailable. Please try again in a moment.';
+
+    showGlobalErr(errMsg);
+    showToast(errMsg, true);
+
+  } catch (networkErr) {
+    const msg = navigator.onLine
+      ? 'Could not reach the server. Please try again.'
+      : 'You appear to be offline. Please check your internet connection and try again.';
+    showGlobalErr(msg);
+    showToast(msg, true);
+  } finally {
+    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Listing';
+    btn.disabled = false;
+  }
+}
+
+/* ============================================================
+   MAP PICKER
+============================================================ */
+function onMpInput() {
+  clearTimeout(mpSearchTimeout);
+  const q = (document.getElementById('mpSearchInput').value || '').trim();
+  if (q.length < 2) { closeSugg(); return; }
+  mpSearchTimeout = setTimeout(() => renderSugg(q), 180);
+}
+
+function renderSugg(q) {
+  try {
+    const ql = q.toLowerCase();
+    const matches = POPULAR_PLACES.filter(p =>
+      p.name.toLowerCase().includes(ql) || p.detail.toLowerCase().includes(ql)
+    ).slice(0, 6);
+    const drop = document.getElementById('mpSuggDrop');
+    if (!matches.length) { closeSugg(); return; }
+    drop.innerHTML = matches.map(m => `
+      <div class="mp-sugg-item" onclick="pickSugg(${m.lat},${m.lng},'${escJs(m.name)}','${escJs(m.detail)}')">
+        <i class="fa-solid fa-location-dot mp-sugg-icon"></i>
+        <div><div class="mp-sugg-name">${escHtml(m.name)}</div><div class="mp-sugg-detail">${escHtml(m.detail)}</div></div>
+      </div>`).join('');
+    drop.classList.add('open');
+  } catch(e) {}
+}
+
+function escJs(s)   { return String(s).replace(/\\/g,'\\\\').replace(/'/g, "\\'"); }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function closeSugg() {
+  try { document.getElementById('mpSuggDrop').classList.remove('open'); } catch(e) {}
+}
+
+function pickSugg(lat, lng, name) {
+  document.getElementById('mpSearchInput').value = name;
+  closeSugg();
+  loadMapAt(lat, lng, name);
+}
+
+function doMpSearch() {
+  closeSugg();
+  const q = (document.getElementById('mpSearchInput').value || '').trim();
+  if (!q) { showToast('Please type a college or area name first.', true); return; }
+  const ql = q.toLowerCase();
+  const match = POPULAR_PLACES.find(p =>
+    p.name.toLowerCase().includes(ql) || p.detail.toLowerCase().includes(ql)
+  );
+  if (match) { loadMapAt(match.lat, match.lng, match.name); return; }
+  const addr = document.getElementById('address').value || q;
+  setMpStatus('Searching…', 'loading');
+  setTimeout(() => {
+    try {
+      document.getElementById('mpIframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(addr)}&z=16&output=embed`;
+      setMpStatus('Map updated — click to drop pin', '');
+    } catch(e) { setMpStatus('Search failed. Try again.', ''); }
+  }, 700);
+}
+
+function loadMapAt(lat, lng, label) {
+  try {
+    setMpStatus('Loading…', 'loading');
+    document.getElementById('mpLoader').classList.remove('hidden');
+    document.getElementById('mpIframe').src = `https://maps.google.com/maps?q=${lat},${lng}&z=17&output=embed`;
+    mpLat = parseFloat(parseFloat(lat).toFixed(6));
+    mpLng = parseFloat(parseFloat(lng).toFixed(6));
+    showPinAt(50, 50);
+    updateCoordsBar(lat, lng, label || '');
+  } catch(e) { setMpStatus('Could not load map. Check your connection.', ''); }
+}
+
+function onIframeLoad() {
+  try {
+    iframeReady = true;
+    document.getElementById('mpLoader').classList.add('hidden');
+    setMpStatus(mpLat !== null ? 'Map loaded — click exact hostel location to pin' : 'Click on map to drop pin', '');
+  } catch(e) {}
+}
+
+function setMode(mode) {
+  try {
+    currentMode = mode;
+    const overlay = document.getElementById('mpOverlay');
+    document.getElementById('modeClick').classList.toggle('active', mode === 'click');
+    document.getElementById('modeDrag').classList.toggle('active', mode === 'drag');
+    overlay.classList.toggle('disabled', mode === 'drag');
+    document.getElementById('mpIframe').style.pointerEvents = mode === 'drag' ? 'auto' : 'none';
+    setMpStatus(mode === 'drag' ? 'Pan mode — switch back to click to pin' : 'Click on the map to drop your pin', '');
+  } catch(e) {}
+}
+
+function handleMapClick(e) {
+  if (currentMode !== 'click') return;
+  try {
+    const container = document.getElementById('mpMapContainer');
+    const rect = container.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const pctX = x / rect.width;
+    const pctY = y / rect.height;
+
+    showRipple(x, y);
+    showPinAt(pctX * 100, pctY * 100);
+
+    const iframe = document.getElementById('mpIframe');
+    const srcMatch = iframe.src.match(/q=([\-\d.]+),([\-\d.]+)/);
+    let centerLat = 20.5937, centerLng = 78.9629;
+    if (srcMatch) { centerLat = parseFloat(srcMatch[1]); centerLng = parseFloat(srcMatch[2]); }
+
+    const zoomMatch = iframe.src.match(/z=(\d+)/);
+    const zoom = zoomMatch ? parseInt(zoomMatch[1]) : 16;
+    const degPerPixel = 360 / (256 * Math.pow(2, zoom));
+    mpLat = parseFloat((centerLat - (pctY - 0.5) * rect.height * degPerPixel).toFixed(6));
+    mpLng = parseFloat((centerLng + (pctX - 0.5) * rect.width  * degPerPixel).toFixed(6));
+
+    updateCoordsBar(mpLat, mpLng, '');
+    setMpStatus(`Pin at ${mpLat.toFixed(4)}, ${mpLng.toFixed(4)} — confirm below ↓`, 'green');
+    document.getElementById('mpConfirmBtn').disabled = false;
+    mpConfirmed = false;
+    document.getElementById('confirmedBadge').classList.remove('show');
+    document.getElementById('mapPickerWrap').classList.remove('pinned');
+    clearFieldErr('map');
+  } catch(e) { showToast('Could not set pin. Please try again.', true); }
+}
+
+function showPinAt(pctX, pctY) {
+  try {
+    const pin = document.getElementById('mpPin');
+    pin.style.left = pctX + '%';
+    pin.style.top  = pctY + '%';
+    pin.style.display = 'block';
+    pin.style.animation = 'none';
+    pin.offsetHeight;
+    pin.style.animation = '';
+  } catch(e) {}
+}
+
+function showRipple(x, y) {
+  try {
+    const r = document.getElementById('mpRipple');
+    r.style.left = x + 'px'; r.style.top = y + 'px';
+    r.style.display = 'block';
+    r.style.animation = 'none'; r.offsetHeight;
+    r.style.animation = 'rippleOut 0.5s ease forwards';
+    setTimeout(() => { try { r.style.display = 'none'; } catch(e){} }, 500);
+  } catch(e) {}
+}
+
+function updateCoordsBar(lat, lng, addr) {
+  try {
+    const latEl  = document.getElementById('dispLat');
+    const lngEl  = document.getElementById('dispLng');
+    const addrEl = document.getElementById('dispAddr');
+    latEl.textContent = parseFloat(lat).toFixed(6); latEl.className = 'mp-coord-value filled';
+    lngEl.textContent = parseFloat(lng).toFixed(6); lngEl.className = 'mp-coord-value filled';
+    if (addr) { addrEl.textContent = addr; addrEl.className = 'mp-coord-value filled'; }
+    else       { addrEl.textContent = 'Click to detect'; addrEl.className = 'mp-coord-value empty'; }
+  } catch(e) {}
+}
+
+function setMpStatus(text, state) {
+  try {
+    document.getElementById('mpStatusText').textContent = text;
+    const dot = document.getElementById('mpDot');
+    dot.className = 'mp-status-dot' + (state === 'green' ? ' green' : state === 'loading' ? ' loading' : '');
+  } catch(e) {}
+}
+
+function confirmPin() {
+  if (mpLat === null) { showToast('Please click on the map first to drop a pin.', true); return; }
+  try {
+    document.getElementById('coordLat').value = mpLat;
+    document.getElementById('coordLng').value = mpLng;
+    mpConfirmed = true;
+    document.getElementById('mapPickerWrap').classList.add('pinned');
+    document.getElementById('confirmedBadge').classList.add('show');
+    document.getElementById('mpConfirmBtn').innerHTML = '<i class="fa-solid fa-circle-check"></i> Pinned ✓';
+    document.getElementById('mpConfirmBtn').style.background = 'var(--green-dark)';
+    setMpStatus('Location confirmed and saved!', 'green');
+    clearFieldErr('map');
+    showToast('📍 Location pinned successfully!');
+    updateProgress();
+  } catch(e) { showToast('Could not confirm pin. Please try again.', true); }
+}
+
+function useGps() {
+  if (!navigator.geolocation) { showToast('GPS not supported in this browser.', true); return; }
+  setMpStatus('Getting GPS location…', 'loading');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      try {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        document.getElementById('mpSearchInput').value = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        loadMapAt(lat, lng, 'Your GPS location');
+        showToast('GPS location detected!');
+      } catch(e) { showToast('GPS error. Please try manually.', true); }
+    },
+    err => {
+      const msgs = { 1:'Location permission denied. Please allow location access in your browser.', 2:'Location unavailable. Please search manually.', 3:'GPS timed out. Please try again or search manually.' };
+      const msg = msgs[err.code] || 'GPS error. Please search manually.';
+      setMpStatus(msg, ''); showToast(msg, true);
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+function resetMap() {
+  try {
+    mpLat = null; mpLng = null; mpConfirmed = false;
+    document.getElementById('mpIframe').src = 'https://maps.google.com/maps?q=India&z=5&output=embed';
+    document.getElementById('mpPin').style.display = 'none';
+    document.getElementById('coordLat').value = '';
+    document.getElementById('coordLng').value = '';
+    ['dispLat','dispLng'].forEach(id => {
+      document.getElementById(id).textContent = 'Not set yet';
+      document.getElementById(id).className = 'mp-coord-value empty';
+    });
+    document.getElementById('dispAddr').textContent = 'Drop pin to detect';
+    document.getElementById('dispAddr').className = 'mp-coord-value empty';
+    const btn = document.getElementById('mpConfirmBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Confirm Pin';
+    btn.style.background = '';
+    document.getElementById('confirmedBadge').classList.remove('show');
+    document.getElementById('mapPickerWrap').classList.remove('pinned');
+    document.getElementById('mpSearchInput').value = '';
+    setMpStatus('Click on map to drop pin', '');
+    clearFieldErr('map');
+  } catch(e) {}
+}
+
+document.addEventListener('click', e => {
+  try {
+    if (!document.getElementById('mpSearchInput').contains(e.target) &&
+        !document.getElementById('mpSuggDrop').contains(e.target)) closeSugg();
+  } catch(e) {}
+});
+
+/* ============================================================
+   ROOMS
+============================================================ */
+let roomCount = 1, ruleCount = 2;
+
+function getRoomSelectHTML(i) {
+  return `<select name="rooms[${i}][type]" class="form-select room-type-select" required>
+    <option value="">— Select room type —</option>
+    <optgroup label="🛏️ Sharing Rooms">
+      <option>Single Occupancy</option><option>Double Sharing</option><option>Triple Sharing</option>
+      <option>4-Bed Sharing</option><option>5-Bed Sharing</option><option>6-Bed Sharing</option>
+      <option>Dormitory (7+ Beds)</option>
+    </optgroup>
+    <optgroup label="❄️ AC Variants">
+      <option>AC Single</option><option>AC Double Sharing</option><option>AC Triple Sharing</option>
+      <option>AC 4-Bed Sharing</option><option>AC 5-Bed Sharing</option><option>AC 6-Bed Sharing</option>
+      <option>AC Dormitory</option>
+    </optgroup>
+    <optgroup label="🏠 Flat / Apartment">
+      <option>1 RK</option><option>1 BHK</option><option>2 BHK</option>
+      <option>3 BHK</option><option>4 BHK</option><option>Studio Apartment</option>
+    </optgroup>
+    <optgroup label="🚪 Room in Shared Flat">
+      <option>Private Room in 2 BHK</option><option>Private Room in 3 BHK</option>
+      <option>Private Room in 4 BHK</option><option>Shared Room in Flat (2 Sharing)</option>
+      <option>Shared Room in Flat (3 Sharing)</option>
+    </optgroup>
+    <optgroup label="⭐ Premium / Special">
+      <option>Deluxe Single (Attached Bath)</option><option>Deluxe Double (Attached Bath)</option>
+      <option>Master Bedroom</option><option>Bunk Bed Room</option>
+      <option>Semi-Private Room</option><option>Terrace Room</option>
+    </optgroup>
+  </select>`;
+}
+
+function addRoom() {
+  try {
+    if (roomCount >= 20) { showToast('You can add up to 20 room types.', true); return; }
+    const i = roomCount;
+    const html = `<div class="room-entry" id="room-${i}">
+      <div class="room-entry-header">
+        <div class="room-entry-title"><span class="room-num">${i+1}</span> Room Type ${i+1}</div>
+        <button type="button" class="btn-remove-room" onclick="removeRoom('room-${i}')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="room-grid">
+        <div class="form-group"><label class="form-label">Room Type <span class="label-required">*</span></label>${getRoomSelectHTML(i)}</div>
+        <div class="form-group"><label class="form-label">Price / month <span class="label-required">*</span></label>
+          <div class="input-icon-wrap has-prefix"><span class="input-prefix">₹</span>
+          <input type="number" name="rooms[${i}][price]" class="form-input room-price-input" placeholder="5500" min="0" max="500000" required onblur="validateRooms()"></div></div>
+        <div class="form-group"><label class="form-label">Deposit</label>
+          <div class="input-icon-wrap has-prefix"><span class="input-prefix">₹</span>
+          <input type="number" name="rooms[${i}][deposit]" class="form-input" placeholder="10000" min="0" max="2000000"></div></div>
+      </div>
+      <div class="room-features-row">
+        <div class="room-features-label">Room features</div>
+        <div class="room-features-wrap">
+          <input type="checkbox" id="rf${i}-ac" name="rooms[${i}][features][]" value="AC" class="rf-cb"><label for="rf${i}-ac" class="rf-lbl">AC</label>
+          <input type="checkbox" id="rf${i}-ab" name="rooms[${i}][features][]" value="Attached Bathroom" class="rf-cb"><label for="rf${i}-ab" class="rf-lbl">Attached Bath</label>
+          <input type="checkbox" id="rf${i}-tv" name="rooms[${i}][features][]" value="TV" class="rf-cb"><label for="rf${i}-tv" class="rf-lbl">TV</label>
+          <input type="checkbox" id="rf${i}-balcony" name="rooms[${i}][features][]" value="Balcony" class="rf-cb"><label for="rf${i}-balcony" class="rf-lbl">Balcony</label>
+          <input type="checkbox" id="rf${i}-wardrobe" name="rooms[${i}][features][]" value="Wardrobe" class="rf-cb"><label for="rf${i}-wardrobe" class="rf-lbl">Wardrobe</label>
+          <input type="checkbox" id="rf${i}-desk" name="rooms[${i}][features][]" value="Study Desk" class="rf-cb"><label for="rf${i}-desk" class="rf-lbl">Study Desk</label>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:0.76rem;font-weight:600;color:var(--muted)">Availability:</span>
+        <input type="checkbox" id="avail-${i}" name="rooms[${i}][available]" value="true" class="avail-cb" checked>
+        <label for="avail-${i}" class="avail-lbl">Available now</label>
+      </div>
+    </div>`;
+    document.getElementById('roomsList').insertAdjacentHTML('beforeend', html);
+    roomCount++;
+  } catch(e) { showToast('Could not add room. Please try again.', true); }
+}
+
+function removeRoom(id) {
+  try {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (document.querySelectorAll('.room-entry').length <= 1) { showToast('You need at least one room type.', true); return; }
+    el.style.transition = 'all 0.22s'; el.style.opacity = '0'; el.style.transform = 'translateY(-6px)';
+    setTimeout(() => { try { el.remove(); } catch(e){} }, 230);
+  } catch(e) {}
+}
+
+/* ============================================================
+   RULES
+============================================================ */
+function addRule() {
+  try {
+    if (ruleCount >= 30) { showToast('You can add up to 30 house rules.', true); return; }
+    const id = `rule-${ruleCount}`;
+    document.getElementById('rulesList').insertAdjacentHTML('beforeend',
+      `<div class="rule-entry" id="${id}">
+        <input type="text" name="rules[]" class="form-input" maxlength="${MAX_RULE_LEN}"
+          placeholder="Add a house rule…" oninput="validateRuleLength(this)">
+        <button type="button" class="btn-del-rule" onclick="removeRule('${id}')"><i class="fa-solid fa-xmark"></i></button>
+      </div>`);
+    ruleCount++;
+  } catch(e) { showToast('Could not add rule. Please try again.', true); }
+}
+
+function removeRule(id) {
+  try {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.transition = 'all 0.2s'; el.style.opacity = '0';
+    setTimeout(() => { try { el.remove(); } catch(e){} }, 210);
+  } catch(e) {}
+}
+
+/* ============================================================
+   ★ IMAGE UPLOAD WITH INSTANT COMPRESSION
+   Flow: user picks files → type/size guard → compressImage()
+         → store compressed File in uploadedFiles[] → render preview
+============================================================ */
+let uploadedFiles = [];
+
+function handleFileSelect(e) {
+  try { addFiles(Array.from(e.target.files)); } catch(e) { showToast('Could not read selected files.', true); }
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  try {
+    document.getElementById('uploadZone').classList.remove('drag-over');
+    addFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')));
+  } catch(err) { showToast('Drop failed. Please use the browse button.', true); }
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  try { document.getElementById('uploadZone').classList.add('drag-over'); } catch(e) {}
+}
+
+function handleDragLeave() {
+  try { document.getElementById('uploadZone').classList.remove('drag-over'); } catch(e) {}
+}
+
+async function addFiles(files) {
+  try {
+    const active = uploadedFiles.filter(Boolean).length;
+    const slots  = Math.max(0, MAX_IMAGES - active);
+
+    if (slots === 0) {
+      showToast(`Maximum ${MAX_IMAGES} photos allowed. Remove some to add more.`, true);
+      return;
+    }
+
+    const skipped = [];
+    const validFiles = [];
+
+    files.slice(0, slots).forEach(file => {
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        skipped.push(`"${file.name}" — use JPEG/PNG/WebP`);
+        return;
+      }
+      if (file.size > MAX_IMG_MB * 1024 * 1024) {
+        skipped.push(`"${file.name}" — exceeds ${MAX_IMG_MB} MB`);
+        return;
+      }
+      validFiles.push(file);
+    });
+
+    if (skipped.length) {
+      showToast(`${skipped.length} photo(s) skipped: ${skipped[0]}${skipped.length > 1 ? ` (+${skipped.length-1} more)` : ''}`, true);
+    }
+    if (files.length > slots) {
+      showToast(`Only ${slots} slot(s) remaining. ${files.length - slots} photo(s) not added.`, true);
+    }
+    if (!validFiles.length) return;
+
+    // ── Show compression progress bar ──
+    const progressWrap = document.getElementById('compressProgress');
+    const progressBar  = document.getElementById('compressBar');
+    const progressText = document.getElementById('compressText');
+    progressWrap.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressText.textContent = `Compressing ${validFiles.length} photo${validFiles.length > 1 ? 's' : ''}…`;
+
+    // ── Compress each file and update progress bar ──
+    const compressed = [];
+    for (let idx = 0; idx < validFiles.length; idx++) {
+      const result = await compressImage(validFiles[idx]);
+      compressed.push(result);
+      const pct = Math.round(((idx + 1) / validFiles.length) * 100);
+      progressBar.style.width = pct + '%';
+      progressText.textContent = `Compressing… ${idx + 1} / ${validFiles.length} done`;
+    }
+
+    // Hide progress bar
+    setTimeout(() => { progressWrap.style.display = 'none'; }, 600);
+
+    // ── Render previews for compressed files ──
+    compressed.forEach((file, relIdx) => {
+      const gi = uploadedFiles.length;
+      uploadedFiles.push(file);
+
+      // Dev log: shows compression result in browser console
+      const origKB = Math.round(validFiles[relIdx].size / 1024);
+      const compKB = Math.round(file.size / 1024);
+      console.log(`[HostelNode] ${file.name}: ${origKB} KB → ${compKB} KB (${Math.round((1 - compKB/origKB)*100)}% smaller)`);
+
+      const reader = new FileReader();
+      reader.onerror = () => {
+        showToast(`Could not read "${file.name}". File may be corrupt.`, true);
+        uploadedFiles[gi] = null;
+      };
+      reader.onload = ev => {
+        try {
+          const compKB = Math.round(file.size / 1024);
+          const sizeLabel = compKB < 1024 ? `${compKB} KB` : `${(compKB / 1024).toFixed(1)} MB`;
+
+          const wrap = document.createElement('div');
+          wrap.className = 'preview-img-wrap';
+          wrap.id = `prev-${gi}`;
+          wrap.style.position = 'relative'; // ensure the size badge positions correctly
+          wrap.innerHTML = `
+            <img src="${ev.target.result}" alt="Preview ${gi + 1}">
+            ${gi === 0 ? '<div class="preview-main-tag">Cover</div>' : ''}
+            <div style="
+              position:absolute;bottom:5px;left:5px;
+              background:rgba(0,0,0,0.58);color:#fff;
+              font-size:0.63rem;font-weight:700;letter-spacing:0.02em;
+              padding:2px 6px;border-radius:4px;pointer-events:none;
+              backdrop-filter:blur(2px)">
+              📦 ${sizeLabel}
+            </div>
+            <button type="button" class="preview-remove" onclick="removePreview(${gi})" title="Remove photo">
+              <i class="fa-solid fa-xmark"></i>
+            </button>`;
+
+          document.getElementById('uploadPreview').appendChild(wrap);
+
+          if (gi === 0) {
+            document.getElementById('previewImg').src = ev.target.result;
+            document.getElementById('previewImg').style.display = 'block';
+            const icon = document.querySelector('#previewImgWrap i');
+            if (icon) icon.style.display = 'none';
+          }
+
+          updateUploadStatus();
+          updateProgress();
+          clearFieldErr('images');
+        } catch(e) {}
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Show a friendly success toast with size info
+    const totalOrigKB  = validFiles.reduce((s, f) => s + f.size, 0) / 1024;
+    const totalCompKB  = compressed.reduce((s, f) => s + f.size, 0) / 1024;
+    const savingsPct   = Math.round((1 - totalCompKB / totalOrigKB) * 100);
+    showToast(`✅ ${compressed.length} photo${compressed.length > 1 ? 's' : ''} compressed & added — ${savingsPct}% smaller!`);
+
+    updateUploadStatus();
+  } catch(err) {
+    document.getElementById('compressProgress').style.display = 'none';
+    showToast('Photo upload error. Please try again.', true);
+  }
+}
+
+function removePreview(idx) {
+  try {
+    const el = document.getElementById(`prev-${idx}`);
+    if (el) {
+      el.style.transition = 'all 0.2s';
+      el.style.opacity = '0';
+      el.style.transform = 'scale(0.85)';
+      setTimeout(() => { try { el.remove(); } catch(e){} }, 210);
+    }
+    uploadedFiles[idx] = null;
+    updateUploadStatus();
+    updateProgress();
+  } catch(e) {}
+}
+
+function updateUploadStatus() {
+  try {
+    const count = uploadedFiles.filter(Boolean).length;
+    const el  = document.getElementById('uploadStatus');
+    const txt = document.getElementById('uploadStatusText');
+    if (count > 0) {
+      el.style.display = 'block';
+      txt.textContent = `${count} / ${MAX_IMAGES} photo${count !== 1 ? 's' : ''} added (auto-compressed to WebP)`;
+    } else {
+      el.style.display = 'none';
+    }
+  } catch(e) {}
+}
+
+/* ============================================================
+   CHAR COUNTER
+============================================================ */
+function updateCharCount(id, cid, max) {
+  try {
+    const v = (document.getElementById(id).value || '').length;
+    const el = document.getElementById(cid);
+    el.textContent = `${v} / ${max}`;
+    el.className = 'char-counter' + (v > max * 0.9 ? ' warn' : '') + (v >= max ? ' over' : '');
+  } catch(e) {}
+}
+
+/* ============================================================
+   LIVE PREVIEW
+============================================================ */
+function updatePreview() {
+  try {
+    const name  = document.getElementById('title').value || 'Your property name';
+    const price = document.getElementById('startingPrice').value;
+    const addr  = document.getElementById('address').value;
+    const coll  = document.getElementById('nearCollege').value;
+    document.getElementById('previewName').textContent = name;
+    document.getElementById('previewPrice').textContent = price
+      ? `₹${Number(price).toLocaleString('en-IN')}/mo` : '₹—/mo';
+    let loc = addr || '';
+    if (coll) loc += (loc ? ' · ' : '') + 'Near ' + coll;
+    document.getElementById('previewLoc').innerHTML =
+      `<i class="fa-solid fa-location-dot"></i> ${loc || 'Location · Near College'}`;
+  } catch(e) {}
+}
+
+/* ============================================================
+   PROGRESS
+============================================================ */
+function updateProgress() {
+  try {
+    const checks = [
+      !!(document.getElementById('title').value || '').trim(),
+      !!document.getElementById('startingPrice').value,
+      !!document.querySelector('input[name="gender"]:checked'),
+      !!(document.getElementById('address').value || '').trim(),
+      !!(document.getElementById('nearCollege').value || '').trim(),
+      mpConfirmed,
+      !!(document.querySelector('.room-type-select') && document.querySelector('.room-type-select').value),
+      document.querySelectorAll('.amenity-cb:checked').length > 0,
+      uploadedFiles.filter(Boolean).length > 0,
+      !!(document.getElementById('phone').value || '').trim(),
+    ];
+    const done = checks.filter(Boolean).length;
+    const pct  = Math.round(done / checks.length * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('pctText').textContent = pct + '%';
+    const stepDone = [
+      checks[0] && checks[1] && checks[2],
+      checks[3] && checks[4] && checks[5],
+      checks[6], checks[7], checks[8], checks[9],
+    ];
+    document.querySelectorAll('.ps-item').forEach((el, i) => {
+      el.classList.toggle('done', !!stepDone[i]);
+    });
+  } catch(e) {}
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    document.querySelectorAll('.form-input,.form-select,.form-textarea,input[type="radio"],input[type="checkbox"]').forEach(el => {
+      el.addEventListener('input',  updateProgress);
+      el.addEventListener('change', updateProgress);
+    });
+  } catch(e) {}
+});
+
+/* ============================================================
+   NAV STEPS HIGHLIGHT ON SCROLL
+============================================================ */
+const SECS = ['sec-basic','sec-location','sec-rooms','sec-amenities','sec-media','sec-contact'];
+window.addEventListener('scroll', () => {
+  try {
+    let cur = 0;
+    SECS.forEach((id, i) => {
+      const el = document.getElementById(id);
+      if (el && window.scrollY + 100 >= el.offsetTop) cur = i;
+    });
+    document.querySelectorAll('.lp-step').forEach((el, i) => el.classList.toggle('active', i === cur));
+  } catch(e) {}
+}, { passive: true });
+
+/* ============================================================
+   JUMP
+============================================================ */
+function jumpTo(id) {
+  try {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(e) {}
+}
+
+/* ============================================================
+   SAME NUMBER
+============================================================ */
+function toggleSameNum() {
+  try {
+    const cb = document.getElementById('sameNumber');
+    const wa = document.getElementById('whatsapp');
+    if (cb.checked) {
+      wa.value = document.getElementById('phone').value;
+      wa.readOnly = true;
+      wa.style.background = 'var(--bg2)';
+      clearFieldErr('whatsapp');
+    } else {
+      wa.readOnly = false;
+      wa.style.background = '';
+    }
+  } catch(e) {}
+}
+
+/* ============================================================
+   DRAFT
+============================================================ */
+function saveDraft() {
+  try {
+    const btn = document.querySelector('.btn-draft');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
+    btn.disabled = true;
+    const draft = {
+      title:         document.getElementById('title').value,
+      description:   document.getElementById('description').value,
+      startingPrice: document.getElementById('startingPrice').value,
+      address:       document.getElementById('address').value,
+      nearCollege:   document.getElementById('nearCollege').value,
+      city:          document.getElementById('city').value,
+      phone:         document.getElementById('phone').value,
+      savedAt:       new Date().toISOString(),
+    };
+    try { localStorage.setItem('hn_listing_draft', JSON.stringify(draft)); } catch(_) {}
+    setTimeout(() => {
+      btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Draft';
+      btn.disabled = false;
+      showToast('Draft saved locally!');
+    }, 700);
+  } catch(e) { showToast('Could not save draft. Please try again.', true); }
+}
+
+(function restoreDraft() {
+  try {
+    const raw = localStorage.getItem('hn_listing_draft');
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    if (!draft || !draft.title) return;
+    const age = Date.now() - new Date(draft.savedAt).getTime();
+    if (age > 86400000) { localStorage.removeItem('hn_listing_draft'); return; }
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+    set('title', draft.title);
+    set('description', draft.description);
+    set('startingPrice', draft.startingPrice);
+    set('address', draft.address);
+    set('nearCollege', draft.nearCollege);
+    set('city', draft.city);
+    set('phone', draft.phone);
+    updatePreview();
+    updateCharCount('title','titleCount', 80);
+    updateCharCount('description','descCount', 1000);
+    updateProgress();
+    showToast('Draft restored from last session!');
+  } catch(e) {}
+})();
+
+/* ============================================================
+   INLINE ERROR STYLES
+============================================================ */
+(function injectErrStyles() {
+  const style = document.createElement('style');
+  style.textContent = `
+    .field-err {
+      display: none;
+      color: #ef4444;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 4px;
+      padding: 4px 8px;
+      background: #fff1f1;
+      border-radius: 6px;
+      border-left: 3px solid #ef4444;
+    }
+    .input-error {
+      border-color: #ef4444 !important;
+      background: #fff8f8 !important;
+    }
+    #globalErrBanner { display: none; }
+    #globalErrBanner.show { display: flex !important; }
+    #compressProgress { transition: opacity 0.3s; }
+  `;
+  document.head.appendChild(style);
+})();
+</script>

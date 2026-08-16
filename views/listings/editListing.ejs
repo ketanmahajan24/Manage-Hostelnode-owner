@@ -1,0 +1,1784 @@
+<% layout("/layouts/boilerplate") -%>
+
+<link rel="stylesheet" href="/css/listingProperty.css">
+
+<style>
+/* ── EDIT-SPECIFIC OVERRIDES ── */
+.edit-hero-badge { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+.edit-hero-badge .dot { background: #09b850; }
+.lp-hero h1 .edit-accent { color: #09b850; }
+
+/* Status banner */
+.status-banner {
+  padding: 12px clamp(16px,5vw,60px);
+  display: flex; align-items: center; gap: 10px;
+  font-size: 0.82rem; font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.status-banner.Pending  { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+.status-banner.Approved { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.status-banner.Rejected { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.status-banner i { font-size: 0.9rem; flex-shrink: 0; }
+.status-banner span { flex: 1; }
+.status-banner a {
+  font-size: 0.75rem; font-weight: 700;
+  padding: 4px 12px; border-radius: var(--radius-full);
+  border: 1.5px solid currentColor;
+  background: transparent; color: inherit; cursor: pointer;
+  text-decoration: none; transition: all 0.18s;
+}
+.status-banner a:hover { opacity: 0.75; }
+
+/* Changed-field highlight */
+.form-input.changed,
+.form-select.changed,
+.form-textarea.changed {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245,158,11,0.13);
+}
+
+/* Image management grid */
+.existing-images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px,1fr));
+  gap: 10px; margin-bottom: 14px;
+}
+.existing-img-wrap {
+  position: relative; aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden; border: 1.5px solid var(--border);
+}
+.existing-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.existing-img-wrap .img-delete-btn {
+  position: absolute; top: 4px; right: 4px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(220,38,38,0.85); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6rem; cursor: pointer; border: none;
+  opacity: 0; transition: opacity 0.18s;
+}
+.existing-img-wrap:hover .img-delete-btn { opacity: 1; }
+.existing-img-wrap.marked-delete { opacity: 0.35; }
+.existing-img-wrap.marked-delete .img-delete-btn { opacity: 1; background: rgba(220,38,38,1); }
+.existing-img-wrap .img-cover-tag {
+  position: absolute; bottom: 4px; left: 4px;
+  font-size: 0.55rem; font-weight: 700; letter-spacing: 0.05em;
+  padding: 2px 6px; border-radius: 4px;
+  background: var(--green); color: #fff; text-transform: uppercase;
+}
+.existing-img-wrap .img-set-cover {
+  position: absolute; bottom: 4px; left: 4px;
+  font-size: 0.6rem; font-weight: 600;
+  padding: 2px 7px; border-radius: 4px;
+  background: rgba(0,0,0,0.55); color: #fff;
+  cursor: pointer; border: none;
+  opacity: 0; transition: opacity 0.18s;
+}
+.existing-img-wrap:hover .img-set-cover { opacity: 1; }
+.img-section-label {
+  font-size: 0.78rem; font-weight: 600; color: var(--muted);
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 8px;
+}
+.img-section-label span {
+  font-size: 0.68rem; font-weight: 500;
+  padding: 2px 8px; border-radius: var(--radius-full);
+  background: var(--bg2); color: var(--muted-light);
+}
+.img-divider {
+  height: 1px; background: var(--border);
+  margin: 16px 0; position: relative;
+}
+.img-divider::before {
+  content: 'Add more photos';
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  background: var(--white);
+  padding: 0 10px;
+  font-size: 0.7rem; font-weight: 600; color: var(--muted-light);
+}
+
+/* Unsaved changes bar */
+.unsaved-bar {
+  position: fixed; bottom: 0; left: 20%; right: 0; z-index: 800;
+  background: var(--ink); color: #fff;
+  padding: 14px 24px;
+  display: flex; align-items: center; gap: 12px;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(.22,.68,0,1.2);
+  border-top: 3px solid #f59e0b;
+}
+.unsaved-bar.show { transform: translateY(0); }
+.unsaved-bar-text { flex: 1; font-size: 0.82rem; display: flex; align-items: center; gap: 8px; }
+.unsaved-bar-text i { color: #09b850; }
+.unsaved-discard {
+  padding: 8px 16px; border-radius: var(--radius-sm);
+  border: 1.5px solid rgba(255,255,255,0.2); background: transparent;
+  color: rgba(255,255,255,0.7); font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transition: all 0.18s;
+}
+.unsaved-discard:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+.unsaved-save {
+  padding: 9px 22px; border-radius: var(--radius-sm);
+  border: none; background: #09b850;
+  color: #fff; font-size: 0.82rem; font-weight: 700;
+  cursor: pointer; font-family: var(--font-d);
+  display: flex; align-items: center; gap: 7px;
+  transition: background 0.18s;
+}
+.unsaved-save:hover { background: #09b850; }
+
+/* ── Compression progress bar (same as listProperty) ── */
+#compressProgress { transition: opacity 0.3s; }
+</style>
+
+
+<!-- HERO -->
+<div class="lp-hero">
+<!-- STATUS BANNER -->
+<div class="status-banner <%= listing.status %>" id="statusBanner">
+  <% if (listing.status === 'Pending') { %>
+    <i class="fa-solid fa-clock"></i>
+    <span>This listing is <strong>pending review</strong> — our team will approve it within 24 hours.</span>
+  <% } else if (listing.status === 'Approved') { %>
+    <i class="fa-solid fa-circle-check"></i>
+    <span>This listing is <strong>live and approved</strong>. Changes will need re-approval.</span>
+    <a href="/listings/<%= listing.slug %>" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> View live</a>
+  <% } else if (listing.status === 'Rejected') { %>
+    <i class="fa-solid fa-circle-xmark"></i>
+    <span>This listing was <strong>rejected</strong>. Fix the issues below and resubmit.</span>
+  <% } %>
+</div>
+
+<br>
+  <div class="lp-hero-inner">
+    <div class="lp-hero-text">
+      <div class="lp-hero-badge edit-hero-badge"><div class="dot" style="background:#f59e0b"></div> Editing Listing</div>
+      <h1>Edit your <span class="edit-accent" style="color:#f59e0b">property</span> details</h1>
+      <p>Update your listing information. Changes will be reviewed before going live again.</p>
+    </div>
+    <div class="lp-steps-strip">
+      <div class="lp-step active" id="navStep1" onclick="jumpTo('sec-basic')"><div class="step-circle">1</div><span class="step-label">Basic</span></div>
+      <div class="step-sep"></div>
+      <div class="lp-step" id="navStep2" onclick="jumpTo('sec-location')"><div class="step-circle">2</div><span class="step-label">Location</span></div>
+      <div class="step-sep"></div>
+      <div class="lp-step" id="navStep3" onclick="jumpTo('sec-rooms')"><div class="step-circle">3</div><span class="step-label">Rooms</span></div>
+      <div class="step-sep"></div>
+      <div class="lp-step" id="navStep4" onclick="jumpTo('sec-amenities')"><div class="step-circle">4</div><span class="step-label">Amenities</span></div>
+      <div class="step-sep"></div>
+      <div class="lp-step" id="navStep5" onclick="jumpTo('sec-media')"><div class="step-circle">5</div><span class="step-label">Photos</span></div>
+      <div class="step-sep"></div>
+      <div class="lp-step" id="navStep6" onclick="jumpTo('sec-contact')"><div class="step-circle">6</div><span class="step-label">Contact</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN BODY -->
+<div class="lp-body">
+  <div class="lp-form-col">
+  <form id="editForm"
+        action="/user/listing/<%=listing._id%>/edit"
+        method="POST"
+        enctype="multipart/form-data"
+        novalidate>
+
+    <!-- ── SECTION 1: BASIC ── -->
+    <div class="form-section" id="sec-basic">
+      <div class="section-header">
+        <div class="section-icon"><i class="fa-solid fa-house"></i></div>
+        <div class="section-title-text"><h3>Basic Information</h3><p>Core details about your property</p></div>
+        <span class="section-num">01 / 06</span>
+      </div>
+
+      <!-- Property Type -->
+      <div class="form-group" style="margin-bottom:18px">
+        <label class="form-label">Property Type <span class="label-required">*</span></label>
+        <div class="type-selector">
+          <div>
+            <input type="radio" name="propertyType" id="typeHostel" class="type-option" value="Hostel" <%= listing.propertyType === 'Hostel' ? 'checked' : '' %>>
+            <label for="typeHostel" class="type-label"><div class="type-icon"><i class="fa-solid fa-building"></i></div><div class="type-name">Hostel</div><div class="type-desc">Shared with warden</div></label>
+          </div>
+          <div>
+            <input type="radio" name="propertyType" id="typePG" class="type-option" value="PG" <%= listing.propertyType === 'PG' ? 'checked' : '' %>>
+            <label for="typePG" class="type-label"><div class="type-icon"><i class="fa-solid fa-house-user"></i></div><div class="type-name">PG</div><div class="type-desc">With meals & services</div></label>
+          </div>
+          <div>
+            <input type="radio" name="propertyType" id="typeFlat" class="type-option" value="Flat" <%= listing.propertyType === 'Flat' ? 'checked' : '' %>>
+            <label for="typeFlat" class="type-label"><div class="type-icon"><i class="fa-solid fa-door-open"></i></div><div class="type-name">Flat</div><div class="type-desc">Shared apartment</div></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gender -->
+      <div class="form-group" style="margin-bottom:18px">
+        <label class="form-label">For whom? <span class="label-required">*</span></label>
+        <div class="gender-selector">
+          <div>
+            <input type="radio" name="gender" id="gBoys" class="gender-option boys" value="Boys" <%= listing.gender === 'Boys' ? 'checked' : '' %> required>
+            <label for="gBoys" class="gender-label"><i class="fa-solid fa-mars"></i> Boys only</label>
+          </div>
+          <div>
+            <input type="radio" name="gender" id="gGirls" class="gender-option girls" value="Girls" <%= listing.gender === 'Girls' ? 'checked' : '' %>>
+            <label for="gGirls" class="gender-label"><i class="fa-solid fa-venus"></i> Girls only</label>
+          </div>
+          <div>
+            <input type="radio" name="gender" id="gCoed" class="gender-option" value="Co-ed" <%= listing.gender === 'Co-ed' ? 'checked' : '' %>>
+            <label for="gCoed" class="gender-label"><i class="fa-solid fa-venus-mars"></i> Co-ed</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <!-- Title -->
+        <div class="form-group full">
+          <label class="form-label" for="title">Property Name / Title <span class="label-required">*</span><span class="label-hint">e.g. "Sai Niwas Boys Hostel"</span></label>
+          <input type="text" id="title" name="title" class="form-input" value="<%= listing.title %>"
+            maxlength="80" oninput="updateCharCount('title','titleCount',80);updatePreview();markChanged(this)" required>
+          <div class="char-counter" id="titleCount"><%= listing.title.length %> / 80</div>
+        </div>
+
+        <!-- Starting Price -->
+        <div class="form-group">
+          <label class="form-label" for="startingPrice">Starting Price / month <span class="label-required">*</span></label>
+          <div class="input-icon-wrap has-prefix">
+            <span class="input-prefix">₹</span>
+            <input type="number" id="startingPrice" name="startingPrice" class="form-input"
+              value="<%= listing.startingPrice %>" min="500" required
+              oninput="updatePreview();markChanged(this)">
+          </div>
+        </div>
+
+        <!-- Deposit -->
+        <div class="form-group">
+          <label class="form-label" for="deposit">Security Deposit<span class="label-hint">Optional</span></label>
+          <div class="input-icon-wrap has-prefix">
+            <span class="input-prefix">₹</span>
+            <input type="number" id="deposit" name="deposit" class="form-input"
+              value="<%= listing.deposit || '' %>" min="0" oninput="markChanged(this)">
+          </div>
+        </div>
+
+        <!-- Capacity -->
+        <div class="form-group">
+          <label class="form-label" for="capacity">Total Capacity</label>
+          <div class="input-icon-wrap">
+            <i class="input-icon fa-solid fa-users"></i>
+            <input type="number" id="capacity" name="capacity" class="form-input"
+              value="<%= listing.capacity || '' %>" min="1" oninput="markChanged(this)">
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group full">
+          <label class="form-label" for="description">Description <span class="label-required">*</span><span class="label-hint">What makes your place great?</span></label>
+          <textarea id="description" name="description" class="form-textarea"
+            maxlength="1000" rows="4"
+            oninput="updateCharCount('description','descCount',1000);markChanged(this)"
+            required><%= listing.description %></textarea>
+          <div class="char-counter" id="descCount"><%= (listing.description || '').length %> / 1000</div>
+        </div>
+      </div>
+    </div><!-- /sec-basic -->
+
+    <!-- ── SECTION 2: LOCATION + MAP ── -->
+    <div class="form-section" id="sec-location">
+      <div class="section-header">
+        <div class="section-icon"><i class="fa-solid fa-location-dot"></i></div>
+        <div class="section-title-text"><h3>Location & Map Pin</h3><p>Update your address and map location</p></div>
+        <span class="section-num">02 / 06</span>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:20px">
+        <div class="form-group full">
+          <label class="form-label" for="address">Full Address <span class="label-required">*</span></label>
+          <div class="input-icon-wrap">
+            <i class="input-icon fa-solid fa-location-dot"></i>
+            <input type="text" id="address" name="location[address]" class="form-input"
+              value="<%= listing.location?.address %>" required
+              oninput="updatePreview();markChanged(this)">
+          </div>
+        </div>
+
+        <div class="form-group full">
+          <label class="form-label" for="nearCollege">Nearest College / Place <span class="label-required">*</span><span class="label-hint">Students search by College / University / Institute / Place name</span></label>
+          <div class="input-icon-wrap">
+            <i class="input-icon fa-solid fa-graduation-cap"></i>
+            <input type="text" id="nearCollege" name="location[nearCollege]" class="form-input"
+              value="<%= listing.location?.nearCollege || '' %>" required
+              oninput="updatePreview();markChanged(this)">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="city">City <span class="label-required">*</span></label>
+          <input type="text" id="city" name="location[city]" class="form-input"
+            value="<%= listing.location?.city || '' %>" required oninput="markChanged(this)">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="state">State</label>
+          <select id="state" name="location[state]" class="form-select" onchange="markChanged(this)">
+            <option value="">Select state</option>
+            <% ['Maharashtra','Delhi','Karnataka','Tamil Nadu','Telangana','Gujarat','Rajasthan','Uttar Pradesh','West Bengal','Madhya Pradesh','Punjab','Haryana','Kerala','Andhra Pradesh','Bihar','Jharkhand','Odisha','Assam','Other'].forEach(s => { %>
+              <option value="<%= s %>" <%= listing.location?.state === s ? 'selected' : '' %>><%= s %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="pincode">Pincode</label>
+          <input type="text" id="pincode" name="location[pincode]" class="form-input"
+            value="<%= listing.location?.pincode || '' %>" maxlength="6" pattern="[0-9]{6}"
+            oninput="markChanged(this)">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Country</label>
+          <input type="text" name="location[country]" class="form-input" value="India" readonly
+            style="background:var(--bg2);color:var(--muted)">
+        </div>
+      </div>
+
+      <!-- Hidden coord inputs -->
+      <input type="hidden" id="coordLat" name="location[coordinates][lat]"
+             value="<%= listing.location?.coordinates?.lat || '' %>">
+      <input type="hidden" id="coordLng" name="location[coordinates][lng]"
+             value="<%= listing.location?.coordinates?.lng || '' %>">
+
+      <!-- MAP PICKER -->
+      <label class="form-label" style="margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+        <i class="fa-solid fa-map-pin" style="color:var(--green)"></i>
+        Update your map pin
+        <span id="confirmedBadge" class="mp-confirmed-badge <%= listing.location?.coordinates?.lat ? 'show' : '' %>" style="margin-left:auto">
+          <i class="fa-solid fa-circle-check" style="font-size:0.8rem"></i>
+          <%= listing.location?.coordinates?.lat ? 'Location pinned' : 'Not pinned yet' %>
+        </span>
+      </label>
+
+      <div class="map-picker-wrap <%= listing.location?.coordinates?.lat ? 'pinned' : '' %>" id="mapPickerWrap">
+
+        <div class="mp-searchbar">
+          <div class="mp-searchbar-inner">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="mpSearchInput"
+              placeholder="Search college, area, landmark..."
+              oninput="onMpInput()"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();doMpSearch()}">
+          </div>
+          <button type="button" class="mp-searchbar-btn green" onclick="doMpSearch()">
+            <i class="fa-solid fa-magnifying-glass"></i> Search
+          </button>
+          <button type="button" class="mp-searchbar-btn ghost" onclick="useGps()">
+            <i class="fa-solid fa-location-crosshairs" style="color:var(--green)"></i> GPS
+          </button>
+        </div>
+
+        <div class="mp-sugg-outer" id="mpSuggOuter">
+          <div class="mp-sugg-drop" id="mpSuggDrop"></div>
+        </div>
+
+        <div class="mp-toolbar">
+          <button type="button" class="mp-mode-btn active" id="modeClick" onclick="setMode('click')">
+            <i class="fa-solid fa-hand-pointer"></i> Click to pin
+          </button>
+          <button type="button" class="mp-mode-btn" id="modeDrag" onclick="setMode('drag')">
+            <i class="fa-solid fa-up-down-left-right"></i> Pan & explore
+          </button>
+          <div class="mp-toolbar-sep"></div>
+          <button type="button" class="mp-mode-btn" onclick="resetMap()" style="color:#ef4444;border-color:#fecaca">
+            <i class="fa-solid fa-rotate-left"></i> Reset
+          </button>
+          <div class="mp-status-chip">
+            <div class="mp-status-dot <%= listing.location?.coordinates?.lat ? 'green' : '' %>" id="mpDot"></div>
+            <span id="mpStatusText">
+              <%= listing.location?.coordinates?.lat
+                ? 'Pin saved — click to update location'
+                : 'Click on map to drop pin' %>
+            </span>
+          </div>
+        </div>
+
+        <div class="mp-map-container" id="mpMapContainer">
+          <div class="mp-map-loader hidden" id="mpLoader">
+            <div class="mp-spinner"></div>
+            <p>Loading map…</p>
+          </div>
+          <iframe id="mpIframe"
+            src="https://maps.google.com/maps?q=<%= listing.location?.coordinates?.lat ? listing.location.coordinates.lat + ',' + listing.location.coordinates.lng : encodeURIComponent((listing.location?.address || '') + ' ' + (listing.location?.city || '') + ' India') %>&z=<%= listing.location?.coordinates?.lat ? 17 : 14 %>&output=embed"
+            onload="onIframeLoad()"
+            title="Location map">
+          </iframe>
+          <div class="mp-click-overlay" id="mpOverlay" onclick="handleMapClick(event)"></div>
+          <div class="mp-pin" id="mpPin" style="<%= listing.location?.coordinates?.lat ? 'display:block;left:50%;top:50%' : 'display:none' %>">
+            <svg width="36" height="44" viewBox="0 0 36 44" fill="none">
+              <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 26 18 26s18-12.5 18-26C36 8.06 27.94 0 18 0z" fill="#09b850"/>
+              <circle cx="18" cy="18" r="7" fill="white"/>
+              <circle cx="18" cy="18" r="4" fill="#09b850"/>
+            </svg>
+            <div class="mp-pin-pulse"></div>
+          </div>
+          <div class="mp-ripple" id="mpRipple"></div>
+        </div>
+
+        <div class="mp-coords-bar">
+          <div class="mp-coord-box">
+            <div class="mp-coord-label">Latitude</div>
+            <div class="mp-coord-value <%= listing.location?.coordinates?.lat ? 'filled' : 'empty' %>" id="dispLat">
+              <%= listing.location?.coordinates?.lat ? listing.location.coordinates.lat.toFixed(6) : 'Not set yet' %>
+            </div>
+          </div>
+          <div class="mp-coord-box">
+            <div class="mp-coord-label">Longitude</div>
+            <div class="mp-coord-value <%= listing.location?.coordinates?.lng ? 'filled' : 'empty' %>" id="dispLng">
+              <%= listing.location?.coordinates?.lng ? listing.location.coordinates.lng.toFixed(6) : 'Not set yet' %>
+            </div>
+          </div>
+          <div class="mp-coord-box">
+            <div class="mp-coord-label">Address</div>
+            <div class="mp-coord-value <%= listing.location?.address ? 'filled' : 'empty' %>" id="dispAddr"
+                 style="font-size:0.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px">
+              <%= listing.location?.address || 'Drop pin to detect' %>
+            </div>
+          </div>
+          <button type="button" class="mp-confirm-btn" id="mpConfirmBtn"
+                  onclick="confirmPin()"
+                  <%= listing.location?.coordinates?.lat ? '' : 'disabled' %>>
+            <i class="fa-solid fa-circle-check"></i>
+            <%= listing.location?.coordinates?.lat ? 'Pinned ✓' : 'Confirm Pin' %>
+          </button>
+        </div>
+
+        <div class="mp-tip">
+          <i class="fa-solid fa-lightbulb"></i>
+          <span><strong>To update pin:</strong> Search your area, then click the exact location on the map. Hit "Confirm Pin" to save.</span>
+        </div>
+      </div>
+    </div><!-- /sec-location -->
+
+    <!-- ── SECTION 3: ROOMS ── -->
+    <div class="form-section" id="sec-rooms">
+      <div class="section-header">
+        <div class="section-icon"><i class="fa-solid fa-bed"></i></div>
+        <div class="section-title-text"><h3>Rooms & Pricing</h3><p>Update your room types and prices</p></div>
+        <span class="section-num">03 / 06</span>
+      </div>
+
+      <div class="rooms-list" id="roomsList">
+        <%
+          const ALL_ROOM_TYPES = [
+            'Single Occupancy','Double Sharing','Triple Sharing',
+            '4-Bed Sharing','5-Bed Sharing','6-Bed Sharing','Dormitory (7+ Beds)',
+            'AC Single','AC Double Sharing','AC Triple Sharing','AC 4-Bed Sharing','AC 5-Bed Sharing','AC Dormitory',
+            '1 RK','1 BHK','2 BHK','3 BHK','4 BHK','Studio Apartment',
+            'Private Room in 2 BHK','Private Room in 3 BHK','Private Room in 4 BHK',
+            'Shared Room in Flat (2 Sharing)','Shared Room in Flat (3 Sharing)',
+            'Deluxe Single (Attached Bath)','Deluxe Double (Attached Bath)',
+            'Master Bedroom','Bunk Bed Room','Semi-Private Room','Terrace Room'
+          ];
+        %>
+        <% (listing.rooms || []).forEach((room, i) => { %>
+        <%   const isLegacy = room.type && !ALL_ROOM_TYPES.includes(room.type); %>
+        <div class="room-entry" id="room-<%= i %>">
+          <div class="room-entry-header">
+            <div class="room-entry-title">
+              <span class="room-num"><%= i+1 %></span> Room Type <%= i+1 %>
+            </div>
+            <button type="button" class="btn-remove-room" onclick="removeRoom('room-<%= i %>')">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="room-grid">
+            <div class="form-group">
+              <label class="form-label">Room Type <span class="label-required">*</span></label>
+              <select name="rooms[<%= i %>][type]" class="form-select" required onchange="markChanged(this)">
+                <option value="">— Select room type —</option>
+                <% if (isLegacy) { %>
+                  <option value="<%= room.type %>" selected><%= room.type %> (legacy)</option>
+                <% } %>
+                <optgroup label="🛏️ Sharing Rooms">
+                  <% ['Single Occupancy','Double Sharing','Triple Sharing','4-Bed Sharing','5-Bed Sharing','6-Bed Sharing','Dormitory (7+ Beds)'].forEach(t => { %>
+                    <option value="<%= t %>" <%= room.type === t ? 'selected' : '' %>><%= t %></option>
+                  <% }) %>
+                </optgroup>
+                <optgroup label="❄️ AC Variants">
+                  <% ['AC Single','AC Double Sharing','AC Triple Sharing','AC 4-Bed Sharing','AC 5-Bed Sharing','AC Dormitory'].forEach(t => { %>
+                    <option value="<%= t %>" <%= room.type === t ? 'selected' : '' %>><%= t %></option>
+                  <% }) %>
+                </optgroup>
+                <optgroup label="🏠 Flat / Apartment">
+                  <% ['1 RK','1 BHK','2 BHK','3 BHK','4 BHK','Studio Apartment'].forEach(t => { %>
+                    <option value="<%= t %>" <%= room.type === t ? 'selected' : '' %>><%= t %></option>
+                  <% }) %>
+                </optgroup>
+                <optgroup label="🚪 Room in Shared Flat">
+                  <% ['Private Room in 2 BHK','Private Room in 3 BHK','Private Room in 4 BHK','Shared Room in Flat (2 Sharing)','Shared Room in Flat (3 Sharing)'].forEach(t => { %>
+                    <option value="<%= t %>" <%= room.type === t ? 'selected' : '' %>><%= t %></option>
+                  <% }) %>
+                </optgroup>
+                <optgroup label="⭐ Premium / Special">
+                  <% ['Deluxe Single (Attached Bath)','Deluxe Double (Attached Bath)','Master Bedroom','Bunk Bed Room','Semi-Private Room','Terrace Room'].forEach(t => { %>
+                    <option value="<%= t %>" <%= room.type === t ? 'selected' : '' %>><%= t %></option>
+                  <% }) %>
+                </optgroup>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Price / month <span class="label-required">*</span></label>
+              <div class="input-icon-wrap has-prefix">
+                <span class="input-prefix">₹</span>
+                <input type="number" name="rooms[<%= i %>][price]" class="form-input"
+                  value="<%= room.price %>" min="0" required oninput="markChanged(this)">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Deposit</label>
+              <div class="input-icon-wrap has-prefix">
+                <span class="input-prefix">₹</span>
+                <input type="number" name="rooms[<%= i %>][deposit]" class="form-input"
+                  value="<%= room.deposit || '' %>" min="0" oninput="markChanged(this)">
+              </div>
+            </div>
+          </div>
+          <div class="room-features-row">
+            <div class="room-features-label">Room features</div>
+            <div class="room-features-wrap">
+              <% [['AC','AC'],['Attached Bathroom','Attached Bath'],['TV','TV'],['Balcony','Balcony'],['Wardrobe','Wardrobe'],['Study Desk','Study Desk']].forEach(([val, label]) => { %>
+                <input type="checkbox" id="rf<%= i %>-<%= val.toLowerCase().replace(/\s/g,'-') %>"
+                  name="rooms[<%= i %>][features][]" value="<%= val %>" class="rf-cb"
+                  <%= (room.features || []).includes(val) ? 'checked' : '' %>>
+                <label for="rf<%= i %>-<%= val.toLowerCase().replace(/\s/g,'-') %>" class="rf-lbl"><%= label %></label>
+              <% }) %>
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+            <span style="font-size:0.76rem;font-weight:600;color:var(--muted)">Availability:</span>
+            <input type="checkbox" id="avail-<%= i %>" name="rooms[<%= i %>][available]"
+              value="true" class="avail-cb" <%= room.available !== false ? 'checked' : '' %>>
+            <label for="avail-<%= i %>" class="avail-lbl">Available now</label>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+
+      <button type="button" class="btn-add-room" onclick="addRoom()">
+        <i class="fa-solid fa-plus"></i> Add another room type
+      </button>
+    </div><!-- /sec-rooms -->
+
+    <!-- ── SECTION 4: AMENITIES & RULES ── -->
+    <div class="form-section" id="sec-amenities">
+      <div class="section-header">
+        <div class="section-icon"><i class="fa-solid fa-star"></i></div>
+        <div class="section-title-text"><h3>Amenities & Rules</h3><p>What you offer and house policies</p></div>
+        <span class="section-num">04 / 06</span>
+      </div>
+
+      <div class="form-group" style="margin-bottom:22px">
+        <label class="form-label" style="margin-bottom:10px">
+          <i class="fa-solid fa-check-circle" style="color:var(--green)"></i>
+          What amenities do you provide?
+        </label>
+        <div class="amenities-grid">
+          <% [
+  ['WiFi','wifi'],['AC','snowflake'],['Meals','utensils'],['Laundry','shirt'],
+  ['Security','shield-halved'],['Parking','car'],['Gym','dumbbell'],['CCTV','camera'],
+  ['Hot Water','droplet'],['Power Backup','bolt'],['Study Room','book'],
+  ['Attached Bathroom','bath'],['Common Bathroom','bath'],['Water Purifier','droplet'],
+  ['Geyser','fire-flame-simple'],['Housekeeping','broom'],['Cafeteria','mug-saucer'],
+  ['Library','book-open'],['TV','tv'],['Refrigerator','box'],
+
+  // ── NEW AMENITIES ──
+  ['Lift / Elevator','elevator'],
+  ['Night Guard','user-shield'],
+  ['Biometric Entry','fingerprint'],
+  ['Cooking Allowed','fire-burner'],
+  ['Bed with Mattress','bed'],
+  ['Common Room','couch'],
+  ['Bike Parking','bicycle'],
+  ['Bus Stop Nearby','bus'],
+  ['Iron / Ironing','shirt'],
+  ['Drinking Water 24hr','glass-water'],
+  ['Rooftop Access','building'],
+  ['Indoor Games','chess-board'],
+  ['ATM Nearby','money-bill'],
+  ['Grocery Nearby','basket-shopping'],
+  ['Fire Extinguisher','fire-extinguisher'],
+  ['Locker / Safe','lock']
+].forEach((a,i) => { %>
+          <div>
+            <input type="checkbox" id="am-<%= i %>" name="amenities[]"
+              value="<%= a[0] %>" class="amenity-cb"
+              <%= (listing.amenities || []).includes(a[0]) ? 'checked' : '' %>>
+            <label for="am-<%= i %>" class="amenity-lbl">
+              <i class="fa-solid fa-<%= a[1] %>"></i> <%= a[0] %>
+            </label>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+
+      <!-- Rules -->
+      <div class="form-group">
+        <label class="form-label" style="margin-bottom:9px">
+          <i class="fa-solid fa-circle-info" style="color:var(--green)"></i>
+          House Rules & Policies
+          <span class="label-hint">Edit or add rules</span>
+        </label>
+        <div class="rules-list" id="rulesList">
+          <% const existingRules = (listing.rules || []).filter(r => r && r.trim()); %>
+          <% if (existingRules.length === 0) { %>
+            <div class="rule-entry" id="rule-0">
+              <input type="text" name="rules[]" class="form-input"
+                placeholder="e.g. No smoking on premises" oninput="markChanged(this)">
+              <button type="button" class="btn-del-rule" onclick="removeRule('rule-0')">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          <% } else { %>
+            <% existingRules.forEach((rule, i) => { %>
+            <div class="rule-entry" id="rule-<%= i %>">
+              <input type="text" name="rules[]" class="form-input"
+                value="<%= rule %>" placeholder="House rule..."
+                oninput="markChanged(this)">
+              <button type="button" class="btn-del-rule" onclick="removeRule('rule-<%= i %>')">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <% }) %>
+          <% } %>
+        </div>
+        <button type="button" class="btn-add-rule" onclick="addRule()">
+          <i class="fa-solid fa-plus"></i> Add rule
+        </button>
+      </div>
+    </div><!-- /sec-amenities -->
+
+    <!-- ── SECTION 5: PHOTOS ── -->
+    <div class="form-section" id="sec-media">
+      <div class="section-header">
+        <div class="section-icon"><i class="fa-solid fa-images"></i></div>
+        <div class="section-title-text">
+          <h3>Photos & Media</h3>
+          <p>Manage existing photos or add new ones</p>
+        </div>
+        <span class="section-num">05 / 06</span>
+      </div>
+
+      <!-- ── Compression info banner (same as listProperty) ── -->
+      <div style="
+        margin-bottom:12px;padding:10px 13px;
+        background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;
+        display:flex;gap:8px;align-items:flex-start;font-size:0.78rem;color:#14532d;line-height:1.5">
+        <i class="fa-solid fa-wand-magic-sparkles" style="color:#16a34a;margin-top:2px;flex-shrink:0"></i>
+        <span><strong>Auto-optimised for SEO:</strong> New photos are instantly compressed to ≤1280px &amp; WebP format before upload — keeping quality high but file size under 200 KB for fast page loads.</span>
+      </div>
+
+      <!-- Upload status badge (shown after new photos are added) -->
+      <div id="uploadStatus" style="
+        display:none;margin-bottom:10px;padding:8px 13px;
+        border-radius:8px;font-size:0.8rem;font-weight:600;
+        background:var(--green-light);color:#1e5c30;border:1.5px solid var(--green-border)">
+        <i class="fa-solid fa-images"></i> <span id="uploadStatusText"></span>
+      </div>
+
+      <!-- Compression progress bar (shown while compressing) -->
+      <div id="compressProgress" style="display:none;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:#1e5c30;font-weight:600;margin-bottom:5px;">
+          <i class="fa-solid fa-spinner fa-spin" style="color:var(--green)"></i>
+          <span id="compressText">Compressing photos…</span>
+        </div>
+        <div style="height:6px;background:#e2f5ea;border-radius:3px;overflow:hidden">
+          <div id="compressBar" style="height:100%;width:0%;background:var(--green);border-radius:3px;transition:width 0.3s ease"></div>
+        </div>
+      </div>
+
+      <!-- Existing images -->
+      <% if (listing.images && listing.images.length > 0) { %>
+      <div class="img-section-label">
+        Current photos <span><%= listing.images.length %> uploaded</span>
+      </div>
+      <div class="existing-images-grid" id="existingGrid">
+        <% listing.images.forEach((img, i) => { %>
+        <div class="existing-img-wrap" id="existImg-<%= i %>" data-filename="<%= img %>">
+          <img src="/listing-images/<%= img %>"
+               alt="Photo <%= i+1 %>"
+               onerror="this.src='/images/hostelnode-logo-cutout.png'">
+          <% if (i === 0) { %>
+            <div class="img-cover-tag">Cover</div>
+          <% } else { %>
+            <button type="button" class="img-set-cover" onclick="setCoverImage(<%= i %>)">
+              Set cover
+            </button>
+          <% } %>
+          <button type="button" class="img-delete-btn"
+                  onclick="markImageDelete(<%= i %>, '<%= img %>')"
+                  title="Remove this photo">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <% }) %>
+      </div>
+
+      <!-- Hidden inputs to track which images to delete -->
+      <div id="deleteImagesInputs"></div>
+      <!-- Hidden input for cover image -->
+      <input type="hidden" name="coverImage" id="coverImageInput" value="<%= listing.images[0] %>">
+
+      <div class="img-divider"></div>
+      <% } %>
+
+      <!-- New image upload zone -->
+      <div class="upload-zone" id="uploadZone"
+           ondrop="handleDrop(event)"
+           ondragover="handleDragOver(event)"
+           ondragleave="handleDragLeave(event)"
+           onclick="document.getElementById('imagesInput').click()">
+       <input type="file" id="imagesInput" name="images" multiple
+       accept="image/jpeg,image/png,image/webp"
+               onchange="handleFileSelect(event)" style="display:none">
+        <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+        <div class="upload-title">Add more photos</div>
+        <div class="upload-sub">Drag & drop or click to browse</div>
+        <div class="upload-hint">JPEG, PNG, WebP · Auto-compressed to WebP · Up to 15 total</div>
+      </div>
+
+      <div class="field-err" id="err-images" style="margin-top:6px"></div>
+      <div class="upload-preview" id="uploadPreview"></div>
+
+      <div style="margin-top:12px;padding:10px 13px;background:var(--green-light);border:1.5px solid var(--green-border);border-radius:var(--radius-sm);display:flex;gap:7px;align-items:flex-start;font-size:0.75rem;color:#1e5c30;line-height:1.6">
+        <i class="fa-solid fa-lightbulb" style="color:var(--green);margin-top:2px;flex-shrink:0"></i>
+        <span><strong>Tip:</strong> Click × to remove existing photos. Click "Set cover" to change the cover image. New photos are auto-compressed &amp; added on top of existing ones.</span>
+      </div>
+    </div><!-- /sec-media -->
+
+    <!-- ── SECTION 6: CONTACT ── -->
+    <div class="form-section" id="sec-contact">
+      <div class="section-header">
+        <div class="section-icon"><i class="fa-solid fa-phone"></i></div>
+        <div class="section-title-text"><h3>Contact Details</h3><p>Update owner contact numbers</p></div>
+        <span class="section-num">06 / 06</span>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="phone">Phone Number <span class="label-required">*</span></label>
+          <div class="input-icon-wrap has-prefix">
+            <span class="input-prefix">+91</span>
+            <input type="tel" id="phone" name="contact[phone]" class="form-input"
+              value="<%= listing.contact?.phone || '' %>"
+              maxlength="10" pattern="[0-9]{10}" required
+              oninput="markChanged(this)">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="whatsapp">WhatsApp Number<span class="label-hint">Leave blank if same</span></label>
+          <div class="input-icon-wrap has-prefix">
+            <span class="input-prefix">+91</span>
+            <input type="tel" id="whatsapp" name="contact[whatsapp]" class="form-input"
+              value="<%= listing.contact?.whatsapp || '' %>"
+              maxlength="10" oninput="markChanged(this)">
+          </div>
+        </div>
+        <div class="form-group full">
+          <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:11px 13px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:var(--bg);transition:all 0.18s">
+            <input type="checkbox" id="sameNumber" onchange="toggleSameNum()"
+              style="accent-color:var(--green);width:15px;height:15px"
+              <%= listing.contact?.phone === listing.contact?.whatsapp && listing.contact?.phone ? 'checked' : '' %>>
+            <span style="font-size:0.82rem;font-weight:500;color:var(--muted)">WhatsApp same as phone number</span>
+          </label>
+        </div>
+      </div>
+    </div><!-- /sec-contact -->
+
+    <!-- TRUST STRIP -->
+    <div class="trust-strip">
+      <div class="trust-item"><i class="fa-solid fa-shield-halved"></i> Changes reviewed before going live</div>
+      <div class="trust-item"><i class="fa-solid fa-ban"></i> Zero broker fee</div>
+      <div class="trust-item"><i class="fa-solid fa-users"></i> 5,000+ students/month</div>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="submit-section">
+      <div class="submit-inner">
+        <div>
+          <div class="submit-note-title">Save your changes</div>
+          <div class="submit-note-sub">Updated listing will be re-reviewed by our team within 24 hours.</div>
+        </div>
+        <div class="submit-actions">
+          <a href="/user/my-listings" class="btn-draft" style="text-decoration:none">
+            <i class="fa-solid fa-arrow-left"></i> Back to listings
+          </a>
+          <button type="submit" id="submitBtn" class="btn-submit-main"
+                  style="background:linear-gradient(135deg,#f59e0b,#fbbf24);box-shadow:0 4px 14px rgba(245,158,11,0.35)"
+                  onclick="handleEditSubmit(event)">
+            <i class="fa-solid fa-floppy-disk"></i> Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </form>
+  </div><!-- /lp-form-col -->
+
+  <!-- SIDEBAR -->
+  <div class="lp-sidebar">
+    <div class="progress-card">
+      <div class="progress-title">
+        Completion
+        <span class="progress-pct" id="pctText">—</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressFill" style="background:linear-gradient(90deg,#f59e0b,#fbbf24)"></div>
+      </div>
+      <div class="progress-steps">
+        <div class="ps-item" onclick="jumpTo('sec-basic')"><div class="ps-check"><i class="fa-solid fa-check"></i></div><span class="ps-name">Basic Info</span></div>
+        <div class="ps-item" onclick="jumpTo('sec-location')"><div class="ps-check"><i class="fa-solid fa-check"></i></div><span class="ps-name">Location & Map</span></div>
+        <div class="ps-item" onclick="jumpTo('sec-rooms')"><div class="ps-check"><i class="fa-solid fa-check"></i></div><span class="ps-name">Rooms & Pricing</span></div>
+        <div class="ps-item" onclick="jumpTo('sec-amenities')"><div class="ps-check"><i class="fa-solid fa-check"></i></div><span class="ps-name">Amenities & Rules</span></div>
+        <div class="ps-item" onclick="jumpTo('sec-media')"><div class="ps-check"><i class="fa-solid fa-check"></i></div><span class="ps-name">Photos</span></div>
+        <div class="ps-item" onclick="jumpTo('sec-contact')"><div class="ps-check"><i class="fa-solid fa-check"></i></div><span class="ps-name">Contact</span></div>
+      </div>
+    </div>
+
+    <!-- Mini preview -->
+    <div class="preview-card">
+      <div class="preview-card-title">Live preview</div>
+      <div class="mini-card">
+        <div class="mini-card-img" id="previewImgWrap">
+          <% if (listing.images && listing.images.length > 0) { %>
+            <img id="previewImg" src="/listing-images/<%= listing.images[0] %>" alt="" style="display:block">
+          <% } else { %>
+            <i class="fa-solid fa-image"></i>
+            <img id="previewImg" src="" alt="" style="display:none">
+          <% } %>
+        </div>
+        <div class="mini-card-body">
+          <div class="mini-card-name" id="previewName"><%= listing.title %></div>
+          <div class="mini-card-loc" id="previewLoc">
+            <i class="fa-solid fa-location-dot"></i>
+            <%= listing.location?.address || 'Location' %> · Near <%= listing.location?.nearCollege || 'College' %>
+          </div>
+          <div class="mini-card-price" id="previewPrice">₹<%= listing.startingPrice?.toLocaleString('en-IN') %>/mo</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="tips-card">
+      <div class="tips-header"><i class="fa-solid fa-lightbulb"></i> Edit Tips</div>
+      <div class="tip-item"><i class="fa-solid fa-check"></i> Yellow fields = unsaved changes</div>
+      <div class="tip-item"><i class="fa-solid fa-check"></i> Update pin if you moved the hostel</div>
+      <div class="tip-item"><i class="fa-solid fa-check"></i> New photos auto-compress to WebP</div>
+      <div class="tip-item"><i class="fa-solid fa-check"></i> Keep pricing up to date</div>
+      <div class="tip-item"><i class="fa-solid fa-check"></i> Re-approval takes ~24 hours</div>
+    </div>
+  </div>
+</div><!-- /lp-body -->
+
+<!-- UNSAVED CHANGES BAR -->
+<div class="unsaved-bar" id="unsavedBar">
+  <div class="unsaved-bar-text">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    You have unsaved changes
+  </div>
+  <button type="button" class="unsaved-discard" onclick="discardChanges()">Discard</button>
+  <button type="button" class="unsaved-save" onclick="document.getElementById('editForm').requestSubmit()">
+    <i class="fa-solid fa-floppy-disk"></i> Save now
+  </button>
+</div>
+
+<!-- TOAST -->
+<div class="toast-msg" id="toastMsg"><i id="toastIcon" class="fa-solid fa-circle-check"></i><span id="toastText">Done!</span></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script>
+/* ============================================================
+   CONSTANTS  (identical to listProperty)
+============================================================ */
+const MAX_IMAGES      = 15;
+const MAX_IMG_MB      = 5;
+const COMPRESS_MAX_W  = 1280;
+const COMPRESS_MAX_H  = 1280;
+const COMPRESS_QUALITY = 0.82;
+const COMPRESS_FORMAT  = 'image/webp';
+const ALLOWED_TYPES    = ['image/jpeg', 'image/png', 'image/webp'];
+
+/* ============================================================
+   EDIT PAGE STATE
+============================================================ */
+let mpLat        = <%= listing.location?.coordinates?.lat || 'null' %>;
+let mpLng        = <%= listing.location?.coordinates?.lng || 'null' %>;
+let mpConfirmed  = <%= listing.location?.coordinates?.lat ? 'true' : 'false' %>;
+let currentMode       = 'click';
+let mpSearchTimeout   = null;
+let hasUnsavedChanges = false;
+let roomCount  = <%= (listing.rooms || []).length %>;
+let ruleCount  = <%= Math.max((listing.rules || []).filter(r => r && r.trim()).length, 1) %>;
+let uploadedFiles  = [];   // stores compressed File objects for new uploads
+let deletedImages  = [];
+let toastTimer     = null;
+
+/* ── Shared room-type options HTML ── */
+const ROOM_TYPE_OPTIONS = `
+  <option value="">— Select room type —</option>
+  <optgroup label="🛏️ Sharing Rooms">
+    <option>Single Occupancy</option>
+    <option>Double Sharing</option>
+    <option>Triple Sharing</option>
+    <option>4-Bed Sharing</option>
+    <option>5-Bed Sharing</option>
+    <option>6-Bed Sharing</option>
+    <option>Dormitory (7+ Beds)</option>
+  </optgroup>
+  <optgroup label="❄️ AC Variants">
+    <option>AC Single</option>
+    <option>AC Double Sharing</option>
+    <option>AC Triple Sharing</option>
+    <option>AC 4-Bed Sharing</option>
+    <option>AC 5-Bed Sharing</option>
+    <option>AC Dormitory</option>
+  </optgroup>
+  <optgroup label="🏠 Flat / Apartment">
+    <option>1 RK</option>
+    <option>1 BHK</option>
+    <option>2 BHK</option>
+    <option>3 BHK</option>
+    <option>4 BHK</option>
+    <option>Studio Apartment</option>
+  </optgroup>
+  <optgroup label="🚪 Room in Shared Flat">
+    <option>Private Room in 2 BHK</option>
+    <option>Private Room in 3 BHK</option>
+    <option>Private Room in 4 BHK</option>
+    <option>Shared Room in Flat (2 Sharing)</option>
+    <option>Shared Room in Flat (3 Sharing)</option>
+  </optgroup>
+  <optgroup label="⭐ Premium / Special">
+    <option>Deluxe Single (Attached Bath)</option>
+    <option>Deluxe Double (Attached Bath)</option>
+    <option>Master Bedroom</option>
+    <option>Bunk Bed Room</option>
+    <option>Semi-Private Room</option>
+    <option>Terrace Room</option>
+  </optgroup>
+`;
+
+/* ============================================================
+   ★ IMAGE COMPRESSION UTILITY  (ported 1:1 from listProperty)
+   Canvas-based, runs instantly in browser before upload.
+   Input : raw File (JPEG / PNG / WebP)
+   Output: compressed File (WebP ≤1280px, quality 0.82)
+============================================================ */
+function compressImage(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file); // fallback: upload original if compression fails
+    };
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+
+      let { width, height } = img;
+
+      // Scale down proportionally if larger than max dimensions
+      if (width > COMPRESS_MAX_W || height > COMPRESS_MAX_H) {
+        const ratio = Math.min(COMPRESS_MAX_W / width, COMPRESS_MAX_H / height);
+        width  = Math.round(width  * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(file); return; }
+          const newName = file.name.replace(/\.[^.]+$/, '') + '.webp';
+          const compressed = new File([blob], newName, {
+            type: COMPRESS_FORMAT,
+            lastModified: Date.now(),
+          });
+          resolve(compressed);
+        },
+        COMPRESS_FORMAT,
+        COMPRESS_QUALITY
+      );
+    };
+
+    img.src = objectUrl;
+  });
+}
+
+/* ============================================================
+   UNSAVED CHANGES TRACKING
+============================================================ */
+function markChanged(el) {
+  el.classList.add('changed');
+  showUnsavedBar();
+}
+function showUnsavedBar() {
+  if (!hasUnsavedChanges) {
+    hasUnsavedChanges = true;
+    document.getElementById('unsavedBar').classList.add('show');
+  }
+}
+function hideUnsavedBar() {
+  hasUnsavedChanges = false;
+  document.getElementById('unsavedBar').classList.remove('show');
+  document.querySelectorAll('.changed').forEach(el => el.classList.remove('changed'));
+}
+function discardChanges() {
+  if (confirm('Discard all unsaved changes and reload?')) window.location.reload();
+}
+
+/* ============================================================
+   TOAST
+============================================================ */
+function showToast(msg, isError = false) {
+  try {
+    const t    = document.getElementById('toastMsg');
+    const icon = document.getElementById('toastIcon');
+    document.getElementById('toastText').textContent = msg;
+    icon.className = isError ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
+    icon.style.color = isError ? '#ef4444' : 'var(--green)';
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+  } catch(e) {}
+}
+
+/* ============================================================
+   EXISTING IMAGE MANAGEMENT
+============================================================ */
+function markImageDelete(idx, filename) {
+  const wrap = document.getElementById(`existImg-${idx}`);
+  if (!wrap) return;
+  if (wrap.classList.contains('marked-delete')) {
+    wrap.classList.remove('marked-delete');
+    deletedImages = deletedImages.filter(f => f !== filename);
+    document.getElementById(`del-input-${idx}`)?.remove();
+    wrap.querySelector('.img-delete-btn').innerHTML = '<i class="fa-solid fa-xmark"></i>';
+    wrap.querySelector('.img-delete-btn').title = 'Remove this photo';
+  } else {
+    wrap.classList.add('marked-delete');
+    deletedImages.push(filename);
+    wrap.querySelector('.img-delete-btn').innerHTML = '<i class="fa-solid fa-rotate-left"></i>';
+    wrap.querySelector('.img-delete-btn').title = 'Undo remove';
+    const input = document.createElement('input');
+    input.type = 'hidden'; input.name = 'deleteImages[]';
+    input.value = filename; input.id = `del-input-${idx}`;
+    document.getElementById('deleteImagesInputs').appendChild(input);
+  }
+  showUnsavedBar();
+}
+
+let currentCoverIdx = 0;
+function setCoverImage(idx) {
+  const oldCover = document.querySelector('.img-cover-tag');
+  if (oldCover) {
+    const oldWrap = oldCover.closest('.existing-img-wrap');
+    oldCover.remove();
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'img-set-cover';
+    btn.onclick = () => setCoverImage(currentCoverIdx);
+    btn.textContent = 'Set cover';
+    oldWrap.appendChild(btn);
+  }
+  const newWrap = document.getElementById(`existImg-${idx}`);
+  newWrap.querySelector('.img-set-cover')?.remove();
+  const tag = document.createElement('div');
+  tag.className = 'img-cover-tag'; tag.textContent = 'Cover';
+  newWrap.appendChild(tag);
+  const filename = newWrap.dataset.filename;
+  document.getElementById('coverImageInput').value = filename;
+  currentCoverIdx = idx;
+  document.getElementById('previewImg').src = `/listing-images/${filename}`;
+  document.getElementById('previewImg').style.display = 'block';
+  const icon = document.querySelector('#previewImgWrap i');
+  if (icon) icon.style.display = 'none';
+  showUnsavedBar();
+}
+
+/* ============================================================
+   MAP PICKER
+============================================================ */
+const POPULAR_PLACES = [
+  { name:'IIT Bombay', detail:'Powai, Mumbai, Maharashtra', lat:19.1334, lng:72.9133 },
+  { name:'Delhi University North Campus', detail:'Maurice Nagar, Delhi', lat:28.6862, lng:77.2126 },
+  { name:'Christ University Bangalore', detail:'Hosur Road, Bangalore, Karnataka', lat:12.9261, lng:77.6011 },
+  { name:'Pune University', detail:'Ganeshkhind, Pune, Maharashtra', lat:18.5586, lng:73.8075 },
+  { name:'VIT Vellore', detail:'Vellore, Tamil Nadu', lat:12.9692, lng:79.1559 },
+  { name:'BITS Pilani', detail:'Vidya Vihar, Pilani, Rajasthan', lat:28.3623, lng:75.5897 },
+  { name:'NIT Trichy', detail:'Tiruchirappalli, Tamil Nadu', lat:10.7603, lng:78.8125 },
+  { name:'Manipal University', detail:'Manipal, Udupi, Karnataka', lat:13.3494, lng:74.7896 },
+  { name:'SRM University Chennai', detail:'Kattankulathur, Chennai, Tamil Nadu', lat:12.7395, lng:80.0275 },
+  { name:'JNTU Hyderabad', detail:'Kukatpally, Hyderabad, Telangana', lat:17.4933, lng:78.3782 },
+  { name:'Mumbai University', detail:'Fort, Mumbai, Maharashtra', lat:18.9322, lng:72.8353 },
+  { name:'Anna University Chennai', detail:'Guindy, Chennai, Tamil Nadu', lat:13.0101, lng:80.2337 },
+  { name:'Amity University Noida', detail:'Sector 125, Noida, UP', lat:28.5445, lng:77.3325 },
+];
+
+function onMpInput() {
+  clearTimeout(mpSearchTimeout);
+  const q = (document.getElementById('mpSearchInput').value || '').trim();
+  if (q.length < 2) { closeSugg(); return; }
+  mpSearchTimeout = setTimeout(() => renderSugg(q), 180);
+}
+function renderSugg(q) {
+  try {
+    const ql = q.toLowerCase();
+    const matches = POPULAR_PLACES.filter(p =>
+      p.name.toLowerCase().includes(ql) || p.detail.toLowerCase().includes(ql)
+    ).slice(0, 6);
+    const drop = document.getElementById('mpSuggDrop');
+    if (!matches.length) { closeSugg(); return; }
+    drop.innerHTML = matches.map(m =>
+      `<div class="mp-sugg-item" onclick="pickSugg(${m.lat},${m.lng},'${escJs(m.name)}','${escJs(m.detail)}')">
+        <i class="fa-solid fa-location-dot mp-sugg-icon"></i>
+        <div><div class="mp-sugg-name">${escHtml(m.name)}</div><div class="mp-sugg-detail">${escHtml(m.detail)}</div></div>
+      </div>`
+    ).join('');
+    drop.classList.add('open');
+  } catch(e) {}
+}
+function escJs(s)   { return String(s).replace(/\\/g,'\\\\').replace(/'/g, "\\'"); }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function closeSugg() {
+  try { document.getElementById('mpSuggDrop').classList.remove('open'); } catch(e) {}
+}
+function pickSugg(lat, lng, name) {
+  document.getElementById('mpSearchInput').value = name;
+  closeSugg();
+  loadMapAt(lat, lng, name);
+}
+
+function doMpSearch() {
+  closeSugg();
+  const q = (document.getElementById('mpSearchInput').value || '').trim();
+  if (!q) { showToast('Please type a college or area name first.', true); return; }
+  const match = POPULAR_PLACES.find(p =>
+    p.name.toLowerCase().includes(q.toLowerCase()) || p.detail.toLowerCase().includes(q.toLowerCase())
+  );
+  if (match) { loadMapAt(match.lat, match.lng, match.name); return; }
+  setMpStatus('Searching…', 'loading');
+  setTimeout(() => {
+    try {
+      document.getElementById('mpIframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(q + ' India')}&z=16&output=embed`;
+      setMpStatus('Map updated — click to drop pin', '');
+    } catch(e) { setMpStatus('Search failed. Try again.', ''); }
+  }, 700);
+}
+
+function loadMapAt(lat, lng, label) {
+  try {
+    setMpStatus('Loading…', 'loading');
+    document.getElementById('mpLoader').classList.remove('hidden');
+    document.getElementById('mpIframe').src = `https://maps.google.com/maps?q=${lat},${lng}&z=17&output=embed`;
+    mpLat = parseFloat(parseFloat(lat).toFixed(6));
+    mpLng = parseFloat(parseFloat(lng).toFixed(6));
+    showPinAt(50, 50);
+    updateCoordsBar(lat, lng, label || '');
+  } catch(e) {}
+}
+
+function onIframeLoad() {
+  try {
+    document.getElementById('mpLoader').classList.add('hidden');
+    setMpStatus(
+      mpLat !== null ? 'Click exact hostel location to update pin' : 'Click on map to drop pin',
+      mpLat !== null ? 'green' : ''
+    );
+  } catch(e) {}
+}
+
+function setMode(mode) {
+  try {
+    currentMode = mode;
+    document.getElementById('modeClick').classList.toggle('active', mode === 'click');
+    document.getElementById('modeDrag').classList.toggle('active', mode === 'drag');
+    document.getElementById('mpOverlay').classList.toggle('disabled', mode === 'drag');
+    document.getElementById('mpIframe').style.pointerEvents = mode === 'drag' ? 'auto' : 'none';
+    setMpStatus(mode === 'drag' ? 'Pan mode — switch back to click to pin' : 'Click on the map to drop pin', '');
+  } catch(e) {}
+}
+
+function handleMapClick(e) {
+  if (currentMode !== 'click') return;
+  try {
+    const container = document.getElementById('mpMapContainer');
+    const rect = container.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    const pctX = x / rect.width, pctY = y / rect.height;
+    showRipple(x, y);
+    showPinAt(pctX * 100, pctY * 100);
+    const iframe = document.getElementById('mpIframe');
+    const srcMatch = iframe.src.match(/q=([\-\d.]+),([\-\d.]+)/);
+    let centerLat = 20.5937, centerLng = 78.9629;
+    if (srcMatch) { centerLat = parseFloat(srcMatch[1]); centerLng = parseFloat(srcMatch[2]); }
+    const zoomMatch = iframe.src.match(/z=(\d+)/);
+    const zoom = zoomMatch ? parseInt(zoomMatch[1]) : 16;
+    const degPerPixel = 360 / (256 * Math.pow(2, zoom));
+    mpLat = parseFloat((centerLat - (pctY - 0.5) * rect.height * degPerPixel).toFixed(6));
+    mpLng = parseFloat((centerLng + (pctX - 0.5) * rect.width  * degPerPixel).toFixed(6));
+    updateCoordsBar(mpLat, mpLng, '');
+    setMpStatus(`Pin dropped at ${mpLat.toFixed(4)}, ${mpLng.toFixed(4)} — confirm below ↓`, 'green');
+    document.getElementById('mpConfirmBtn').disabled = false;
+    mpConfirmed = false;
+    document.getElementById('confirmedBadge').classList.remove('show');
+    document.getElementById('mapPickerWrap').classList.remove('pinned');
+  } catch(e) { showToast('Could not set pin. Please try again.', true); }
+}
+
+function showPinAt(pctX, pctY) {
+  try {
+    const pin = document.getElementById('mpPin');
+    pin.style.left = pctX + '%'; pin.style.top = pctY + '%'; pin.style.display = 'block';
+    pin.style.animation = 'none'; pin.offsetHeight; pin.style.animation = '';
+  } catch(e) {}
+}
+function showRipple(x, y) {
+  try {
+    const r = document.getElementById('mpRipple');
+    r.style.left = x + 'px'; r.style.top = y + 'px'; r.style.display = 'block';
+    r.style.animation = 'none'; r.offsetHeight;
+    r.style.animation = 'rippleOut 0.5s ease forwards';
+    setTimeout(() => { try { r.style.display = 'none'; } catch(e){} }, 500);
+  } catch(e) {}
+}
+function updateCoordsBar(lat, lng, addr) {
+  try {
+    const lE = document.getElementById('dispLat'), lnE = document.getElementById('dispLng'), aE = document.getElementById('dispAddr');
+    lE.textContent = parseFloat(lat).toFixed(6); lE.className = 'mp-coord-value filled';
+    lnE.textContent = parseFloat(lng).toFixed(6); lnE.className = 'mp-coord-value filled';
+    if (addr) { aE.textContent = addr; aE.className = 'mp-coord-value filled'; }
+    else       { aE.textContent = 'Click to detect'; aE.className = 'mp-coord-value empty'; }
+  } catch(e) {}
+}
+function setMpStatus(text, state) {
+  try {
+    document.getElementById('mpStatusText').textContent = text;
+    const dot = document.getElementById('mpDot');
+    dot.className = 'mp-status-dot' + (state === 'green' ? ' green' : state === 'loading' ? ' loading' : '');
+  } catch(e) {}
+}
+
+function confirmPin() {
+  if (mpLat === null) { showToast('Please click on the map first to drop a pin.', true); return; }
+  try {
+    document.getElementById('coordLat').value = mpLat;
+    document.getElementById('coordLng').value = mpLng;
+    mpConfirmed = true;
+    document.getElementById('mapPickerWrap').classList.add('pinned');
+    document.getElementById('confirmedBadge').classList.add('show');
+    document.getElementById('confirmedBadge').innerHTML = '<i class="fa-solid fa-circle-check" style="font-size:0.8rem"></i> Location pinned';
+    document.getElementById('mpConfirmBtn').innerHTML = '<i class="fa-solid fa-circle-check"></i> Pinned ✓';
+    document.getElementById('mpConfirmBtn').style.background = 'var(--green-dark)';
+    setMpStatus('Location confirmed and saved!', 'green');
+    showToast('📍 Location pinned successfully!');
+    showUnsavedBar();
+  } catch(e) { showToast('Could not confirm pin. Please try again.', true); }
+}
+
+function useGps() {
+  if (!navigator.geolocation) { showToast('GPS not supported in this browser.', true); return; }
+  setMpStatus('Getting GPS location…', 'loading');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      try {
+        loadMapAt(pos.coords.latitude, pos.coords.longitude, 'Your GPS location');
+        showToast('GPS location detected!');
+      } catch(e) { showToast('GPS error. Please try manually.', true); }
+    },
+    err => {
+      const msgs = { 1:'Location permission denied.', 2:'Location unavailable.', 3:'GPS timed out.' };
+      const msg = msgs[err.code] || 'GPS error. Please search manually.';
+      setMpStatus(msg, ''); showToast(msg, true);
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+function resetMap() {
+  try {
+    mpLat = null; mpLng = null; mpConfirmed = false;
+    document.getElementById('mpIframe').src = 'https://maps.google.com/maps?q=India&z=5&output=embed';
+    document.getElementById('mpPin').style.display = 'none';
+    document.getElementById('coordLat').value = '';
+    document.getElementById('coordLng').value = '';
+    ['dispLat','dispLng'].forEach(id => {
+      document.getElementById(id).textContent = 'Not set yet';
+      document.getElementById(id).className = 'mp-coord-value empty';
+    });
+    document.getElementById('dispAddr').textContent = 'Drop pin to detect';
+    document.getElementById('dispAddr').className = 'mp-coord-value empty';
+    const btn = document.getElementById('mpConfirmBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Confirm Pin';
+    btn.style.background = '';
+    document.getElementById('confirmedBadge').classList.remove('show');
+    document.getElementById('mapPickerWrap').classList.remove('pinned');
+    document.getElementById('mpSearchInput').value = '';
+    setMpStatus('Click on map to drop pin', '');
+  } catch(e) {}
+}
+
+document.addEventListener('click', e => {
+  try {
+    if (!document.getElementById('mpSearchInput').contains(e.target) &&
+        !document.getElementById('mpSuggDrop').contains(e.target)) closeSugg();
+  } catch(e) {}
+});
+
+/* ============================================================
+   ROOMS
+============================================================ */
+function addRoom() {
+  try {
+    if (roomCount >= 20) { showToast('You can add up to 20 room types.', true); return; }
+    const i = roomCount;
+    const html = `<div class="room-entry" id="room-${i}">
+      <div class="room-entry-header">
+        <div class="room-entry-title"><span class="room-num">${i+1}</span> Room Type ${i+1}</div>
+        <button type="button" class="btn-remove-room" onclick="removeRoom('room-${i}')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="room-grid">
+        <div class="form-group">
+          <label class="form-label">Room Type <span class="label-required">*</span></label>
+          <select name="rooms[${i}][type]" class="form-select" required onchange="markChanged(this);showUnsavedBar()">
+            ${ROOM_TYPE_OPTIONS}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Price / month <span class="label-required">*</span></label>
+          <div class="input-icon-wrap has-prefix">
+            <span class="input-prefix">₹</span>
+            <input type="number" name="rooms[${i}][price]" class="form-input" placeholder="5500" min="0" required oninput="markChanged(this)">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deposit</label>
+          <div class="input-icon-wrap has-prefix">
+            <span class="input-prefix">₹</span>
+            <input type="number" name="rooms[${i}][deposit]" class="form-input" placeholder="10000" min="0" oninput="markChanged(this)">
+          </div>
+        </div>
+      </div>
+      <div class="room-features-row">
+        <div class="room-features-label">Room features</div>
+        <div class="room-features-wrap">
+          <input type="checkbox" id="rf${i}-ac" name="rooms[${i}][features][]" value="AC" class="rf-cb"><label for="rf${i}-ac" class="rf-lbl">AC</label>
+          <input type="checkbox" id="rf${i}-ab" name="rooms[${i}][features][]" value="Attached Bathroom" class="rf-cb"><label for="rf${i}-ab" class="rf-lbl">Attached Bath</label>
+          <input type="checkbox" id="rf${i}-tv" name="rooms[${i}][features][]" value="TV" class="rf-cb"><label for="rf${i}-tv" class="rf-lbl">TV</label>
+          <input type="checkbox" id="rf${i}-balcony" name="rooms[${i}][features][]" value="Balcony" class="rf-cb"><label for="rf${i}-balcony" class="rf-lbl">Balcony</label>
+          <input type="checkbox" id="rf${i}-wardrobe" name="rooms[${i}][features][]" value="Wardrobe" class="rf-cb"><label for="rf${i}-wardrobe" class="rf-lbl">Wardrobe</label>
+          <input type="checkbox" id="rf${i}-desk" name="rooms[${i}][features][]" value="Study Desk" class="rf-cb"><label for="rf${i}-desk" class="rf-lbl">Study Desk</label>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:0.76rem;font-weight:600;color:var(--muted)">Availability:</span>
+        <input type="checkbox" id="avail-${i}" name="rooms[${i}][available]" value="true" class="avail-cb" checked>
+        <label for="avail-${i}" class="avail-lbl">Available now</label>
+      </div>
+    </div>`;
+    document.getElementById('roomsList').insertAdjacentHTML('beforeend', html);
+    roomCount++;
+    showUnsavedBar();
+  } catch(e) { showToast('Could not add room. Please try again.', true); }
+}
+
+function removeRoom(id) {
+  try {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (document.querySelectorAll('.room-entry').length <= 1) {
+      showToast('You need at least one room type.', true); return;
+    }
+    el.style.transition = 'all 0.22s'; el.style.opacity = '0'; el.style.transform = 'translateY(-6px)';
+    setTimeout(() => { try { el.remove(); } catch(e){} }, 230);
+    showUnsavedBar();
+  } catch(e) {}
+}
+
+/* ============================================================
+   RULES
+============================================================ */
+function addRule() {
+  try {
+    if (ruleCount >= 30) { showToast('You can add up to 30 house rules.', true); return; }
+    const id = `rule-${ruleCount}`;
+    document.getElementById('rulesList').insertAdjacentHTML('beforeend',
+      `<div class="rule-entry" id="${id}">
+        <input type="text" name="rules[]" class="form-input" placeholder="Add a house rule…" oninput="markChanged(this)">
+        <button type="button" class="btn-del-rule" onclick="removeRule('${id}')"><i class="fa-solid fa-xmark"></i></button>
+      </div>`);
+    ruleCount++;
+  } catch(e) { showToast('Could not add rule. Please try again.', true); }
+}
+function removeRule(id) {
+  try {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.transition = 'all 0.2s'; el.style.opacity = '0';
+    setTimeout(() => { try { el.remove(); } catch(e){} }, 210);
+    showUnsavedBar();
+  } catch(e) {}
+}
+
+/* ============================================================
+   ★ NEW IMAGE UPLOAD WITH INSTANT COMPRESSION
+   Same flow as listProperty:
+   pick files → type/size guard → compressImage() →
+   store compressed File in uploadedFiles[] → render preview
+============================================================ */
+function handleFileSelect(e) {
+  try { addFiles(Array.from(e.target.files)); } catch(err) { showToast('Could not read selected files.', true); }
+}
+function handleDrop(e) {
+  e.preventDefault();
+  try {
+    document.getElementById('uploadZone').classList.remove('drag-over');
+    addFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')));
+  } catch(err) { showToast('Drop failed. Please use the browse button.', true); }
+}
+function handleDragOver(e) {
+  e.preventDefault();
+  try { document.getElementById('uploadZone').classList.add('drag-over'); } catch(e) {}
+}
+function handleDragLeave() {
+  try { document.getElementById('uploadZone').classList.remove('drag-over'); } catch(e) {}
+}
+
+async function addFiles(files) {
+  try {
+    // Count: existing (not marked for delete) + already added new ones
+    const existingKept = document.querySelectorAll('.existing-img-wrap:not(.marked-delete)').length;
+    const newAdded     = uploadedFiles.filter(Boolean).length;
+    const totalNow     = existingKept + newAdded;
+    const slots        = Math.max(0, MAX_IMAGES - totalNow);
+
+    if (slots === 0) {
+      showToast(`Maximum ${MAX_IMAGES} photos allowed. Remove some to add more.`, true);
+      return;
+    }
+
+    const skipped    = [];
+    const validFiles = [];
+
+    files.slice(0, slots).forEach(file => {
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        skipped.push(`"${file.name}" — use JPEG/PNG/WebP`);
+        return;
+      }
+      if (file.size > MAX_IMG_MB * 1024 * 1024) {
+        skipped.push(`"${file.name}" — exceeds ${MAX_IMG_MB} MB`);
+        return;
+      }
+      validFiles.push(file);
+    });
+
+    if (skipped.length) {
+      showToast(`${skipped.length} photo(s) skipped: ${skipped[0]}${skipped.length > 1 ? ` (+${skipped.length-1} more)` : ''}`, true);
+    }
+    if (files.length > slots) {
+      showToast(`Only ${slots} slot(s) remaining. ${files.length - slots} photo(s) not added.`, true);
+    }
+    if (!validFiles.length) return;
+
+    // ── Show compression progress bar ──
+    const progressWrap = document.getElementById('compressProgress');
+    const progressBar  = document.getElementById('compressBar');
+    const progressText = document.getElementById('compressText');
+    progressWrap.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressText.textContent = `Compressing ${validFiles.length} photo${validFiles.length > 1 ? 's' : ''}…`;
+
+    // ── Compress each file sequentially and update progress bar ──
+    const compressed = [];
+    for (let idx = 0; idx < validFiles.length; idx++) {
+      const result = await compressImage(validFiles[idx]);
+      compressed.push(result);
+      const pct = Math.round(((idx + 1) / validFiles.length) * 100);
+      progressBar.style.width = pct + '%';
+      progressText.textContent = `Compressing… ${idx + 1} / ${validFiles.length} done`;
+    }
+
+    // Hide progress bar after short delay
+    setTimeout(() => { progressWrap.style.display = 'none'; }, 600);
+
+    // ── Render previews for compressed files ──
+    compressed.forEach((file, relIdx) => {
+      const gi = uploadedFiles.length;
+      uploadedFiles.push(file);
+
+      // Dev log: shows compression result in browser console
+      const origKB = Math.round(validFiles[relIdx].size / 1024);
+      const compKB = Math.round(file.size / 1024);
+      console.log(`[HostelNode] ${file.name}: ${origKB} KB → ${compKB} KB (${Math.round((1 - compKB/origKB)*100)}% smaller)`);
+
+      const reader = new FileReader();
+      reader.onerror = () => {
+        showToast(`Could not read "${file.name}". File may be corrupt.`, true);
+        uploadedFiles[gi] = null;
+      };
+      reader.onload = ev => {
+        try {
+          const compKB    = Math.round(file.size / 1024);
+          const sizeLabel = compKB < 1024 ? `${compKB} KB` : `${(compKB / 1024).toFixed(1)} MB`;
+
+          const wrap = document.createElement('div');
+          wrap.className = 'preview-img-wrap';
+          wrap.id = `prev-${gi}`;
+          wrap.style.position = 'relative';
+          wrap.innerHTML = `
+            <img src="${ev.target.result}" alt="Preview ${gi + 1}">
+            <div style="
+              position:absolute;bottom:5px;left:5px;
+              background:rgba(0,0,0,0.58);color:#fff;
+              font-size:0.63rem;font-weight:700;letter-spacing:0.02em;
+              padding:2px 6px;border-radius:4px;pointer-events:none;
+              backdrop-filter:blur(2px)">
+              📦 ${sizeLabel}
+            </div>
+            <button type="button" class="preview-remove" onclick="removePreview(${gi})" title="Remove photo">
+              <i class="fa-solid fa-xmark"></i>
+            </button>`;
+          document.getElementById('uploadPreview').appendChild(wrap);
+
+          // Update sidebar preview with first newly added image if no existing images
+          const existingCount = document.querySelectorAll('.existing-img-wrap:not(.marked-delete)').length;
+          if (existingCount === 0 && gi === 0) {
+            document.getElementById('previewImg').src = ev.target.result;
+            document.getElementById('previewImg').style.display = 'block';
+            const icon = document.querySelector('#previewImgWrap i');
+            if (icon) icon.style.display = 'none';
+          }
+
+          updateUploadStatus();
+          updateProgress();
+        } catch(e) {}
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // ── Friendly success toast with savings info ──
+    const totalOrigKB = validFiles.reduce((s, f) => s + f.size, 0) / 1024;
+    const totalCompKB = compressed.reduce((s, f) => s + f.size, 0) / 1024;
+    const savingsPct  = Math.round((1 - totalCompKB / totalOrigKB) * 100);
+    showToast(`✅ ${compressed.length} photo${compressed.length > 1 ? 's' : ''} compressed & added — ${savingsPct}% smaller!`);
+
+    showUnsavedBar();
+    updateUploadStatus();
+  } catch(err) {
+    document.getElementById('compressProgress').style.display = 'none';
+    showToast('Photo upload error. Please try again.', true);
+  }
+}
+
+function removePreview(idx) {
+  try {
+    const el = document.getElementById(`prev-${idx}`);
+    if (el) {
+      el.style.transition = 'all 0.2s';
+      el.style.opacity = '0';
+      el.style.transform = 'scale(0.85)';
+      setTimeout(() => { try { el.remove(); } catch(e){} }, 210);
+    }
+    uploadedFiles[idx] = null;
+    updateUploadStatus();
+    updateProgress();
+  } catch(e) {}
+}
+
+/* ── Sync compressed files into <input> on submit via DataTransfer ── */
+function syncCompressedFilesToInput() {
+  try {
+    const dt = new DataTransfer();
+    uploadedFiles.filter(Boolean).forEach(f => dt.items.add(f));
+    document.getElementById('imagesInput').files = dt.files;
+  } catch(dtErr) { /* DataTransfer not supported in very old browsers — files fall back naturally */ }
+}
+
+function updateUploadStatus() {
+  try {
+    const count = uploadedFiles.filter(Boolean).length;
+    const el  = document.getElementById('uploadStatus');
+    const txt = document.getElementById('uploadStatusText');
+    if (count > 0) {
+      el.style.display = 'block';
+      txt.textContent = `${count} new photo${count !== 1 ? 's' : ''} added (auto-compressed to WebP)`;
+    } else {
+      el.style.display = 'none';
+    }
+  } catch(e) {}
+}
+
+/* ============================================================
+   LIVE PREVIEW
+============================================================ */
+function updatePreview() {
+  try {
+    const name  = document.getElementById('title').value || 'Your property name';
+    const price = document.getElementById('startingPrice').value;
+    const addr  = document.getElementById('address').value;
+    const coll  = document.getElementById('nearCollege').value;
+    document.getElementById('previewName').textContent = name;
+    document.getElementById('previewPrice').textContent = price
+      ? `₹${Number(price).toLocaleString('en-IN')}/mo` : '₹—/mo';
+    let loc = addr || '';
+    if (coll) loc += (loc ? ' · ' : '') + 'Near ' + coll;
+    document.getElementById('previewLoc').innerHTML =
+      `<i class="fa-solid fa-location-dot"></i> ${loc || 'Location · Near College'}`;
+  } catch(e) {}
+}
+
+/* ============================================================
+   CHAR COUNTER
+============================================================ */
+function updateCharCount(id, cid, max) {
+  try {
+    const v  = (document.getElementById(id).value || '').length;
+    const el = document.getElementById(cid);
+    el.textContent = `${v} / ${max}`;
+    el.className = 'char-counter' + (v > max * 0.9 ? ' warn' : '') + (v >= max ? ' over' : '');
+  } catch(e) {}
+}
+
+/* ============================================================
+   PROGRESS
+============================================================ */
+function updateProgress() {
+  try {
+    const checks = [
+      !!(document.getElementById('title').value || '').trim(),
+      !!document.getElementById('startingPrice').value,
+      !!document.querySelector('input[name="gender"]:checked'),
+      !!(document.getElementById('address').value || '').trim(),
+      !!(document.getElementById('nearCollege').value || '').trim(),
+      mpConfirmed,
+      !!(document.querySelector('#roomsList .form-select') && document.querySelector('#roomsList .form-select').value),
+      document.querySelectorAll('.amenity-cb:checked').length > 0,
+      (document.querySelectorAll('.existing-img-wrap:not(.marked-delete)').length + uploadedFiles.filter(Boolean).length) > 0,
+      !!(document.getElementById('phone').value || '').trim(),
+    ];
+    const done = checks.filter(Boolean).length;
+    const pct  = Math.round(done / checks.length * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('pctText').textContent = pct + '%';
+    const stepDone = [
+      checks[0] && checks[1] && checks[2],
+      checks[3] && checks[4] && checks[5],
+      checks[6], checks[7], checks[8], checks[9],
+    ];
+    document.querySelectorAll('.ps-item').forEach((el, i) => el.classList.toggle('done', !!stepDone[i]));
+  } catch(e) {}
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    updateProgress();
+    document.querySelectorAll('.form-input,.form-select,.form-textarea,input[type="radio"],input[type="checkbox"]').forEach(el => {
+      el.addEventListener('input',  updateProgress);
+      el.addEventListener('change', updateProgress);
+    });
+  } catch(e) {}
+});
+
+/* ============================================================
+   NAV HIGHLIGHT ON SCROLL
+============================================================ */
+const SECS = ['sec-basic','sec-location','sec-rooms','sec-amenities','sec-media','sec-contact'];
+window.addEventListener('scroll', () => {
+  try {
+    let cur = 0;
+    SECS.forEach((id, i) => { const el = document.getElementById(id); if (el && window.scrollY + 100 >= el.offsetTop) cur = i; });
+    document.querySelectorAll('.lp-step').forEach((el, i) => el.classList.toggle('active', i === cur));
+  } catch(e) {}
+}, { passive: true });
+
+/* ============================================================
+   SAME NUMBER
+============================================================ */
+function toggleSameNum() {
+  try {
+    const cb = document.getElementById('sameNumber');
+    const wa = document.getElementById('whatsapp');
+    if (cb.checked) {
+      wa.value = document.getElementById('phone').value;
+      wa.readOnly = true;
+      wa.style.background = 'var(--bg2)';
+    } else {
+      wa.readOnly = false;
+      wa.style.background = '';
+    }
+  } catch(e) {}
+}
+
+/* ============================================================
+   JUMP
+============================================================ */
+function jumpTo(id) {
+  try { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
+}
+
+/* ============================================================
+   SUBMIT  — syncs compressed files then submits
+============================================================ */
+function handleEditSubmit(e) {
+  e.preventDefault();
+
+  // Basic required-field checks
+  const required = [
+    { id:'title',         msg:'Please enter a property title.' },
+    { id:'startingPrice', msg:'Please enter the starting price.' },
+    { id:'address',       msg:'Please enter the full address.' },
+    { id:'nearCollege',   msg:'Please specify the nearest college.' },
+    { id:'city',          msg:'Please enter the city.' },
+    { id:'phone',         msg:'Please enter a contact phone number.' },
+  ];
+  for (const f of required) {
+    if (!document.getElementById(f.id).value.trim()) {
+      showToast(f.msg, true);
+      document.getElementById(f.id).focus();
+      return;
+    }
+  }
+  if (!document.querySelector('input[name="gender"]:checked')) {
+    showToast('Please select who the property is for.', true); return;
+  }
+
+  // ── Sync compressed files into <input type="file"> before submit ──
+  syncCompressedFilesToInput();
+
+  const btn = document.getElementById('submitBtn');
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
+  btn.disabled = true;
+  hideUnsavedBar();
+  document.getElementById('editForm').submit();
+}
+
+/* ============================================================
+   WARN BEFORE LEAVING WITH UNSAVED CHANGES
+============================================================ */
+window.addEventListener('beforeunload', e => {
+  if (hasUnsavedChanges) { e.preventDefault(); e.returnValue = ''; }
+});
+
+/* ============================================================
+   HELPER: update coordinates (called from map if needed)
+============================================================ */
+function updateCoordinates(lat, lng) {
+  document.getElementById('coordLat').value = lat;
+  document.getElementById('coordLng').value = lng;
+  document.getElementById('dispLat').innerText = lat.toFixed(6);
+  document.getElementById('dispLng').innerText = lng.toFixed(6);
+}
+</script>

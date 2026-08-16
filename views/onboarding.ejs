@@ -1,0 +1,518 @@
+<% layout("/layouts/boilerplate") -%>
+
+<style>
+    /* 🌟 FEATURES SECTION (MATCH YOUR SYSTEM) */
+.features-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  width: 100%;
+  margin-top: 40px;
+}
+
+/* 🌟 FEATURE CARD (PREMIUM STYLE)*/
+.feature-card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 22px 18px;
+  border: 1px solid var(--border);
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.05);
+}
+
+/* ✨ Hover Effect */
+.feature-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  border-color: var(--primary);
+  box-shadow: 0 20px 45px rgba(9,184,80,0.15);
+}
+
+/* 🌟 ICON */
+.feature-card .icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #22C55E, #09B850);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  margin-bottom: 14px;
+  box-shadow: 0 6px 15px rgba(9,184,80,0.3);
+}
+
+/* 🌟 TITLE */
+.feature-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+/* 🌟 DESCRIPTION */
+.feature-card p {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ✨ SOFT GLOW EFFECT */
+.feature-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top left, rgba(34,197,94,0.15), transparent);
+  opacity: 0;
+  transition: 0.3s;
+}
+
+.feature-card:hover::after {
+  opacity: 1;
+}
+
+/* ✨ BORDER GLOW LINE (SUBTLE) */
+.feature-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  background: linear-gradient(120deg, transparent, rgba(9,184,80,0.2), transparent);
+  opacity: 0;
+  transition: 0.4s;
+}
+
+.feature-card:hover::before {
+  opacity: 1;
+}
+
+/* 📱 RESPONSIVE */
+@media(max-width:768px){
+  .features-section {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}
+/*  */
+    
+.btn-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 26px;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #ff7a18, #ffb347);
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  box-shadow: 0 10px 25px rgba(255, 122, 24, 0.4);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-start:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 15px 35px rgba(255, 122, 24, 0.6);
+}
+
+.btn-start:active {
+  transform: scale(0.98);
+}
+
+.btn-icon {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 10px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.btn-text small {
+  font-size: 0.7rem;
+  opacity: 0.9;
+}
+
+/* 🔥 Shine Effect */
+.btn-start::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.4);
+  transform: skewX(-25deg);
+  transition: 0.5s;
+}
+
+.btn-start:hover::after {
+  left: 125%;
+}
+:root {
+  --primary: #09B850;
+  --primary-light: #22C55E;
+  --bg: #F8FAFC;
+  --card: #ffffff;
+  --text: #0F172A;
+  --muted: #64748B;
+  --border: #E2E8F0;
+}
+
+/* 🌟 MAIN BODY (MATCH YOUR SYSTEM) */
+.main-body-page {
+    background: var(--bg);
+    padding: 15px;
+}
+
+/* 🌟 WRAPPER */
+.onboard-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 70vh;
+    position: relative;
+}
+
+/* ✨ FLOATING BLOBS */
+.blob {
+    position: absolute;
+    /* width: 280px; */
+    height: 280px;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.25;
+    z-index: 0;
+}
+.blob1 { background: #22C55E; top: -60px; left: -60px; animation: float 8s infinite alternate; }
+.blob2 { background: #60A5FA; bottom: -60px; right: -60px; animation: float 10s infinite alternate; }
+
+@keyframes float {
+    from { transform: translateY(0px); }
+    to { transform: translateY(40px); }
+}
+
+/* 🌟 CARD */
+.onboard-card {
+    position: relative;
+    z-index: 2;
+    background: var(--card);
+    border-radius: 20px;
+    padding: 40px 30px;
+    width: 100%;
+    max-width: 900px;
+    text-align: center;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+    animation: fadeUp 0.6s ease;
+}
+
+/* 🌟 TITLE */
+.onboard-title {
+    font-size: 22px;
+    /* font-weight: 300; */
+    color: var(--text);
+}
+
+/* 🌟 SUBTITLE */
+.onboard-sub {
+    color: var(--muted);
+    margin-top: 16px;
+    margin-bottom: 30px;
+}
+
+/* 🚀 BUTTON */
+.btn-start {
+    background: linear-gradient(135deg, #22C55E, #09B850);
+    color: white;
+    padding: 14px 30px;
+    border-radius: 50px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    transition: 0.3s;
+    box-shadow: 0 10px 25px rgba(9,184,80,0.25);
+    position: relative;
+    overflow: hidden;
+}
+
+/* ✨ Shine */
+.btn-start::before {
+    content: "";
+    position: absolute;
+    width: 120%;
+    height: 120%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.6), transparent);
+    top: -10%;
+    left: -120%;
+    transition: 0.6s;
+}
+.btn-start:hover::before {
+    left: 120%;
+}
+
+.btn-start:hover {
+    transform: scale(1.05);
+    box-shadow: 0 15px 40px rgba(9,184,80,0.4);
+}
+
+/* 🌟 FEATURES GRID */
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 18px;
+    margin-top: 40px;
+}
+
+/* 🌟 FEATURE CARD */
+.feature {
+    background: #F9FAFB;
+    border-radius: 14px;
+    padding: 18px;
+    border: 1px solid var(--border);
+    transition: 0.3s;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.feature.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.feature:hover {
+    transform: translateY(-6px);
+    border-color: var(--primary);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+}
+
+.feature i {
+    font-size: 20px;
+    color: var(--primary);
+    margin-bottom: 6px;
+}
+
+/* 🌟 ANIMATION */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(25px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 📱 RESPONSIVE (MATCH YOUR SYSTEM) */
+@media(max-width:768px){
+    .onboard-card {
+        /* padding: 30px 20px; */
+    }
+}
+/* 🌟 Collab Container */
+.logo-collab {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+    position: relative;
+    animation: fadeDown 0.6s ease;
+}
+
+/* 🖼️ Common Style */
+.collab-img {
+    height: 90px;
+    width: 90px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #fff; /* clean separation */
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    transition: 0.3s ease;
+}
+
+/* 🏨 Hostel Logo (left) */
+.logo-img {
+    position: relative;
+    z-index: 1;
+}
+
+/* 👤 User Profile (overlapping right) */
+.user-img {
+    position: relative;
+    margin-left: -20px; /* 🔥 overlap magic */
+    z-index: 2;
+    border-color: #09B850; /* highlight user */
+}
+
+/* Hover effect */
+.logo-collab:hover .collab-img {
+    transform: scale(1.05);
+}
+
+/* 📱 Responsive */
+@media(max-width:768px){
+    .collab-img {
+        height: 90px;
+        width: 90px;
+    }
+    .user-img {
+        margin-left: -18px;
+    }
+}
+
+@media(max-width:480px){
+    .collab-img {
+        height: 90px;
+        width: 90px;
+    }
+    .user-img {
+        margin-left: -15px;
+    }
+}
+
+/* Animation */
+@keyframes fadeDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Highlight user name */
+.user-name {
+    color: #09B850;
+    font-weight: 400;
+}
+</style>
+
+
+<div class="main-body-page">
+
+    <br><br>
+
+    <div class="onboard-wrapper">
+
+        <!-- Blobs -->
+        <div class="blob blob1"></div>
+        <div class="blob blob2"></div>
+
+        <!-- Card -->
+        <div class="onboard-card">
+                    <!-- Collab Logo + Profile -->
+          <div class="logo-collab">
+              <img src="/images/hostelnode-logo-cutout.png" class="collab-img logo-img">
+              <img src="/profile-image/<%= user.profileImage %>" class="collab-img user-img">
+          </div> 
+           <h3 class="onboard-title"> 
+            Hi <span class="user-name"><%= user.name %></span> 👋
+            <br>
+            Welcome to <b>HostelNode</b>
+            </h3>
+
+            <p class="onboard-sub">
+            List your hostel, manage operations, and handle enquiries — everything you need in one smart dashboard.
+            </p>
+
+            <!-- CTA -->
+            <a href="/user/list-property" class="btn-start">
+                <span class="btn-icon">
+                    <i class="fa-solid fa-rocket"></i>
+                </span>
+                <span class="btn-text"> 
+                    List Your Proprty in 2 min
+                    <small style="display: none;">3 Months Trial</small>
+                </span>
+            </a>
+            <hr>
+            <a href="/user/my-listings" class="btn-start">
+                <span class="btn-icon">
+                    <i class="fa-solid fa-rocket"></i>
+                </span>
+                <span class="btn-text"> 
+                    Manage my Listings 
+                    <!-- <small style="display: none;">3 Months Trial</small> -->
+                </span>
+            </a>
+            <hr>
+            <a href="/user/addnewhostel" class="btn-start">
+                <span class="btn-icon">
+                    <i class="fa-solid fa-building"></i>
+                </span>
+                <span class="btn-text">
+                    Create Your First Hostel
+                    <small>Manage rooms, payments & more</small>
+                </span>
+            </a>
+    
+           
+            <!-- Features -->
+            <div class="features-section">
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fa-solid fa-bed"></i></div>
+                    <h3>Smart Room Management</h3>
+                    <p>Manage rooms, beds, and availability in real-time with ease.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fa-solid fa-users"></i></div>
+                    <h3>Resident Management</h3>
+                    <p>Track residents, documents, and stay details in one place.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fa-solid fa-building"></i></div>
+                    <h3>Hostel Listings</h3>
+                    <p>Showcase your hostel and reach more students instantly.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fa-solid fa-credit-card"></i></div>
+                    <h3>Payment Tracking</h3>
+                    <p>Automate rent collection, dues, and payment reminders.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fa-solid fa-comments"></i></div>
+                    <h3>Enquiry System</h3>
+                    <p>Receive and manage student enquiries in real-time.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fa-solid fa-chart-line"></i></div>
+                    <h3>Analytics Dashboard</h3>
+                    <p>Get insights on occupancy, revenue, and performance.</p>
+                </div>
+
+                </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+// 🔥 Smooth stagger animation
+document.addEventListener("DOMContentLoaded", () => {
+    const features = document.querySelectorAll(".feature");
+    features.forEach((el, i) => {
+        setTimeout(() => {
+            el.classList.add("show");
+        }, i * 150);
+    });
+});
+</script>
