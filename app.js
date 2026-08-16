@@ -68,7 +68,9 @@ app.use(session({
   saveUninitialized: true,
   cookie: { secure: process.env.NODE_ENV === "production" }
 }));
-
+app.get("/", (req, res) => {
+  res.redirect("/user");
+});
 // ── Global student attach — EJS mein student hamesha available ──
 app.use(async (req, res, next) => {
   res.locals.student = null;
