@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HostelNode | List Your Hostel or PG — Get Bookings in Minutes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<style>
+:root {
+  --g: #09B850;
+  --g-dark: #078040;
+  --g-light: #e8f9ef;
+  --g-glow: rgba(9,184,80,0.35);
+  --amber: #f59e0b;
+  --amber-dark: #92400e;
+  --text-dark: #0f1117;
+  --text-light: #64748b;
+  --bg-light: #f8fafb;
+  --white: #ffffff;
+  --border: #e2e8f0;
+  --font-d: 'Space Grotesk', sans-serif;
+  --font-b: 'Inter', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-b);
+  background: var(--white);
+  color: var(--text-dark);
+  overflow-x: hidden;
+}
+
+
+
+/* ============================================================
+   ANIMATIONS
+============================================================ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-60px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(60px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes zoomIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-18px); }
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(9,184,80,0.4); }
+  70% { box-shadow: 0 0 0 14px rgba(9,184,80,0); }
+}
+@keyframes spin360 {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(360deg); }
+}
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes barGrow {
+  from { height: 20%; }
+  to { height: 95%; }
+}
+@keyframes ringPulse {
+  0% { transform: scale(0.9); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.reveal { opacity: 0; transform: translateY(32px); transition: opacity 0.8s cubic-bezier(.16,.84,.24,1), transform 0.8s cubic-bezier(.16,.84,.24,1); }
+.reveal.in-view { opacity: 1; transform: none; }
+.reveal-delay-1.in-view { transition-delay: .08s; }
+.reveal-delay-2.in-view { transition-delay: .16s; }
+.reveal-delay-3.in-view { transition-delay: .24s; }
+.reveal-delay-4.in-view { transition-delay: .32s; }
+
+/* ============================================================
+   NAVBAR
+============================================================ */
+nav.navbar {
+  position: sticky; top: 0; z-index: 50; padding: 16px 0;
+  background: rgba(255,255,255,0.9); backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  transition: all 0.3s;
+}
+nav.navbar .nav-inner {
+  max-width: 1200px; margin: 0 auto; padding: 0 24px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.nav-brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 1.25rem; color: var(--text-dark); font-family: var(--font-d); }
+.nav-brand-icon {
+  width: 38px; height: 38px; border-radius: 11px;
+  /* background: linear-gradient(135deg, var(--g), #22c55e); */
+  background : var(--white);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 1.05rem; box-shadow: 0 6px 18px var(--g-glow);
+}
+.nav-links { display: none; gap: 30px; align-items: center; }
+@media (min-width: 850px) { .nav-links { display: flex; } }
+.nav-links a { text-decoration: none; color: var(--text-light); font-weight: 600; font-size: 0.88rem; transition: color 0.3s; position: relative; }
+.nav-links a::after { content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 2px; background: var(--g); transition: width 0.3s; }
+.nav-links a:hover { color: var(--text-dark); }
+.nav-links a:hover::after { width: 100%; }
+.nav-actions { display: flex; gap: 10px; }
+.btn-nav { padding: 10px 22px; border-radius: 10px; border: none; font-weight: 700; font-family: var(--font-d); cursor: pointer; font-size: 0.83rem; transition: all 0.3s; text-decoration: none; display: inline-flex; align-items: center; }
+.btn-nav-primary { background: linear-gradient(135deg, var(--g), #22c55e); color: white; box-shadow: 0 6px 18px var(--g-glow); }
+.btn-nav-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(9,184,80,0.5); }
+.btn-nav-secondary { background: var(--bg-light); color: var(--text-dark); border: 1.5px solid rgba(0,0,0,0.1); }
+.btn-nav-secondary:hover { background: rgba(0,0,0,0.04); }
+
+/* ============================================================
+   LIVE DEMO STORYBOARD — sits right under the navbar
+============================================================ */
+.live-demo-section {
+  position: relative;
+  padding: 56px 24px 72px;
+  background:
+    radial-gradient(ellipse 800px 400px at 15% 0%, rgba(9,184,80,0.10), transparent 65%),
+    radial-gradient(ellipse 600px 400px at 100% 100%, rgba(245,158,11,0.05), transparent 60%),
+    var(--text-dark);
+  overflow: hidden;
+  color: white;
+}
+.live-demo-section::before{
+  content:'';
+  position:absolute; inset:0;
+  background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(ellipse 900px 500px at 50% 0%, black, transparent 75%);
+  pointer-events:none;
+}
+.live-demo-inner {
+  max-width: 1200px; margin: 0 auto; position: relative; z-index: 2;
+  display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 54px; align-items: center;
+}
+@media (max-width: 900px){ .live-demo-inner{ grid-template-columns: 1fr; } }
+
+.ld-eyebrow{
+  display:inline-flex; align-items:center; gap:8px;
+  background: rgba(9,184,80,0.14); border:1px solid rgba(9,184,80,0.35);
+  color:#7CF0A6; font-size:0.72rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+  padding:7px 16px; border-radius:999px; margin-bottom:20px;
+}
+.ld-eyebrow .dot{ width:6px; height:6px; border-radius:50%; background:#7CF0A6; animation:pulse 1.8s infinite; }
+
+.live-demo-text h2{
+  font-family: var(--font-d); font-weight:800; letter-spacing:-0.025em; line-height:1.15;
+  font-size: clamp(1.7rem, 3.2vw, 2.5rem); margin-bottom:14px;
+}
+.live-demo-text h2 span{ color:#3FE07C; }
+.live-demo-text > p{
+  font-size:1rem; color:rgba(255,255,255,0.65); line-height:1.7; max-width:480px; margin-bottom:32px;
+}
+
+.story-steps{ display:flex; flex-direction:column; gap:4px; }
+.story-step{
+  display:flex; align-items:flex-start; gap:14px;
+  padding:13px 14px; border-radius:12px; cursor:default;
+  border:1px solid transparent;
+  opacity:0.4; transform: translateX(0);
+  transition: opacity 0.5s ease, background 0.5s ease, border-color 0.5s ease, transform 0.5s ease;
+}
+.story-step .num{
+  min-width:26px; height:26px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-d); font-weight:800; font-size:0.72rem;
+  background: rgba(255,255,255,0.08); color:rgba(255,255,255,0.55);
+  transition: all 0.5s ease; flex-shrink:0; margin-top:1px;
+}
+.story-step b{ display:block; font-size:0.9rem; font-weight:700; margin-bottom:2px; }
+.story-step span{ font-size:0.78rem; color:rgba(255,255,255,0.5); line-height:1.5; }
+.story-step.active{
+  opacity:1; background:rgba(255,255,255,0.06); border-color:rgba(9,184,80,0.3);
+  transform: translateX(4px);
+}
+.story-step.active .num{ background: linear-gradient(135deg, var(--g), #22c55e); color:white; box-shadow:0 4px 14px var(--g-glow); }
+
+/* phone shell */
+.ld-phone-wrap{ display:flex; justify-content:center; perspective:1200px; }
+.ld-phone{
+  width:290px; height:598px; background:#05060a; border-radius:40px; padding:11px;
+  box-shadow: 0 50px 100px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06);
+  position:relative;
+  animation: float 6.5s ease-in-out infinite;
+}
+.ld-phone::before{
+  content:''; position:absolute; top:11px; left:50%; transform:translateX(-50%);
+  width:96px; height:20px; background:#05060a; border-radius:0 0 14px 14px; z-index:30;
+}
+.ld-screen{
+  width:100%; height:100%; background:var(--bg-light); border-radius:30px; overflow:hidden;
+  position:relative;
+}
+.ld-topbar{
+  padding:14px 20px 6px; display:flex; justify-content:space-between; align-items:center;
+  font-size:0.65rem; font-weight:700; color:var(--text-dark); background:white; position:relative; z-index:5;
+}
+.ld-appbar{
+  padding:2px 18px 12px; display:flex; align-items:center; justify-content:space-between;
+  background:white; position:relative; z-index:5;
+}
+.ld-appbar .brand{ font-family:var(--font-d); font-weight:800; font-size:0.98rem; color:var(--text-dark); display:flex; align-items:center; gap:6px; }
+.ld-appbar .brand i{ color:var(--g); font-size:0.85rem; }
+
+.ld-stage{ position:relative; width:100%; height:calc(100% - 74px); overflow:hidden; }
+
+.story-scene{
+  position:absolute; inset:0; padding:16px;
+  opacity:0; transform: scale(1.08);
+  transition: opacity .7s ease, transform 1s cubic-bezier(.16,.84,.24,1);
+  pointer-events:none;
+}
+.story-scene.active{ opacity:1; transform: scale(1); pointer-events:auto; z-index:3; }
+.story-scene .kb{ animation: kenBurns 4.2s ease-in-out infinite alternate; }
+@keyframes kenBurns{ from{ transform:scale(1); } to{ transform:scale(1.035); } }
+
+/* scene 1: search */
+.ld-search-bar{
+  display:flex; align-items:center; gap:9px; background:white; border:1.5px solid var(--border);
+  padding:12px 14px; border-radius:12px; font-size:0.8rem; font-weight:600; color:var(--text-dark);
+  box-shadow:0 4px 14px rgba(0,0,0,0.04); margin-bottom:14px;
+}
+.ld-search-bar i{ color:var(--g); }
+.ld-radius-row{ display:flex; gap:6px; margin-bottom:18px; }
+.ld-radius-pill{ flex:1; text-align:center; padding:7px 4px; border-radius:20px; font-size:0.66rem; font-weight:700; border:1px solid var(--g); color:var(--g-dark); background:var(--g-light); }
+.ld-radius-pill.active{ background:var(--g); color:white; }
+.ld-find-btn{
+  width:100%; padding:15px; border-radius:14px; border:none;
+  background:linear-gradient(135deg, var(--g), #22c55e); color:white;
+  font-family:var(--font-d); font-weight:700; font-size:0.86rem;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  box-shadow:0 10px 26px var(--g-glow); position:relative;
+}
+.ld-finger{
+  position:absolute; width:32px; height:32px;
+  background:rgba(15,17,23,0.88); border-radius:50% 50% 50% 4px; transform:rotate(-45deg);
+  box-shadow:0 6px 16px rgba(0,0,0,0.3); z-index:10;
+}
+.scene-search .ld-finger{ bottom:-40px; right:60px; animation: fingerTap1 3.2s ease-in-out infinite; }
+@keyframes fingerTap1{ 0%,10%{opacity:0; transform:translate(30px,20px) rotate(-45deg);} 30%,70%{opacity:1; transform:translate(0,0) rotate(-45deg) scale(0.92);} 90%,100%{opacity:0;} }
+
+/* scene 2: results list */
+.ld-result-hdr{ font-size:0.72rem; font-weight:700; color:var(--text-light); margin-bottom:10px; }
+.ld-result-hdr b{ color:var(--text-dark); }
+.ld-result-card{
+  display:flex; gap:10px; padding:10px; background:white; border:1px solid var(--border);
+  border-radius:12px; margin-bottom:8px; box-shadow:0 3px 10px rgba(0,0,0,0.03);
+}
+.ld-result-thumb{ width:44px; height:44px; border-radius:8px; flex-shrink:0; background:linear-gradient(135deg,#bbf7d0,#6ee7a8); display:flex; align-items:center; justify-content:center; color:var(--g-dark); font-size:0.9rem; }
+.ld-result-info{ flex:1; min-width:0; }
+.ld-result-info .rname{ font-size:0.7rem; font-weight:700; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ld-result-info .rmeta{ font-size:0.62rem; color:var(--text-light); margin-bottom:2px; }
+.ld-result-info .rprice{ font-size:0.68rem; font-weight:700; color:var(--g-dark); }
+.ld-result-card.selected{ border-color:var(--g); box-shadow:0 0 0 2px rgba(9,184,80,0.25); }
+
+/* scene 3: property detail */
+.ld-gallery{ display:grid; grid-template-columns:1.4fr 1fr; gap:6px; margin-bottom:12px; height:118px; }
+.ld-gallery-main{ border-radius:12px; background:linear-gradient(135deg,#a7f3d0,#6ee7a8); }
+.ld-gallery-side{ display:grid; grid-template-rows:1fr 1fr; gap:6px; }
+.ld-gallery-side div{ border-radius:10px; background:linear-gradient(135deg,#d1fae5,#a7f3d0); }
+.ld-price-card{ background:white; border:1px solid var(--border); border-radius:14px; padding:12px 14px; box-shadow:0 8px 20px rgba(0,0,0,0.05); }
+.ld-price-card .lbl{ font-size:0.6rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.04em; font-weight:700; }
+.ld-price-card .amt{ font-family:var(--font-d); font-size:1.15rem; font-weight:800; color:var(--text-dark); margin:2px 0 6px; }
+.ld-stars{ font-size:0.68rem; color:var(--amber); margin-bottom:10px; }
+.ld-stars span{ color:var(--text-light); font-weight:600; }
+.ld-contact-btn{
+  width:100%; padding:12px; border-radius:11px; border:none;
+  background:linear-gradient(135deg, var(--g), #22c55e); color:white;
+  font-family:var(--font-d); font-weight:700; font-size:0.78rem;
+  display:flex; align-items:center; justify-content:center; gap:7px;
+  animation:pulse 1.8s infinite;
+}
+
+/* scene 4: contact modal */
+.ld-modal{ background:white; border-radius:16px; padding:16px; box-shadow:0 20px 50px rgba(0,0,0,0.15); margin-top:22px; }
+.ld-modal-icon{ width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg,var(--g),#22c55e); display:flex; align-items:center; justify-content:center; color:white; margin:0 auto 10px; font-size:1rem; }
+.ld-modal h4{ text-align:center; font-family:var(--font-d); font-size:0.85rem; margin-bottom:12px; }
+.ld-modal-opt{ display:flex; align-items:center; gap:10px; padding:9px 10px; border:1px solid var(--border); border-radius:10px; margin-bottom:7px; font-size:0.68rem; font-weight:700; position:relative; }
+.ld-modal-opt i{ width:26px; height:26px; border-radius:8px; background:var(--g-light); color:var(--g-dark); display:flex; align-items:center; justify-content:center; font-size:0.7rem; }
+.ld-modal-opt.hi{ border-color:var(--g); box-shadow:0 0 0 2px rgba(9,184,80,0.15); }
+.ld-modal-opt.hi i{ background:var(--g); color:white; }
+.scene-contact .ld-finger{ top:118px; right:26px; animation: fingerTap2 3.2s ease-in-out infinite; }
+@keyframes fingerTap2{ 0%,15%{opacity:0; transform:translateY(20px) rotate(-45deg);} 35%,75%{opacity:1; transform:translateY(0) rotate(-45deg) scale(0.92);} 92%,100%{opacity:0;} }
+
+/* scene 5: success */
+.ld-success{ text-align:center; margin-top:60px; }
+.ld-check{
+  width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg,var(--g),#22c55e);
+  display:flex; align-items:center; justify-content:center; color:white; font-size:1.6rem;
+  margin:0 auto 16px; box-shadow:0 12px 28px var(--g-glow);
+  animation: checkPop 3.2s ease-in-out infinite;
+}
+@keyframes checkPop{ 0%,15%{ transform:scale(0.4); opacity:0; } 30%{ transform:scale(1.12); opacity:1; } 40%{ transform:scale(1); } 90%,100%{ transform:scale(1); opacity:1; } }
+.ld-success h4{ font-family:var(--font-d); font-size:0.95rem; margin-bottom:6px; }
+.ld-success p{ font-size:0.76rem; color:var(--text-light); line-height:1.5; max-width:210px; margin:0 auto; }
+.ld-success .tag{ display:inline-flex; align-items:center; gap:6px; margin-top:14px; padding:6px 14px; background:var(--g-light); color:var(--g-dark); border-radius:20px; font-size:0.66rem; font-weight:700; }
+
+/* scene 6: owner notification */
+.ld-notif-card{
+  background:#12141b; border-radius:16px; padding:16px; color:white; margin-top:14px;
+  box-shadow:0 24px 50px rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.08);
+}
+.ld-notif-card .nhead{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.ld-notif-card .nhead .ic{ width:26px; height:26px; border-radius:50%; background:#25D366; display:flex; align-items:center; justify-content:center; font-size:0.7rem; }
+.ld-notif-card .nhead b{ font-size:0.76rem; }
+.ld-notif-row{ display:flex; gap:8px; font-size:0.68rem; padding:5px 0; color:rgba(255,255,255,0.85); border-bottom:1px solid rgba(255,255,255,0.06); }
+.ld-notif-row i{ width:14px; color:#3FE07C; }
+.ld-notif-row b{ color:rgba(255,255,255,0.5); font-weight:600; min-width:64px; display:inline-block; }
+.ld-notif-cta{ margin-top:10px; text-align:center; font-size:0.66rem; font-weight:700; color:#3FE07C; }
+
+/* progress dots */
+.ld-dots{ display:flex; justify-content:center; gap:7px; margin-top:22px; position:relative; z-index:2; }
+.ld-dots i{ width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.18); transition: all .5s ease; }
+.ld-dots i.active{ background:#3FE07C; width:22px; border-radius:5px; }
+
+/* ============================================================
+   HERO — OWNER FOCUSED
+============================================================ */
+.hero-owner {
+  padding: 100px 24px 60px;
+  background: radial-gradient(ellipse at top right, rgba(9,184,80,0.08), transparent 60%), var(--white);
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+.hero-owner::before {
+  content: ''; position: absolute; top: -20%; left: -10%;
+  width: 500px; height: 500px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(9,184,80,0.08) 0%, transparent 70%);
+  animation: float 9s ease-in-out infinite;
+}
+.hero-owner::after {
+  content: ''; position: absolute; bottom: -20%; right: -10%;
+  width: 460px; height: 460px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 70%);
+  animation: float 11s ease-in-out infinite reverse;
+}
+
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(9,184,80,0.1); border: 1px solid rgba(9,184,80,0.28);
+  padding: 8px 20px; border-radius: 999px;
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--g-dark); margin-bottom: 26px; position: relative; z-index: 2;
+}
+.hero-badge .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--g); animation: pulse 1.8s ease infinite; }
+
+.hero-owner h1 {
+  font-family: var(--font-d); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;
+  font-size: clamp(2.2rem, 5.5vw, 3.9rem); max-width: 850px; margin: 0 auto 22px;
+  position: relative; z-index: 2;
+}
+.hero-owner h1 .grad {
+  background: linear-gradient(100deg, var(--g-dark), var(--g) 55%, #22c55e);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.hero-owner p.sub {
+  font-size: 1.08rem; color: var(--text-light); line-height: 1.75;
+  max-width: 600px; margin: 0 auto 36px; position: relative; z-index: 2;
+}
+.hero-actions {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 14px;
+  margin-bottom: 22px; position: relative; z-index: 2;
+}
+.btn-hero-primary {
+  position: relative; overflow: hidden;
+  padding: 17px 34px; border-radius: 14px; border: none;
+  background: linear-gradient(135deg, var(--g), #22c55e); color: white;
+  font-family: var(--font-d); font-weight: 700; font-size: 1rem; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 10px;
+  box-shadow: 0 14px 34px var(--g-glow);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-decoration: none;
+}
+.btn-hero-primary::after {
+  content: ''; position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.4), transparent);
+  transform: skewX(-20deg); transition: left 0.6s ease;
+}
+.btn-hero-primary:hover::after { left: 130%; }
+.btn-hero-primary:hover { transform: translateY(-4px); box-shadow: 0 20px 44px rgba(9,184,80,0.5); }
+.btn-hero-secondary {
+  padding: 17px 34px; border-radius: 14px; border: 2px solid rgba(0,0,0,0.12);
+  background: white; color: var(--text-dark);
+  font-family: var(--font-d); font-weight: 700; font-size: 1rem; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s;
+  text-decoration: none;
+}
+.btn-hero-secondary:hover { background: var(--bg-light); transform: translateY(-4px); border-color: rgba(0,0,0,0.2); }
+.hero-note { font-size: 0.82rem; color: var(--text-light); position: relative; z-index: 2; }
+.hero-note i { color: var(--g); margin-right: 5px; }
+
+/* stats strip */
+.stats-strip {
+  max-width: 950px; margin: 60px auto 0; position: relative; z-index: 2;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+  padding: 28px; background: white; border-radius: 20px;
+  border: 1px solid var(--border); box-shadow: 0 20px 50px rgba(0,0,0,0.06);
+}
+.stat-box { text-align: center; }
+.stat-box b { display: block; font-family: var(--font-d); font-size: 1.9rem; font-weight: 800; color: var(--g-dark); animation: countUp 0.8s ease-out; }
+.stat-box span { font-size: 0.74rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.04em; }
+@media (max-width: 700px) { .stats-strip { grid-template-columns: repeat(2, 1fr); } }
+
+/* ============================================================
+   HOW STUDENTS FIND YOU — PHONE DEMO
+============================================================ */
+.discover-section { padding: 100px 24px; background: var(--bg-light); }
+.discover-content {
+  max-width: 1200px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
+}
+.discover-text h2 {
+  font-family: var(--font-d); font-size: clamp(1.8rem, 3.4vw, 2.5rem); font-weight: 800;
+  margin-bottom: 18px; line-height: 1.2;
+}
+.discover-text p {
+  font-size: 1.02rem; color: var(--text-light); line-height: 1.75; margin-bottom: 18px;
+}
+.discover-steps { display: flex; flex-direction: column; gap: 14px; margin-top: 26px; }
+.discover-step {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 16px; background: white; border-radius: 14px;
+  border: 1px solid var(--border); transition: all 0.3s;
+}
+.discover-step:hover { transform: translateX(6px); border-color: var(--g); box-shadow: 0 10px 24px rgba(9,184,80,0.1); }
+.discover-step-num {
+  min-width: 34px; height: 34px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--g), #22c55e); color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-d); font-weight: 800; font-size: 0.95rem;
+}
+.discover-step-text b { display: block; font-size: 0.95rem; margin-bottom: 3px; }
+.discover-step-text span { font-size: 0.85rem; color: var(--text-light); }
+
+/* phone mockup showing "Find PG Near Me" -> results */
+.phone-demo-wrap { display: flex; justify-content: center; position: relative; }
+.mobile-mockup {
+  width: 300px; height: 610px; background: var(--text-dark); border-radius: 42px;
+  padding: 12px; box-shadow: 0 40px 80px rgba(0,0,0,0.25);
+  animation: float 6s ease-in-out infinite;
+}
+.mobile-screen {
+  width: 100%; height: 100%; background: white; border-radius: 30px;
+  overflow: hidden; position: relative; display: flex; flex-direction: column;
+}
+.mobile-topbar { padding: 14px 18px 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.68rem; font-weight: 700; color: var(--text-dark); }
+.mobile-app-header {
+  padding: 4px 18px 14px; display: flex; align-items: center; justify-content: space-between;
+}
+.mobile-app-header .brand-mini { font-family: var(--font-d); font-weight: 800; font-size: 1rem; }
+.mobile-body { flex: 1; padding: 0 16px 16px; overflow: hidden; position: relative; }
+
+.find-btn {
+  width: 100%; padding: 14px; border-radius: 14px; border: none;
+  background: linear-gradient(135deg, var(--g), #22c55e); color: white;
+  font-family: var(--font-d); font-weight: 700; font-size: 0.9rem;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin: 8px 0 16px; animation: pulse 2s infinite; cursor: pointer;
+}
+.finger-cursor {
+  position: absolute; width: 34px; height: 34px;
+  background: rgba(15,17,23,0.85); border-radius: 50% 50% 50% 4px;
+  transform: rotate(-45deg);
+  top: 128px; left: 130px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+  animation: fingerTap 3s ease-in-out infinite;
+  z-index: 10;
+}
+@keyframes fingerTap {
+  0%, 15% { top: 60px; left: 200px; opacity: 0; }
+  25% { opacity: 1; top: 128px; left: 130px; }
+  35% { transform: rotate(-45deg) scale(0.85); }
+  45% { transform: rotate(-45deg) scale(1); }
+  80% { top: 128px; left: 130px; opacity: 1; }
+  100% { top: 128px; left: 130px; opacity: 0; }
+}
+
+.radius-row { display: flex; gap: 6px; margin-bottom: 14px; }
+.radius-pill {
+  flex: 1; text-align: center; padding: 7px 4px; border-radius: 20px;
+  font-size: 0.68rem; font-weight: 700; border: 1px solid var(--g);
+  color: var(--g-dark); background: var(--g-light);
+}
+.radius-pill.active { background: var(--g); color: white; }
+
+.result-card {
+  display: flex; gap: 10px; padding: 10px; background: white;
+  border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px;
+  opacity: 0; animation: resultPop 3s ease-in-out infinite;
+}
+.result-card:nth-child(1) { animation-delay: 1.9s; }
+.result-card:nth-child(2) { animation-delay: 2.1s; }
+.result-card:nth-child(3) { animation-delay: 2.3s; }
+@keyframes resultPop {
+  0%, 55% { opacity: 0; transform: translateY(10px); }
+  65%, 100% { opacity: 1; transform: translateY(0); }
+}
+.result-thumb { width: 46px; height: 46px; border-radius: 8px; background: linear-gradient(135deg, #d1fae5, #a7f3d0); flex-shrink: 0; }
+.result-info { flex: 1; }
+.result-info .rname { font-size: 0.72rem; font-weight: 700; margin-bottom: 2px; }
+.result-info .rmeta { font-size: 0.64rem; color: var(--text-light); }
+.result-info .rprice { font-size: 0.7rem; font-weight: 700; color: var(--g-dark); }
+
+.notif-toast {
+  position: absolute; top: -14px; right: -18px;
+  background: white; border-radius: 14px; padding: 10px 14px;
+  box-shadow: 0 14px 34px rgba(0,0,0,0.18); display: flex; align-items: center; gap: 8px;
+  font-size: 0.74rem; font-weight: 700; animation: toastFloat 4s ease-in-out infinite;
+  border-left: 4px solid var(--g); z-index: 20;
+}
+@keyframes toastFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+.notif-toast .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--g); }
+
+@media (max-width: 820px) { .discover-content { grid-template-columns: 1fr; } }
+
+/* ============================================================
+   360 PROPERTY VIEW
+============================================================ */
+.property-360-section { padding: 100px 24px; background: white; }
+.property-360-content {
+  max-width: 1200px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
+}
+.property-360-visual { perspective: 1400px; }
+.rotation-container {
+  width: 100%; aspect-ratio: 1; border-radius: 24px; overflow: hidden;
+  position: relative; box-shadow: 0 30px 70px rgba(0,0,0,0.15);
+  border: 1px solid var(--border);
+}
+.property-image { width: 100%; height: 100%; object-fit: cover; animation: spin360 22s linear infinite; }
+.rotation-indicator {
+  position: absolute; bottom: 18px; right: 18px;
+  background: rgba(15,17,23,0.85); color: white; padding: 9px 16px;
+  border-radius: 20px; font-size: 0.76rem; font-weight: 700;
+  display: flex; align-items: center; gap: 6px;
+}
+.rotation-indicator i { animation: spinIcon 2s linear infinite; }
+@keyframes spinIcon { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+.property-360-text h2 { font-family: var(--font-d); font-size: clamp(1.8rem, 3.4vw, 2.5rem); font-weight: 800; margin-bottom: 18px; }
+.property-360-text p { font-size: 1.02rem; color: var(--text-light); line-height: 1.75; margin-bottom: 14px; }
+.property-360-text .highlight { color: var(--text-dark); font-weight: 700; }
+@media (max-width: 820px) { .property-360-content { grid-template-columns: 1fr; } .property-360-content { direction: initial; } .property-360-visual { order: -1; } }
+
+/* ============================================================
+   FEATURES GRID
+============================================================ */
+.feature-section { padding: 100px 24px; background: var(--bg-light); }
+.section-head { text-align: center; max-width: 620px; margin: 0 auto 60px; }
+.section-tag {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: white; border: 1px solid var(--border);
+  padding: 6px 16px; border-radius: 999px; font-size: 0.7rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-light); margin-bottom: 16px;
+}
+.section-head h2 { font-family: var(--font-d); font-size: clamp(1.8rem, 3.4vw, 2.5rem); font-weight: 800; margin-bottom: 12px; }
+.section-head p { font-size: 1rem; color: var(--text-light); line-height: 1.65; }
+
+.feature-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+.feature-card {
+  padding: 32px 26px; background: white; border-radius: 20px;
+  border: 1px solid var(--border); transition: all 0.35s cubic-bezier(0.16, 0.84, 0.24, 1);
+}
+.feature-card:hover { transform: translateY(-8px); border-color: var(--g); box-shadow: 0 24px 50px rgba(9,184,80,0.14); }
+.feature-icon {
+  width: 54px; height: 54px; border-radius: 14px;
+  background: linear-gradient(135deg, var(--g), #22c55e); display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 1.3rem; margin-bottom: 18px; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+.feature-card:hover .feature-icon { transform: scale(1.12) rotate(-6deg); }
+.feature-card h3 { font-family: var(--font-d); font-size: 1.12rem; font-weight: 700; margin-bottom: 8px; }
+.feature-card p { font-size: 0.9rem; color: var(--text-light); line-height: 1.6; }
+
+/* ============================================================
+   LIVE DASHBOARD PREVIEW
+============================================================ */
+.dashboard-section { padding: 100px 24px; background: linear-gradient(135deg, var(--g) 0%, var(--g-dark) 100%); color: white; overflow: hidden; }
+.dashboard-content {
+  max-width: 1200px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
+}
+.dashboard-text h2 { font-family: var(--font-d); font-size: clamp(1.8rem, 3.4vw, 2.5rem); font-weight: 800; margin-bottom: 18px; }
+.dashboard-text p { font-size: 1.02rem; line-height: 1.75; margin-bottom: 24px; opacity: 0.95; }
+.dashboard-benefits { display: flex; flex-direction: column; gap: 12px; }
+.benefit-item {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+  background: rgba(255,255,255,0.12); border-radius: 12px;
+  backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.18);
+  transition: all 0.3s;
+}
+.benefit-item:hover { background: rgba(255,255,255,0.2); transform: translateX(6px); }
+.benefit-icon { font-size: 1.3rem; min-width: 28px; }
+.benefit-text { font-size: 0.92rem; font-weight: 600; }
+
+.dashboard-mockup { background: white; border-radius: 22px; overflow: hidden; box-shadow: 0 40px 90px rgba(0,0,0,0.3); animation: float 7s ease-in-out infinite; }
+.dashboard-header {
+  background: var(--text-dark); color: white; padding: 18px 22px;
+  font-weight: 700; font-family: var(--font-d); display: flex; align-items: center; justify-content: space-between; font-size: 0.9rem;
+}
+.dashboard-header .live-pill { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; font-weight: 600; background: rgba(9,184,80,0.2); padding: 4px 10px; border-radius: 20px; color: #6ee7a8; }
+.dashboard-header .live-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: #6ee7a8; animation: pulse 1.6s infinite; }
+
+.dashboard-stats-row { display: flex; gap: 10px; padding: 18px 22px 4px; }
+.dstat { flex: 1; background: var(--bg-light); border-radius: 12px; padding: 12px 14px; }
+.dstat b { display: block; font-family: var(--font-d); font-size: 1.2rem; color: var(--text-dark); }
+.dstat span { font-size: 0.66rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.03em; }
+
+.dashboard-body { padding: 16px 22px 24px; color: var(--text-dark); }
+.notification-item {
+  padding: 14px 16px; background: var(--bg-light); border-left: 4px solid var(--g);
+  border-radius: 10px; margin-bottom: 10px; transition: all 0.3s; cursor: pointer;
+}
+.notification-item:hover { transform: translateX(6px); box-shadow: 0 10px 20px rgba(9,184,80,0.15); }
+.notification-time { font-size: 0.68rem; color: var(--text-light); margin-bottom: 4px; font-weight: 600; }
+.notification-text { font-size: 0.87rem; font-weight: 700; margin-bottom: 5px; }
+.notification-status { display: inline-block; padding: 3px 11px; background: rgba(9,184,80,0.15); color: var(--g-dark); border-radius: 20px; font-size: 0.65rem; font-weight: 700; }
+
+@media (max-width: 820px) { .dashboard-content { grid-template-columns: 1fr; } }
+
+/* ============================================================
+   HOW IT WORKS TIMELINE
+============================================================ */
+.flow-section { padding: 100px 24px; background: white; }
+.flow-timeline {
+  max-width: 1200px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 36px;
+  position: relative;
+}
+.flow-timeline::before {
+  content: ''; position: absolute; top: 44px; left: 8%; right: 8%; height: 2px;
+  background: linear-gradient(90deg, var(--g), rgba(9,184,80,0.15), var(--g));
+  display: none;
+}
+@media (min-width: 950px) { .flow-timeline::before { display: block; } }
+.flow-step { text-align: center; position: relative; }
+.flow-step-number {
+  width: 76px; height: 76px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--g), #22c55e); color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-d); font-size: 1.7rem; font-weight: 800; margin: 0 auto 20px;
+  box-shadow: 0 12px 32px var(--g-glow); position: relative; z-index: 2;
+}
+.flow-step h3 { font-family: var(--font-d); font-size: 1.06rem; font-weight: 700; margin-bottom: 10px; }
+.flow-step p { font-size: 0.88rem; color: var(--text-light); line-height: 1.6; }
+
+/* ============================================================
+   TESTIMONIAL / TRUST STRIP
+============================================================ */
+.trust-strip { padding: 60px 24px; background: var(--bg-light); }
+.trust-content { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; text-align: center; }
+.trust-item i { font-size: 1.6rem; color: var(--g); margin-bottom: 10px; }
+.trust-item b { display: block; font-family: var(--font-d); font-size: 0.95rem; }
+.trust-item span { font-size: 0.78rem; color: var(--text-light); }
+@media (max-width: 700px) { .trust-content { grid-template-columns: repeat(2, 1fr); } }
+
+/* ============================================================
+   FINAL CTA
+============================================================ */
+.cta-final { padding: 90px 24px; background: linear-gradient(135deg, var(--g), var(--g-dark)); color: white; text-align: center; position: relative; overflow: hidden; }
+.cta-final::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.12), transparent 60%); }
+.cta-final-content { max-width: 700px; margin: 0 auto; position: relative; z-index: 2; }
+.cta-final h2 { font-family: var(--font-d); font-size: clamp(1.8rem, 3.4vw, 2.6rem); font-weight: 800; margin-bottom: 16px; }
+.cta-final p { font-size: 1.05rem; margin-bottom: 34px; opacity: 0.95; }
+.btn-cta-primary {
+  padding: 17px 40px; border-radius: 14px; border: none; background: white; color: var(--g-dark);
+  font-family: var(--font-d); font-weight: 700; font-size: 1rem; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 10px;
+  box-shadow: 0 14px 34px rgba(0,0,0,0.2); transition: all 0.3s;
+}
+.btn-cta-primary:hover { transform: translateY(-4px); box-shadow: 0 20px 44px rgba(0,0,0,0.3); }
+.ld-appbar .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ld-appbar .brand img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+/* ============================================================
+   FOOTER
+============================================================ */
+footer { padding: 40px 24px; background: var(--text-dark); color: rgba(255,255,255,0.6); text-align: center; font-size: 0.85rem; }
+footer a { color: rgba(255,255,255,0.8); text-decoration: none; }
+footer a:hover { color: #6ee7a8; }
+.nav-brand-icon img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+@media (max-width: 600px) {
+  .hero-owner { padding: 80px 20px 40px; }
+  .stats-strip { grid-template-columns: repeat(2,1fr); padding: 20px; }
+  .ld-phone{ width:260px; height:540px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     NAVBAR
+============================================================ -->
+<nav class="navbar" id="navbar">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <div class="nav-brand-icon">
+        <img src="/images/hostelnode-logo-cutout.png" alt="HostelNode Logo">
+      </div>
+      <span>HostelNode</span>
+    </div>
+    <div class="nav-links">
+      <a href="#live-demo">Live Demo</a>
+      <a href="#discover">How Students Find You</a>
+      <a href="#features">Features</a>
+      <a href="#dashboard">Dashboard</a>
+      <a href="#flow">How It Works</a>
+    </div>
+    <div class="nav-actions">
+      <!-- <button class="btn-nav btn-nav-secondary">Login</button> -->
+       <a href="/login" class="btn-nav btn-nav-secondary">Login</a>
+      <a href="/signup" class="btn-nav btn-nav-primary">List Free</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================================================
+     LIVE DEMO STORYBOARD — full enquiry journey, auto-playing
+============================================================ -->
+<section class="live-demo-section" id="live-demo">
+  <div class="live-demo-inner">
+    <div class="live-demo-text">
+      <div class="ld-eyebrow"><span class="dot"></span> Watch it happen live</div>
+      <h2>From <span>student search</span> to <span>your WhatsApp</span> — in one real flow</h2>
+      <p>This is the exact journey a student takes on HostelNode, end to end. No demos with dummy screenshots — this is what happens on your listing, every single day.</p>
+
+      <div class="story-steps" id="storySteps">
+        <div class="story-step active">
+          <div class="num">1</div>
+          <div><b>Student searches nearby</b><span>They open HostelNode and tap "Find PG Near Me" from their location.</span></div>
+        </div>
+        <div class="story-step">
+          <div class="num">2</div>
+          <div><b>Your listing shows up</b><span>Sorted by distance — your property appears in the results instantly.</span></div>
+        </div>
+        <div class="story-step">
+          <div class="num">3</div>
+          <div><b>They open your profile</b><span>Photos, pricing, ratings and amenities — everything they need to decide.</span></div>
+        </div>
+        <div class="story-step">
+          <div class="num">4</div>
+          <div><b>They send an enquiry</b><span>One tap to connect on WhatsApp, callback, or book a visit.</span></div>
+        </div>
+        <div class="story-step">
+          <div class="num">5</div>
+          <div><b>Request confirmed</b><span>The student sees an instant confirmation — no waiting, no doubt.</span></div>
+        </div>
+        <div class="story-step">
+          <div class="num">6</div>
+          <div><b>You get notified instantly</b><span>Their details land straight in your dashboard and WhatsApp.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ld-phone-wrap">
+      <div class="ld-phone">
+        <div class="ld-screen">
+          <div class="ld-topbar"><span>9:41</span><span>●●●●● 5G</span></div>
+        <div class="ld-appbar">
+    <span class="brand">
+        <img src="/images/hostelnode-logo-cutout.png" alt="HostelNode Logo">
+        HostelNode
+    </span>
+    <i class="fa-solid fa-bars" style="font-size:0.75rem;color:var(--text-dark)"></i>
+</div>
+
+          <div class="ld-stage" id="ldStage">
+
+            <!-- Scene 1: Search -->
+            <div class="story-scene scene-search active">
+              <div class="kb">
+                <div class="ld-search-bar"><i class="fa-solid fa-location-dot"></i> Mumbai</div>
+                <div class="ld-radius-row">
+                  <div class="ld-radius-pill active">2 km</div>
+                  <div class="ld-radius-pill">5 km</div>
+                  <div class="ld-radius-pill">10 km</div>
+                  <div class="ld-radius-pill">15 km</div>
+                </div>
+                <button class="ld-find-btn"><i class="fa-solid fa-location-crosshairs"></i> Find PG Near Me</button>
+              </div>
+              <div class="ld-finger"></div>
+            </div>
+
+            <!-- Scene 2: Results -->
+            <div class="story-scene scene-results">
+              <div class="kb">
+                <div class="ld-result-hdr"><b>24 hostels</b> found near "Mumbai"</div>
+                <div class="ld-result-card selected">
+                  <div class="ld-result-thumb"><i class="fa-solid fa-house"></i></div>
+                  <div class="ld-result-info">
+                    <div class="rname">Your Property</div>
+                    <div class="rmeta">⭐ 4.8 · 0.8 km away</div>
+                    <div class="rprice">₹9,500/mo</div>
+                  </div>
+                </div>
+                <div class="ld-result-card">
+                  <div class="ld-result-thumb" style="opacity:0.6"><i class="fa-solid fa-house"></i></div>
+                  <div class="ld-result-info">
+                    <div class="rname">Shiv Shambhu PG</div>
+                    <div class="rmeta">⭐ 5.0 · 1.2 km away</div>
+                    <div class="rprice">₹6,500/mo</div>
+                  </div>
+                </div>
+                <div class="ld-result-card">
+                  <div class="ld-result-thumb" style="opacity:0.6"><i class="fa-solid fa-house"></i></div>
+                  <div class="ld-result-info">
+                    <div class="rname">Royal Paradise PG</div>
+                    <div class="rmeta">⭐ 5.0 · 1.6 km away</div>
+                    <div class="rprice">₹11,500/mo</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Scene 3: Property profile -->
+            <div class="story-scene scene-profile">
+              <div class="kb">
+                <div class="ld-gallery">
+                  <div class="ld-gallery-main"></div>
+                  <div class="ld-gallery-side"><div></div><div></div></div>
+                </div>
+                <div class="ld-price-card">
+                  <div class="lbl">Starting from</div>
+                  <div class="amt">₹9,500 / month</div>
+                  <div class="ld-stars">★★★★★ <span>4.8 · 12 reviews</span></div>
+                  <button class="ld-contact-btn"><i class="fa-solid fa-paper-plane"></i> Contact Owner</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Scene 4: Contact modal -->
+            <div class="story-scene scene-contact">
+              <div class="kb">
+                <div class="ld-modal">
+                  <div class="ld-modal-icon"><i class="fa-solid fa-paper-plane"></i></div>
+                  <h4>How would you like to connect?</h4>
+                  <div class="ld-modal-opt"><i class="fa-solid fa-phone"></i> Request Callback</div>
+                  <div class="ld-modal-opt hi"><i class="fa-brands fa-whatsapp"></i> WhatsApp Callback</div>
+                  <div class="ld-modal-opt"><i class="fa-solid fa-house"></i> Schedule Visit</div>
+                </div>
+              </div>
+              <div class="ld-finger"></div>
+            </div>
+
+            <!-- Scene 5: Success -->
+            <div class="story-scene scene-success">
+              <div class="ld-success">
+                <div class="ld-check"><i class="fa-solid fa-check"></i></div>
+                <h4>Request Sent Successfully</h4>
+                <p>Your enquiry has been shared with the property owner.</p>
+                <div class="tag"><i class="fa-solid fa-bolt"></i> Owner will reply shortly</div>
+              </div>
+            </div>
+
+            <!-- Scene 6: Owner gets notified -->
+            <div class="story-scene scene-owner">
+              <div class="kb">
+                <div class="ld-notif-card">
+                  <div class="nhead"><div class="ic"><i class="fa-brands fa-whatsapp"></i></div><b>New WhatsApp Enquiry</b></div>
+                  <div class="ld-notif-row"><i class="fa-solid fa-user"></i><b>Name</b> A. Sharma</div>
+                  <div class="ld-notif-row"><i class="fa-solid fa-phone"></i><b>WhatsApp</b> 98XXX XXX21</div>
+                  <div class="ld-notif-row"><i class="fa-solid fa-house"></i><b>Property</b> Your Property</div>
+                  <div class="ld-notif-row"><i class="fa-solid fa-calendar"></i><b>Move-in</b> Immediately</div>
+                  <div class="ld-notif-row" style="border-bottom:none;"><i class="fa-solid fa-indian-rupee-sign"></i><b>Budget</b> ₹8,000–₹10,000</div>
+                  <div class="ld-notif-cta">Tap to reply on WhatsApp →</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ld-dots" id="ldDots">
+    <i class="active"></i><i></i><i></i><i></i><i></i><i></i>
+  </div>
+</section>
+
+<!-- ============================================================
+     HERO — OWNER FOCUSED
+============================================================ -->
+<section class="hero-owner">
+  <div class="hero-badge reveal"><div class="live-dot"></div> Get more admissions — now live across India</div>
+
+  <h1 class="reveal reveal-delay-1">List your hostel or PG and start getting <span class="grad">bookings today</span></h1>
+
+  <p class="sub reveal reveal-delay-2">
+    Reach 50,000+ students actively searching every month. Get discovered in minutes — zero broker
+    fees, zero setup cost — then manage rooms, members, and payments from one dashboard.
+  </p>
+
+  <div class="hero-actions reveal reveal-delay-3">
+    <a href="/signup" class="btn-hero-primary">
+      <i class="fa-solid fa-rocket"></i> List My Property Free
+    </a>
+    <a href="/login" class="btn-hero-secondary">
+      <i class="fa-solid fa-right-to-bracket"></i> I already have an account
+    </a>
+  </div>
+
+  <div class="hero-note reveal reveal-delay-4"><i class="fa-solid fa-circle-check"></i> Zero broker fees · Zero setup cost · Live in under 2 minutes</div>
+
+  <div class="stats-strip reveal reveal-delay-4">
+    <div class="stat-box"><b>2,400+</b><span>Verified Listings</span></div>
+    <div class="stat-box"><b>180+</b><span>Cities Covered</span></div>
+    <div class="stat-box"><b>50,000+</b><span>Students / mo</span></div>
+    <div class="stat-box"><b>0 Fee</b><span>Zero Brokerage</span></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     HOW STUDENTS FIND YOU — PHONE DEMO
+============================================================ -->
+<section class="discover-section" id="discover">
+  <div class="discover-content">
+    <div class="discover-text reveal">
+      <h2>Students reach you in just <span style="color:var(--g)">2 minutes</span></h2>
+      <p>The moment a student taps <strong>"Find PG Near Me,"</strong> your listing pops up instantly if you're within their search radius. You get notified the second they send an enquiry — no delays, no missed leads.</p>
+
+      <div class="discover-steps">
+        <div class="discover-step">
+          <div class="discover-step-num">1</div>
+          <div class="discover-step-text"><b>Student taps "Find Near Me"</b><span>GPS locates them and searches your radius instantly</span></div>
+        </div>
+        <div class="discover-step">
+          <div class="discover-step-num">2</div>
+          <div class="discover-step-text"><b>Your listing appears</b><span>Sorted by distance — 2km, 5km, 10km, 15km rings</span></div>
+        </div>
+        <div class="discover-step">
+          <div class="discover-step-num">3</div>
+          <div class="discover-step-text"><b>You get notified instantly</b><span>Enquiry lands in your dashboard the moment it's sent</span></div>
+        </div>
+        <div class="discover-step">
+          <div class="discover-step-num">4</div>
+          <div class="discover-step-text"><b>HostelNode Bot follows up</b><span>Automatic replies keep the student engaged until you respond</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phone-demo-wrap reveal reveal-delay-2">
+      <div class="notif-toast">
+        <div class="dot"></div> New enquiry received!
+      </div>
+      <div class="mobile-mockup">
+        <div class="mobile-screen">
+          <div class="mobile-topbar"><span>9:41</span><span>●●●●● 5G</span></div>
+          <div class="mobile-app-header">
+            <span class="brand-mini">HostelNode</span>
+            <i class="fa-solid fa-bars"></i>
+          </div>
+          <div class="mobile-body">
+            <div class="finger-cursor"></div>
+            <button class="find-btn"><i class="fa-solid fa-location-crosshairs"></i> Find PG Hostel Near Me</button>
+            <div class="radius-row">
+              <div class="radius-pill active">2 km</div>
+              <div class="radius-pill">5 km</div>
+              <div class="radius-pill">10 km</div>
+              <div class="radius-pill">15 km</div>
+            </div>
+            <div class="result-card">
+              <div class="result-thumb"></div>
+              <div class="result-info">
+                <div class="rname">Royal Paradise Boys Hostel</div>
+                <div class="rmeta">⭐ 4.7 · 0.8 km away</div>
+                <div class="rprice">₹11,500/mo</div>
+              </div>
+            </div>
+            <div class="result-card">
+              <div class="result-thumb"></div>
+              <div class="result-info">
+                <div class="rname">Shiv Shambhu PG Nerul</div>
+                <div class="rmeta">⭐ 5.0 · 1.2 km away</div>
+                <div class="rprice">₹6,500/mo</div>
+              </div>
+            </div>
+            <div class="result-card">
+              <div class="result-thumb"></div>
+              <div class="result-info">
+                <div class="rname">Royal Paradise Girls (C-7)</div>
+                <div class="rmeta">⭐ 5.0 · 1.6 km away</div>
+                <div class="rprice">₹11,500/mo</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     360 PROPERTY VIEW
+============================================================ -->
+<section class="property-360-section" id="property360">
+  <div class="property-360-content">
+    <div class="property-360-text reveal">
+      <h2>Showcase your property in <span style="color:var(--g)">360°</span></h2>
+      <p>Listings with immersive photo tours convert far better than static images. Let students explore your rooms, common areas, and facilities before they even step inside.</p>
+      <p><span class="highlight">✓ Build instant trust</span><br>Nothing hides behind a bad photo angle — students see the real space.</p>
+      <p><span class="highlight">✓ Fewer time-wasting visits</span><br>Serious enquiries only, from students who've already seen everything.</p>
+      <p><span class="highlight">✓ Rank higher in search</span><br>Rich-media listings get 3× more enquiries on HostelNode.</p>
+    </div>
+    <div class="property-360-visual reveal reveal-delay-2">
+      <div class="rotation-container">
+        <img src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=700&h=700&fit=crop" alt="360 rotating property view" class="property-image">
+        <div class="rotation-indicator"><i class="fa-solid fa-rotate"></i> Live 360° Preview</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     FEATURES
+============================================================ -->
+<section class="feature-section" id="features">
+  <div class="section-head reveal">
+    <div class="section-tag"><i class="fa-solid fa-layer-group"></i> Built for owners</div>
+    <h2>Everything you need to run your property</h2>
+    <p>List once, then manage rooms, members, and payments — without switching between five different apps.</p>
+  </div>
+  <div class="feature-grid">
+    <div class="feature-card reveal reveal-delay-1">
+      <div class="feature-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+      <h3>Get discovered fast</h3>
+      <p>Join 2,400+ verified listings across 180+ cities and appear the moment a nearby student searches.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-2">
+      <div class="feature-icon"><i class="fa-solid fa-bell"></i></div>
+      <h3>Instant enquiry alerts</h3>
+      <p>Get notified the second a student sends a request — via dashboard, email, and WhatsApp.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-3">
+      <div class="feature-icon"><i class="fa-solid fa-robot"></i></div>
+      <h3>Automated bot follow-ups</h3>
+      <p>HostelNode Bot handles first responses and follow-ups automatically so no lead goes cold.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-4">
+      <div class="feature-icon"><i class="fa-solid fa-building"></i></div>
+      <h3>Multi-property support</h3>
+      <p>Manage multiple hostels or PGs from a single dashboard — switch between properties in one click.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-1">
+      <div class="feature-icon"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+      <h3>Payment tracking</h3>
+      <p>Track fees, dues, and advance payments instantly, with automatic monthly reminders built in.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-2">
+      <div class="feature-icon"><i class="fa-solid fa-bed"></i></div>
+      <h3>Room & member management</h3>
+      <p>Assign rooms, track occupancy, and manage member records — all updated in real time.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-3">
+      <div class="feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+      <h3>Verified badge</h3>
+      <p>Build trust with a verification badge that shows students your listing is genuine and active.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-4">
+      <div class="feature-icon"><i class="fa-brands fa-whatsapp"></i></div>
+      <h3>WhatsApp alerts</h3>
+      <p>Get instant WhatsApp notifications for new enquiries, payments, and member check-ins.</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-1">
+      <div class="feature-icon"><i class="fa-solid fa-chart-line"></i></div>
+      <h3>Revenue reports</h3>
+      <p>See monthly earnings, occupancy trends, and payment history at a glance.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     LIVE DASHBOARD PREVIEW
+============================================================ -->
+<section class="dashboard-section" id="dashboard">
+  <div class="dashboard-content">
+    <div class="dashboard-text reveal">
+      <h2>Run everything from one dashboard</h2>
+      <p>From the first enquiry to the signed booking, track every step in real time. No spreadsheets, no missed messages.</p>
+      <div class="dashboard-benefits">
+        <div class="benefit-item"><div class="benefit-icon">⚡</div><div class="benefit-text">Real-time enquiry notifications</div></div>
+        <div class="benefit-item"><div class="benefit-icon">🤖</div><div class="benefit-text">Bot handles follow-ups automatically</div></div>
+        <div class="benefit-item"><div class="benefit-icon">📊</div><div class="benefit-text">Track bookings & revenue live</div></div>
+        <div class="benefit-item"><div class="benefit-icon">💬</div><div class="benefit-text">Reply via WhatsApp or in-app chat</div></div>
+        <div class="benefit-item"><div class="benefit-icon">✅</div><div class="benefit-text">Zero broker fees — keep 100% earnings</div></div>
+      </div>
+    </div>
+
+    <div class="dashboard-visual reveal reveal-delay-2">
+      <div class="dashboard-mockup">
+        <div class="dashboard-header">
+          <span>Owner Dashboard</span>
+          <span class="live-pill"><span class="dot"></span> Live</span>
+        </div>
+        <div class="dashboard-stats-row">
+          <div class="dstat"><b>128</b><span>Members</span></div>
+          <div class="dstat"><b>₹3.8L</b><span>This Month</span></div>
+          <div class="dstat"><b>6</b><span>Properties</span></div>
+        </div>
+        <div class="dashboard-body">
+          <div class="notification-item">
+            <div class="notification-time">2 minutes ago</div>
+            <div class="notification-text">🎯 New Inquiry from Priya</div>
+            <div class="notification-status">Replied by Bot</div>
+          </div>
+          <div class="notification-item">
+            <div class="notification-time">5 minutes ago</div>
+            <div class="notification-text">✅ Booking Confirmed — Rahul Kumar</div>
+            <div class="notification-status">Payment Received</div>
+          </div>
+          <div class="notification-item">
+            <div class="notification-time">18 minutes ago</div>
+            <div class="notification-text">📍 Site visit scheduled — Room 203</div>
+            <div class="notification-status">Confirmed</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     HOW IT WORKS TIMELINE
+============================================================ -->
+<section class="flow-section" id="flow">
+  <div class="section-head reveal">
+    <div class="section-tag"><i class="fa-solid fa-route"></i> Simple process</div>
+    <h2>From listing to booking in 4 steps</h2>
+    <p>List once, get discovered, and let automation do the heavy lifting.</p>
+  </div>
+  <div class="flow-timeline">
+    <div class="flow-step reveal reveal-delay-1">
+      <div class="flow-step-number">1</div>
+      <h3>List your property</h3>
+      <p>Fill in details, add photos, set pricing — live in under 2 minutes.</p>
+    </div>
+    <div class="flow-step reveal reveal-delay-2">
+      <div class="flow-step-number">2</div>
+      <h3>Get discovered</h3>
+      <p>Nearby students find you the moment they search on HostelNode.</p>
+    </div>
+    <div class="flow-step reveal reveal-delay-3">
+      <div class="flow-step-number">3</div>
+      <h3>Receive enquiries</h3>
+      <p>Instant notifications with bot-assisted follow-ups keep leads warm.</p>
+    </div>
+    <div class="flow-step reveal reveal-delay-4">
+      <div class="flow-step-number">4</div>
+      <h3>Confirm bookings</h3>
+      <p>Track payments and manage members — zero broker fees, ever.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     TRUST STRIP
+============================================================ -->
+<section class="trust-strip">
+  <div class="trust-content">
+    <div class="trust-item reveal"><i class="fa-solid fa-shield-halved"></i><b>Verified Property</b><span>Trust badge for owners</span></div>
+    <div class="trust-item reveal reveal-delay-1"><i class="fa-solid fa-hand-holding-dollar"></i><b>Zero Broker Fee</b><span>Keep 100% of earnings</span></div>
+    <div class="trust-item reveal reveal-delay-2"><i class="fa-solid fa-lock"></i><b>Secure Contact</b><span>Your data stays protected</span></div>
+    <div class="trust-item reveal reveal-delay-3"><i class="fa-solid fa-headset"></i><b>24/7 Support</b><span>We're always here to help</span></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     FINAL CTA
+============================================================ -->
+<section class="cta-final">
+  <div class="cta-final-content reveal">
+    <h2>Ready to list your property on HostelNode.com?</h2>
+    <p>Reach 50,000+ students actively searching every month — zero broker fees, zero setup cost, live in under two minutes.</p>
+    <a href="/signup" class="btn-cta-primary"><i class="fa-solid fa-user-plus"></i> List My Property Free</a>
+  </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+============================================================ -->
+<footer>
+  <p>© 2026 HostelNode · Built in India 🇮🇳 &nbsp;·&nbsp; <a href="/privacy-policy">Privacy</a> &nbsp;·&nbsp; <a href="/terms">Terms</a> &nbsp;·&nbsp; <a href="/student/login">Student Login</a></p>
+</footer>
+
+<script>
+/* navbar shrink on scroll */
+const nav = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  nav.style.boxShadow = window.scrollY > 20 ? '0 4px 20px rgba(0,0,0,0.06)' : 'none';
+}, { passive: true });
+
+/* scroll reveal */
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in-view'); io.unobserve(e.target); } });
+}, { threshold: 0.15 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+/* ============================================================
+   LIVE DEMO STORYBOARD — auto-advance through the 6 scenes,
+   keeping the phone, the step list and the progress dots in sync
+============================================================ */
+(function(){
+  const scenes = document.querySelectorAll('#ldStage .story-scene');
+  const steps  = document.querySelectorAll('#storySteps .story-step');
+  const dots   = document.querySelectorAll('#ldDots i');
+  if (!scenes.length) return;
+
+  let i = 0;
+  const SCENE_MS = 3400;
+
+  function show(n){
+    scenes.forEach(s => s.classList.remove('active'));
+    steps.forEach(s => s.classList.remove('active'));
+    dots.forEach(d => d.classList.remove('active'));
+    scenes[n].classList.add('active');
+    if (steps[n])  steps[n].classList.add('active');
+    if (dots[n])   dots[n].classList.add('active');
+  }
+
+  show(0);
+  let timer = setInterval(() => {
+    i = (i + 1) % scenes.length;
+    show(i);
+  }, SCENE_MS);
+
+  /* pause the story when it's scrolled out of view, resume when back */
+  const demoSection = document.querySelector('.live-demo-section');
+  if (demoSection && 'IntersectionObserver' in window) {
+    new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          if (!timer) timer = setInterval(() => { i = (i + 1) % scenes.length; show(i); }, SCENE_MS);
+        } else {
+          clearInterval(timer);
+          timer = null;
+        }
+      });
+    }, { threshold: 0.2 }).observe(demoSection);
+  }
+})();
+</script>
+
+</body>
+</html>
