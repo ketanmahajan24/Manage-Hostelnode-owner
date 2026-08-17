@@ -68,9 +68,9 @@ app.use(session({
   saveUninitialized: true,
   cookie: { secure: process.env.NODE_ENV === "production" }
 }));
-app.get("/", (req, res) => {
-  res.redirect("/user");
-});
+// app.get("/", (req, res) => {
+//   res.redirect("/user");
+// });
 // ── Global student attach — EJS mein student hamesha available ──
 app.use(async (req, res, next) => {
   res.locals.student = null;
@@ -119,6 +119,7 @@ app.use("/webhook",     waBot);
 // app.use("/",            publicRoutes);
 
 // ── Auth pages ──────────────────────────────────────────────
+app.get("/",       (req, res) => res.render("authPrivate/home.ejs"));
 app.get("/signup",       (req, res) => res.render("authPrivate/signup.ejs"));
 app.get("/login",        (req, res) => res.render("authPrivate/login.ejs"));
 // app.get("/loginforadmin",(req, res) => res.render("authPrivate/login-admin.ejs"));
