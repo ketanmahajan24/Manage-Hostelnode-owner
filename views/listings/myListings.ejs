@@ -476,7 +476,12 @@
         <a href="/user/listing/<%= l._id %>/edit" class="action-btn primary">
           <i class="fa-solid fa-pen-to-square"></i> Edit
         </a>
-        <button class="action-btn outline" onclick="copyLink('<%= l.slug %>')">
+        <!-- <button class="action-btn outline" onclick="copyLink('<%= l.slug %>')">
+          <i class="fa-solid fa-link"></i> Copy Link
+        </button> -->
+
+        <button class="action-btn outline"
+          onclick="copyLink('https://hostelnode.com/hostel/<%= l.slug %>', this)">
           <i class="fa-solid fa-link"></i> Copy Link
         </button>
         <% if (l.status === 'Approved') { %>
