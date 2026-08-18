@@ -1106,12 +1106,25 @@ async function deleteReview(listingId, reviewId) {
 }
 
 /* ─── COPY LINK ─── */
-function copyLink(slug) {
-  navigator.clipboard.writeText(window.location.origin + '/hostel/' + slug)
-    .then(() => showToast('Link copied!'))
+// function copyLink(slug) {
+//   navigator.clipboard.writeText(window.location.origin + '/hostel/' + slug)
+//     .then(() => showToast('Link copied!'))
+//     .catch(() => showToast('Could not copy', true));
+// }
+/* ─── COPY LINK ─── */
+function copyLink(url, button) {
+  navigator.clipboard.writeText(url)
+    .then(() => {
+      const original = button.innerHTML;
+
+      button.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
+
+      setTimeout(() => {
+        button.innerHTML = original;
+      }, 1500);
+    })
     .catch(() => showToast('Could not copy', true));
 }
-
 /* ─── BOOST ─── */
 function boostListing(id) { showToast('Boost feature coming soon!'); }
 
