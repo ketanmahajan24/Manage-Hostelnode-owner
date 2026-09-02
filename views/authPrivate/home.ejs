@@ -247,7 +247,66 @@ nav.navbar .nav-inner {
 .nav-links a:hover::after { width: 100%; }
 .nav-actions { display: flex; gap: 10px; }
 .btn-nav { padding: 10px 22px; border-radius: 10px; border: none; font-weight: 700; font-family: var(--font-d); cursor: pointer; font-size: 0.83rem; transition: all 0.3s; text-decoration: none; display: inline-flex; align-items: center; }
-.btn-nav-primary { background: linear-gradient(135deg, var(--g), #22c55e); color: white; box-shadow: 0 6px 18px var(--g-glow); }
+
+.btn-nav-primary {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    135deg,
+    #7a5c00 0%,
+    #d4af37 18%,
+    #fff2b0 35%,
+    #d4af37 50%,
+    #b8860b 65%,
+    #fff2b0 80%,
+    #a67c00 100%
+  );
+  background-size: 300% 300%;
+  animation: goldShift 4s ease infinite;
+  color: #2a1a00;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border: 1px solid #fff2b0;
+  box-shadow:
+    0 8px 22px rgba(184, 134, 11, 0.55),
+    0 2px 4px rgba(0,0,0,0.25),
+    inset 0 1px 1px rgba(255,255,255,0.7),
+    inset 0 -2px 3px rgba(122, 92, 0, 0.5);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+}
+
+@keyframes goldShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.btn-nav-primary::after {
+  content: '';
+  position: absolute; top: 0; left: -60%;
+  width: 35%; height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.85), transparent);
+  transform: skewX(-20deg);
+  animation: goldSweep 2.6s ease-in-out infinite;
+}
+
+@keyframes goldSweep {
+  0%   { left: -60%; }
+  50%  { left: 130%; }
+  100% { left: 130%; }
+}
+
+.btn-nav-primary:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow:
+    0 14px 32px rgba(184, 134, 11, 0.7),
+    0 4px 8px rgba(0,0,0,0.3),
+    inset 0 1px 1px rgba(255,255,255,0.85),
+    inset 0 -2px 3px rgba(122, 92, 0, 0.5);
+}
+
+.btn-nav-primary:active {
+  transform: scale(0.97);
+}
 .btn-nav-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(9,184,80,0.5); }
 .btn-nav-secondary { background: var(--bg-light); color: var(--text-dark); border: 1.5px solid rgba(0,0,0,0.1); }
 .btn-nav-secondary:hover { background: rgba(0,0,0,0.04); }
@@ -274,7 +333,7 @@ nav.navbar .nav-inner {
 
 /* Phone shell */
 .ld-phone-wrap{ display:flex; justify-content:center; perspective:1200px; }
-.ld-phone{ width:290px; height:598px; background:#05060a; border-radius:40px; padding:11px; box-shadow: 0 50px 100px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06); position:relative; animation: float 6.5s ease-in-out infinite; }
+.ld-phone{ width:290px; height:598px; background:#05060a; border-radius:40px; padding:11px; box-shadow: 0 50px 100px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06); position:relative; animation: float 4s ease-in-out infinite; }
 .ld-phone::before{ content:''; position:absolute; top:11px; left:50%; transform:translateX(-50%); width:96px; height:20px; background:#05060a; border-radius:0 0 14px 14px; z-index:30; }
 .ld-screen{ width:100%; height:100%; background:var(--bg-light); border-radius:30px; overflow:hidden; position:relative; }
 .ld-topbar{ padding:14px 20px 6px; display:flex; justify-content:space-between; align-items:center; font-size:0.65rem; font-weight:700; color:var(--text-dark); background:white; position:relative; z-index:5; }
@@ -287,7 +346,7 @@ nav.navbar .nav-inner {
 
 .story-scene{ position:absolute; inset:0; padding:16px; opacity:0; transform: scale(1.08); transition: opacity .7s ease, transform 1s cubic-bezier(.16,.84,.24,1); pointer-events:none; }
 .story-scene.active{ opacity:1; transform: scale(1); pointer-events:auto; z-index:3; }
-.story-scene .kb{ animation: kenBurns 4.2s ease-in-out infinite alternate; }
+.story-scene .kb{ animation: kenBurns 2.2s ease-in-out infinite alternate; } 
 @keyframes kenBurns{ from{ transform:scale(1); } to{ transform:scale(1.035); } }
 
 /* Search scene */
@@ -299,7 +358,7 @@ nav.navbar .nav-inner {
 .ld-find-btn{ width:100%; padding:15px; border-radius:14px; border:none; background:linear-gradient(135deg, var(--g), #22c55e); color:white; font-family:var(--font-d); font-weight:700; font-size:0.86rem; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 10px 26px var(--g-glow); position:relative; }
 
 .ld-finger{ position:absolute; width:32px; height:32px; background:rgba(15,17,23,0.88); border-radius:50% 50% 50% 4px; transform:rotate(-45deg); box-shadow:0 6px 16px rgba(0,0,0,0.3); z-index:10; }
-.scene-search .ld-finger{ bottom:-40px; right:60px; animation: fingerTap1 3.2s ease-in-out infinite; }
+.scene-search .ld-finger{ bottom:-40px; right:60px; animation: fingerTap1 1.7s ease-in-out infinite; }
 @keyframes fingerTap1{ 0%,10%{opacity:0; transform:translate(30px,20px) rotate(-45deg);} 30%,70%{opacity:1; transform:translate(0,0) rotate(-45deg) scale(0.92);} 90%,100%{opacity:0;} }
 
 /* Results scene */
@@ -333,12 +392,12 @@ nav.navbar .nav-inner {
 .ld-modal-opt i{ width:26px; height:26px; border-radius:8px; background:var(--g-light); color:var(--g-dark); display:flex; align-items:center; justify-content:center; font-size:0.7rem; }
 .ld-modal-opt.hi{ border-color:var(--g); box-shadow:0 0 0 2px rgba(9,184,80,0.15); }
 .ld-modal-opt.hi i{ background:var(--g); color:white; }
-.scene-contact .ld-finger{ top:118px; right:26px; animation: fingerTap2 3.2s ease-in-out infinite; }
+.scene-contact .ld-finger{ top:118px; right:26px; animation: fingerTap2 1.7s ease-in-out infinite; }
 @keyframes fingerTap2{ 0%,15%{opacity:0; transform:translateY(20px) rotate(-45deg);} 35%,75%{opacity:1; transform:translateY(0) rotate(-45deg) scale(0.92);} 92%,100%{opacity:0;} }
 
 /* Success scene */
 .ld-success{ text-align:center; margin-top:60px; }
-.ld-check{ width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg,var(--g),#22c55e); display:flex; align-items:center; justify-content:center; color:white; font-size:1.6rem; margin:0 auto 16px; box-shadow:0 12px 28px var(--g-glow); animation: checkPop 3.2s ease-in-out infinite; }
+.ld-check{ width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg,var(--g),#22c55e); display:flex; align-items:center; justify-content:center; color:white; font-size:1.6rem; margin:0 auto 16px; box-shadow:0 12px 28px var(--g-glow); animation: checkPop 1.7s ease-in-out infinite; }
 @keyframes checkPop{ 0%,15%{ transform:scale(0.4); opacity:0; } 30%{ transform:scale(1.12); opacity:1; } 40%{ transform:scale(1); } 90%,100%{ transform:scale(1); opacity:1; } }
 .ld-success h4{ font-family:var(--font-d); font-size:0.95rem; margin-bottom:6px; }
 .ld-success p{ font-size:0.76rem; color:var(--text-light); line-height:1.5; max-width:210px; margin:0 auto; }
@@ -401,7 +460,7 @@ nav.navbar .nav-inner {
 
 /* Phone mockup */
 .phone-demo-wrap { display: flex; justify-content: center; position: relative; }
-.mobile-mockup { width: 300px; height: 610px; background: var(--text-dark); border-radius: 42px; padding: 12px; box-shadow: 0 40px 80px rgba(0,0,0,0.25); animation: float 6s ease-in-out infinite; }
+.mobile-mockup { width: 300px; height: 610px; background: var(--text-dark); border-radius: 42px; padding: 12px; box-shadow: 0 40px 80px rgba(0,0,0,0.25); animation: float 4s ease-in-out infinite; }
 .mobile-screen { width: 100%; height: 100%; background: white; border-radius: 30px; overflow: hidden; position: relative; display: flex; flex-direction: column; }
 .mobile-topbar { padding: 14px 18px 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.68rem; font-weight: 700; color: var(--text-dark); }
 .mobile-app-header { padding: 4px 18px 14px; display: flex; align-items: center; justify-content: space-between; }
@@ -409,15 +468,15 @@ nav.navbar .nav-inner {
 .mobile-body { flex: 1; padding: 0 16px 16px; overflow: hidden; position: relative; }
 
 .find-btn { width: 100%; padding: 14px; border-radius: 14px; border: none; background: linear-gradient(135deg, var(--g), #22c55e); color: white; font-family: var(--font-d); font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0 16px; animation: pulse 2s infinite; cursor: pointer; }
-.finger-cursor { position: absolute; width: 34px; height: 34px; background: rgba(15,17,23,0.85); border-radius: 50% 50% 50% 4px; transform: rotate(-45deg); top: 128px; left: 130px; box-shadow: 0 6px 16px rgba(0,0,0,0.3); animation: fingerTap 3s ease-in-out infinite; z-index: 10; }
+.finger-cursor { position: absolute; width: 34px; height: 34px; background: rgba(15,17,23,0.85); border-radius: 50% 50% 50% 4px; transform: rotate(-45deg); top: 128px; left: 130px; box-shadow: 0 6px 16px rgba(0,0,0,0.3); animation: fingerTap 1.6s ease-in-out infinite; z-index: 10; }
 @keyframes fingerTap { 0%, 15% { top: 60px; left: 200px; opacity: 0; } 25% { opacity: 1; top: 128px; left: 130px; } 35% { transform: rotate(-45deg) scale(0.85); } 45% { transform: rotate(-45deg) scale(1); } 80% { top: 128px; left: 130px; opacity: 1; } 100% { top: 128px; left: 130px; opacity: 0; } }
 
 .radius-row { display: flex; gap: 6px; margin-bottom: 14px; }
 .radius-pill { flex: 1; text-align: center; padding: 7px 4px; border-radius: 20px; font-size: 0.68rem; font-weight: 700; border: 1px solid var(--g); color: var(--g-dark); background: var(--g-light); }
 .radius-pill.active { background: var(--g); color: white; }
 
-.result-card { display: flex; gap: 10px; padding: 10px; background: white; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; opacity: 0; animation: resultPop 3s ease-in-out infinite; }
-.result-card:nth-child(1) { animation-delay: 1.9s; }
+.result-card { display: flex; gap: 10px; padding: 10px; background: white; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; opacity: 0; animation: resultPop 1.6s ease-in-out infinite; }
+.result-card:nth-child(1) { animation-delay: 1.0s; }
 .result-card:nth-child(2) { animation-delay: 2.1s; }
 .result-card:nth-child(3) { animation-delay: 2.3s; }
 @keyframes resultPop { 0%, 55% { opacity: 0; transform: translateY(10px); } 65%, 100% { opacity: 1; transform: translateY(0); } }
@@ -656,7 +715,7 @@ img { max-width: 100%; height: auto; }
     <div class="live-demo-text">
       <div class="ld-eyebrow"><span class="dot" aria-hidden="true"></span> Watch it happen live</div>
       <h2 id="live-demo-heading">From <span>student search</span> to <span>your WhatsApp</span> — in one real flow</h2>
-      <p>This is the exact journey a student takes on HostelNode, end to end. No demos with dummy screenshots — this is what happens on your listing, every single day.</p>
+      <p>See exactly what happens on your listing — every single day.</p>
     </div>
 
     <div class="ld-phone-wrap">
@@ -1159,6 +1218,174 @@ img { max-width: 100%; height: auto; }
   </div>
 </div>
 
+<!-- FLOATING CONTACT WIDGET (WhatsApp + Call) -->
+<div class="fab-contact-wrap" id="fabContactWrap" aria-label="Quick contact options">
+
+  <!-- Call Button -->
+  <a href="tel:+918828137002"
+     class="fab-btn fab-call"
+     aria-label="Call us at +91 88281 37002"
+     title="Call us">
+    <i class="fa-solid fa-phone" aria-hidden="true"></i>
+    <span class="fab-tooltip">Call Now</span>
+  </a>
+
+  <!-- WhatsApp Button -->
+  <a href="https://wa.me/918828137002?text=Hi%2C%20I%20would%20like%20to%20list%20my%20property%20on%20HostelNode.com.%20Please%20guide%20me%20through%20the%20process."
+     class="fab-btn fab-whatsapp"
+     target="_blank"
+     rel="noopener noreferrer"
+     aria-label="Chat with us on WhatsApp"
+     title="Chat on WhatsApp">
+    <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+    <span class="fab-tooltip">Chat on WhatsApp</span>
+    <span class="fab-ping" aria-hidden="true"></span>
+  </a>
+
+</div>
+
+<style>
+/* ============ FLOATING CONTACT WIDGET ============ */
+.fab-contact-wrap {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+  /* Respect iOS safe area (notch/home-bar devices) */
+  right: max(22px, env(safe-area-inset-right));
+  bottom: max(22px, env(safe-area-inset-bottom));
+}
+
+.fab-btn {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.5rem;
+  text-decoration: none;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.22);
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease;
+  cursor: pointer;
+}
+
+.fab-btn:hover {
+  transform: translateY(-4px) scale(1.06);
+}
+
+.fab-btn:active {
+  transform: scale(0.94);
+}
+
+/* WhatsApp button */
+.fab-whatsapp {
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  box-shadow: 0 10px 28px rgba(37,211,102,0.45);
+}
+.fab-whatsapp:hover {
+  box-shadow: 0 14px 34px rgba(37,211,102,0.55);
+}
+
+/* Call button — matches site's brand green */
+.fab-call {
+  background: linear-gradient(135deg, var(--g, #09B850), var(--g-dark, #078040));
+  box-shadow: 0 10px 28px rgba(9,184,80,0.4);
+}
+.fab-call:hover {
+  box-shadow: 0 14px 34px rgba(9,184,80,0.5);
+}
+
+/* Pulsing ring on WhatsApp icon to draw attention */
+.fab-ping {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(37,211,102,0.55);
+  animation: fabPulse 2.2s ease-out infinite;
+  z-index: -1;
+}
+@keyframes fabPulse {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  70%  { transform: scale(1.7); opacity: 0; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+/* Tooltip label (desktop only) */
+.fab-tooltip {
+  position: absolute;
+  right: 70px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #12141b;
+  color: #fff;
+  font-family: var(--font-b, 'Inter', sans-serif);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 8px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, right 0.25s ease;
+}
+.fab-tooltip::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-left-color: #12141b;
+}
+.fab-btn:hover .fab-tooltip {
+  opacity: 1;
+  right: 76px;
+}
+
+/* Hide tooltips on touch devices (no hover) — cleaner UX on mobile */
+@media (hover: none) {
+  .fab-tooltip { display: none; }
+}
+
+/* ===== Responsive sizing ===== */
+
+/* Tablets */
+@media (max-width: 900px) {
+  .fab-contact-wrap { gap: 12px; }
+  .fab-btn { width: 54px; height: 54px; font-size: 1.4rem; }
+}
+
+/* Mobile phones */
+@media (max-width: 600px) {
+  .fab-contact-wrap {
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
+    gap: 10px;
+  }
+  .fab-btn { width: 50px; height: 50px; font-size: 1.3rem; }
+}
+
+/* Very small phones */
+@media (max-width: 360px) {
+  .fab-btn { width: 46px; height: 46px; font-size: 1.2rem; }
+}
+
+/* Don't overlap the login modal when it's open */
+.login-modal-overlay.open ~ .fab-contact-wrap {
+  display: none;
+}
+</style>
+
+
+
+
 <script async defer>
 /* Navbar scroll effects */
 const nav = document.getElementById('navbar');
@@ -1185,7 +1412,7 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
   if (!scenes.length) return;
 
   let i = 0;
-  const SCENE_MS = 3400;
+  const SCENE_MS = 1800;
 
   function show(n){
     scenes.forEach(s => s.classList.remove('active'));
@@ -1269,6 +1496,10 @@ document.getElementById('modalPassToggle').addEventListener('click', function ()
   }
 })();
 </script>
+
+
+
+
 
 </body>
 </html>
