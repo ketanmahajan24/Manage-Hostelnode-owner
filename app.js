@@ -31,18 +31,22 @@ const Room     = require("./models/room.js");
 const Member   = require("./models/member.js");
 const Payment  = require("./models/payment.js");
 const User     = require("./models/user.js");
-// const Admin    = require("./models/admin.js");
+const Admin    = require("./models/admin.js");
 
 // ── Middlewares ──────────────────────────────────────────────
-// const { visitorTracker, trackGpsLocation } = require("./Middlewares/visitorTracker");
+const { visitorTracker, trackGpsLocation } = require("./Middlewares/visitorTracker");
 
 // ── Routes ───────────────────────────────────────────────────
-// const publicRoutes      = require("./routes/public.js");
-// const findHostelsRouter = require("./routes/findHostels-route");
-// const studentRouter     = require("./routes/studentRoutes");
-// const adminRouter       = require("./routes/adminRoutes");
-// const cityRouter        = require("./routes/cityRoutes");
-// const sitemapRouter     = require("./routes/sitemapRoute");
+const publicRoutes      = require("./routes/public.js");
+const findHostelsRouter = require("./routes/findHostels-route");
+const studentRouter     = require("./routes/studentRoutes");
+const adminRouter       = require("./routes/adminRoutes");
+const cityRouter        = require("./routes/cityRoutes");
+const flatmateRouter    = require("./routes/flatmateRoutes");
+const messagesRouter    = require("./routes/messagesRoutes");
+const ownerMessagesRouter = require("./routes/ownerMessagesRoutes"); // NEW (Phase 4) — owner-side PG/Hostel inbox + chat pages, mounted at /user
+const notificationsRouter = require("./routes/notificationsRoutes");
+const sitemapRouter     = require("./routes/sitemapRoute");
 const waBot             = require("./app-wa-bot");
 
 // ════════════════════════════════════════════════════════════
@@ -50,7 +54,7 @@ const waBot             = require("./app-wa-bot");
 // ════════════════════════════════════════════════════════════
 
 app.use(cors({
-  origin: process.env.CLIENT_URL ,
+  origin: process.env.CLIENT_URL || "http://localhost:5000",
   credentials: true
 }));
 
@@ -60,17 +64,13 @@ app.use(express.urlencoded({ extended: true }));  // 3. form body
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(methodOverride("_method"));               // 4. PUT/DELETE via POST
-// With other app.use() route mounts (after session middleware)
-app.use("/user", userRouter);
 app.use(session({
   secret: process.env.SESSION_SECRET || "hostelnode_secret",
   resave: false,
   saveUninitialized: true,
   cookie: { secure: process.env.NODE_ENV === "production" }
 }));
-// app.get("/", (req, res) => {
-//   res.redirect("/user");
-// });
+
 // ── Global student attach — EJS mein student hamesha available ──
 app.use(async (req, res, next) => {
   res.locals.student = null;
@@ -87,7 +87,7 @@ app.use(async (req, res, next) => {
 });
 
 // ── Visitor tracker ─────────────────────────────────────────
-// app.use(visitorTracker);
+app.use(visitorTracker);
 
 // ════════════════════════════════════════════════════════════
 //   STATIC FILES
@@ -96,6 +96,7 @@ const UPLOAD_BASE = "/secure_uploads";
 app.use("/student-images", express.static(path.join(UPLOAD_BASE, "students")));
 app.use("/profile-image",  express.static(path.join(UPLOAD_BASE, "profiles")));
 app.use("/listing-images", express.static(path.join(UPLOAD_BASE, "listings")));
+app.use("/flatmate-images", express.static(path.join(UPLOAD_BASE, "flatmate")));
 app.use(express.static(path.join(__dirname, "public")));
 
 // ════════════════════════════════════════════════════════════
@@ -108,21 +109,25 @@ app.engine("ejs", ejsMate);
 // ════════════════════════════════════════════════════════════
 //   ROUTES  —  ORDER MATTERS
 // ════════════════════════════════════════════════════════════
-// app.post("/track-location", trackGpsLocation);
+app.post("/track-location", trackGpsLocation);
 
 app.use("/webhook",     waBot);
-// app.use("/admin",       adminRouter);
-// app.use("/student",     studentRouter);
-// app.use("/findHostels", findHostelsRouter);
-// app.use("/city",        cityRouter);
-// app.use("/",            sitemapRouter);
-// app.use("/",            publicRoutes);
+app.use("/user",        userRouter);
+app.use("/user",        ownerMessagesRouter); // NEW (Phase 4) — /user/messages, /user/messages/:conversationId
+app.use("/admin",       adminRouter);
+app.use("/student",     studentRouter);
+app.use("/findHostels", findHostelsRouter);
+app.use("/city",        cityRouter);
+app.use("/flatmate",    flatmateRouter);
+app.use("/messages",    messagesRouter);
+app.use("/notifications", notificationsRouter);
+app.use("/",            sitemapRouter);
+app.use("/",            publicRoutes);
 
 // ── Auth pages ──────────────────────────────────────────────
-app.get("/",       (req, res) => res.render("authPrivate/home.ejs"));
 app.get("/signup",       (req, res) => res.render("authPrivate/signup.ejs"));
 app.get("/login",        (req, res) => res.render("authPrivate/login.ejs"));
-// app.get("/loginforadmin",(req, res) => res.render("authPrivate/login-admin.ejs"));
+app.get("/loginforadmin",(req, res) => res.render("authPrivate/login-admin.ejs"));
 
 // ── Admin login ─────────────────────────────────────────────
 app.post("/admin-login", async (req, res) => {
@@ -215,11 +220,26 @@ cron.schedule("0 0 * * *", async () => {
     console.error("❌ Cron error:", err);
   }
 });
- 
+
+// ════════════════════════════════════════════════════════════
+//   CRON — Flatmate reminder sweep (hourly) — Phase 10
+//   Pending-request reminders, unread-message reminders, listing
+//   expiring-soon warnings, auto-expiry, and re-activate reminders.
+//   Hourly is the finest granularity these reminder windows need
+//   (the shortest, unread-message, defaults to 3h) — see
+//   utils/flatmateReminders.js for each sweep's exact logic and env
+//   var overrides.
+// ════════════════════════════════════════════════════════════
+cron.schedule("0 * * * *", async () => {
+  console.log("🔄 Running Flatmate reminder sweep...");
+  const { runFlatmateReminderSweep } = require("./utils/flatmateReminders");
+  await runFlatmateReminderSweep();
+});
+
 // ════════════════════════════════════════════════════════════
 //   START SERVER
 // ════════════════════════════════════════════════════════════
-const PORT = process.env.PORT ;
+const PORT = process.env.PORT || 6060;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

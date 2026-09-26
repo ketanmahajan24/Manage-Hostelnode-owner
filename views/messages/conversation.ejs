@@ -1,0 +1,436 @@
+<!-- conversation.ejs — HostelNode Messages chat thread -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= conversation ? 'Chat' : 'Conversation' %> | HostelNode</title>
+  <link rel="icon" type="image/png" href="/images/hostelnode-logo-cutout.png">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Inter:opsz,wght@14..32,300..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/findhostel.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { background: var(--bg); }
+    .chat-wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 0; display: flex; flex-direction: column; height: calc(100vh - 70px); }
+    .chat-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+    .chat-header-left { display: flex; align-items: center; gap: 12px; }
+    .chat-back { color: var(--muted); font-size: 16px; text-decoration: none; }
+    .chat-avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, var(--green), #00c264); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+    .chat-name { font-size: 14.5px; font-weight: 700; color: var(--ink); }
+    .chat-status { font-size: 11.5px; }
+    .chat-status.active { color: var(--green-dark); }
+    .chat-status.closed { color: var(--muted); }
+    .chat-menu-btn { background: var(--bg2); border: none; width: 32px; height: 32px; border-radius: 50%; color: var(--muted); position: relative; }
+    .chat-menu-dropdown {
+      position: absolute; top: 40px; right: 0; background: #fff; border: 1px solid var(--border); border-radius: 14px;
+      box-shadow: var(--shadow-md); min-width: 190px; z-index: 100; display: none; overflow: hidden;
+    }
+    .chat-menu-dropdown.open { display: block; }
+    .chat-menu-dropdown a, .chat-menu-dropdown button {
+      display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 16px; font-size: 13px; text-align: left;
+      background: none; border: none; color: var(--ink-mid); text-decoration: none; cursor: pointer;
+    }
+    .chat-menu-dropdown a:hover, .chat-menu-dropdown button:hover { background: var(--bg2); }
+    .chat-menu-dropdown .danger { color: #c53030; }
+
+    .chat-listing-card { display: flex; align-items: center; justify-content: space-between; background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 12px 16px; margin: 14px 0; font-size: 12.5px; }
+    .chat-listing-card a { color: var(--green-dark); font-weight: 700; text-decoration: none; font-size: 12px; }
+
+    .chat-thread { flex: 1; overflow-y: auto; padding: 16px 4px; display: flex; flex-direction: column; gap: 10px; }
+    .bubble { max-width: 75%; padding: 10px 14px; border-radius: 16px; font-size: 13.5px; line-height: 1.5; }
+    .bubble.mine { align-self: flex-end; background: var(--green); color: #fff; border-bottom-right-radius: 4px; }
+    .bubble.theirs { align-self: flex-start; background: var(--card-bg); border: 1px solid var(--border); color: var(--ink); border-bottom-left-radius: 4px; }
+    .bubble .time { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: 10px; opacity: .8; margin-top: 4px; }
+    .bubble .tick { font-size: 11px; }
+    .bubble .tick.tick-sent { opacity: .75; }
+    .bubble .tick.tick-delivered { opacity: .85; }
+    .bubble .tick.tick-read { color: #53d1ff; opacity: 1; }
+
+    .chat-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 40px 0; }
+
+    .suggestion-row { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 12px; scrollbar-width: thin; }
+    .suggestion-row::-webkit-scrollbar { height: 4px; }
+    .suggestion-chip {
+      flex-shrink: 0; white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis;
+      background: var(--bg2); border: 1.5px solid var(--border); color: var(--ink-mid); font-size: 12px;
+      padding: 8px 14px; border-radius: 999px; cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    .suggestion-chip:hover { border-color: var(--green); background: var(--green-glow); }
+    .suggestion-dismiss { flex-shrink: 0; align-self: center; background: none; border: none; color: var(--muted); font-size: 13px; padding: 0 4px; cursor: pointer; }
+    /* Accessibility audit (Phase 7): these two are new in Phase 4 and had
+       no explicit focus style — branded outline instead of relying on
+       the (unstyled but not stripped) browser default. */
+    .suggestion-chip:focus-visible, .suggestion-dismiss:focus-visible { outline: 2.5px solid var(--green); outline-offset: 2px; }
+    .suggestion-wrap { display: none; }
+    .suggestion-wrap.visible { display: flex; align-items: center; }
+
+    .chat-input-row { display: flex; gap: 10px; padding: 12px 0 16px; border-top: 1px solid var(--border); }
+    .chat-input-row textarea { flex: 1; border: 1.5px solid var(--border); border-radius: 16px; padding: 11px 14px; font-size: 13.5px; font-family: inherit; resize: none; outline: none; }
+    .chat-input-row textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-glow); }
+    .chat-send-btn { background: linear-gradient(135deg, var(--green), #00c264); color: #fff; border: none; border-radius: 50%; width: 44px; height: 44px; flex-shrink: 0; }
+    .chat-closed-note { text-align: center; padding: 16px; color: var(--muted); font-size: 12.5px; background: var(--bg2); border-radius: 12px; margin: 12px 0 16px; }
+
+    .not-found { text-align: center; padding: 80px 20px; }
+    .not-found i { font-size: 2.4rem; color: var(--border-dark); }
+
+    /* Remove connection confirm modal */
+    .rm-overlay { position: fixed; inset: 0; background: rgba(10,22,40,.55); z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 16px; opacity: 0; pointer-events: none; transition: opacity .2s; }
+    .rm-overlay.open { opacity: 1; pointer-events: all; }
+    .rm-box { background: #fff; border-radius: 18px; max-width: 380px; padding: 22px; }
+    .rm-box h3 { font-family: var(--font-d); font-weight: 700; color: var(--ink); margin-bottom: 10px; }
+    .rm-box ul { font-size: 12.5px; color: var(--muted); padding-left: 18px; margin-bottom: 16px; }
+    .rm-box ul li { margin-bottom: 4px; }
+    .rm-actions { display: flex; gap: 10px; }
+    .rm-actions button { flex: 1; padding: 11px; border-radius: 12px; font-size: 13px; font-weight: 700; border: none; }
+    .rm-actions .cancel { background: var(--bg2); color: var(--ink-mid); }
+    .rm-actions .confirm { background: #c53030; color: #fff; }
+
+    .report-reasons { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .report-reason-opt { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-mid); padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 10px; cursor: pointer; }
+    .report-reason-opt input { accent-color: #c53030; }
+    .report-reason-opt.checked { border-color: #c53030; background: #fef2f2; }
+    .rm-box textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; padding: 9px 12px; font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box; margin-bottom: 14px; }
+    .rm-success { text-align: center; padding: 10px 0; }
+    .rm-success i { font-size: 30px; color: var(--green); display: block; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<%- include("../includes/navbar-user.ejs") %>
+
+<% if (!conversation) { %>
+  <div class="not-found">
+    <i class="fa-solid fa-lock"></i>
+    <h2 style="font-family:var(--font-d);margin:16px 0 8px">Conversation not found</h2>
+    <p style="color:var(--muted);font-size:13.5px">This conversation doesn't exist, or you don't have access to it.</p>
+    <a href="/messages" style="color:var(--green-dark);font-weight:700">&larr; Back to Messages</a>
+  </div>
+<% } else { %>
+
+<div class="chat-wrap">
+  <div class="chat-header">
+    <div class="chat-header-left">
+      <a href="/messages" class="chat-back"><i class="fa-solid fa-arrow-left"></i></a>
+      <div class="chat-avatar"><%= (counterpart?.firstName || 'H')[0] %></div>
+      <div>
+        <div class="chat-name"><%= counterpart?.firstName || 'HostelNode User' %></div>
+        <div class="chat-status <%= conversation.status === 'active' ? 'active' : 'closed' %>">
+          <%= conversation.status === 'active' ? '🟢 Connected' : '⚪ Connection ended' %>
+        </div>
+      </div>
+    </div>
+    <div style="position:relative">
+      <button class="chat-menu-btn" onclick="toggleChatMenu()"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+      <div class="chat-menu-dropdown" id="chatMenu">
+        <% if (conversation.listing && conversation.type === 'FLATMATE_CONNECTION') { %>
+          <a href="/flatmate/<%= conversation.listing.slug %>"><i class="fa-solid fa-house"></i> View Listing</a>
+        <% } %>
+        <% if (conversation.status === 'active' && connection) { %>
+          <button onclick="openRemoveModal()"><i class="fa-solid fa-user-slash"></i> Remove Connection</button>
+        <% } %>
+        <button onclick="openReportModal()"><i class="fa-solid fa-flag"></i> Report</button>
+        <button class="danger" onclick="openBlockModal()"><i class="fa-solid fa-ban"></i> Block User</button>
+      </div>
+    </div>
+  </div>
+
+  <% if (conversation.listing) { %>
+    <div class="chat-listing-card">
+      <span>
+        <%= conversation.listingModel === 'FlatmateListing'
+          ? conversation.listing.bhk + ' BHK · ' + conversation.listing.area + ', ' + conversation.listing.city
+          : (conversation.listing.title || 'Listing') %>
+      </span>
+      <% if (conversation.type === 'FLATMATE_CONNECTION') { %>
+        <a href="/flatmate/<%= conversation.listing.slug %>">View Listing</a>
+      <% } %>
+    </div>
+  <% } %>
+
+  <div class="chat-thread" id="chatThread">
+    <% if (!messages || messages.length === 0) { %>
+      <div class="chat-empty">No messages yet — say hello 👋</div>
+    <% } %>
+    <% messages.forEach(function(m) { %>
+      <% const mine = m.sender.toString() === viewerId; %>
+      <div class="bubble <%= mine ? 'mine' : 'theirs' %>" data-id="<%= m._id %>">
+        <%= m.text %>
+        <span class="time">
+          <%= new Date(m.createdAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }) %>
+          <% if (mine) { %>
+            <i class="fa-solid tick <%= m.readAt ? 'fa-check-double tick-read' : (m.deliveredAt ? 'fa-check-double tick-delivered' : 'fa-check tick-sent') %>"></i>
+          <% } %>
+        </span>
+      </div>
+    <% }) %>
+  </div>
+
+  <% if (conversation.status === 'active') { %>
+    <% if (suggestions && suggestions.length) { %>
+      <div class="suggestion-wrap visible" id="suggestionWrap">
+        <div class="suggestion-row" id="suggestionRow">
+          <% suggestions.forEach(function(s) { %>
+            <button type="button" class="suggestion-chip" onclick="useSuggestion(this)"><%= s %></button>
+          <% }) %>
+        </div>
+        <button type="button" class="suggestion-dismiss" onclick="dismissSuggestions()" title="Hide suggestions"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    <% } %>
+    <div class="chat-input-row">
+      <textarea id="chatInput" rows="1" placeholder="Type a message…" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+      <button class="chat-send-btn" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  <% } else { %>
+    <div class="chat-closed-note">This connection has ended. You can no longer send messages.</div>
+  <% } %>
+</div>
+
+<!-- Remove Connection confirmation -->
+<div class="rm-overlay" id="rmOverlay" onclick="if(event.target===this) closeRemoveModal()" role="dialog" aria-modal="true" aria-labelledby="rmModalTitle">
+  <div class="rm-box">
+    <h3 id="rmModalTitle">Remove Connection?</h3>
+    <p style="font-size:13px;color:var(--muted-light);margin-bottom:10px">You will no longer be connected with <%= counterpart?.firstName || 'this user' %>.</p>
+    <ul>
+      <li>You won't be able to send new messages</li>
+      <li>Private profile information will no longer be available</li>
+      <li>This connection will be removed</li>
+      <li>Your existing conversation will be closed</li>
+    </ul>
+    <div class="rm-actions">
+      <button class="cancel" onclick="closeRemoveModal()">Cancel</button>
+      <button class="confirm" onclick="removeConnection()">Remove Connection</button>
+    </div>
+  </div>
+</div>
+
+<!-- Report modal -->
+<div class="rm-overlay" id="reportOverlay" onclick="if(event.target===this) closeReportModal()" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
+  <div class="rm-box">
+    <div id="reportForm">
+      <h3 id="reportModalTitle">Report <%= counterpart?.firstName || 'this user' %></h3>
+      <p style="font-size:13px;color:var(--muted-light);margin-bottom:14px">Why are you reporting this user?</p>
+      <div class="report-reasons" id="reportReasons">
+        <% ["Spam","Fake profile","Harassment","Fraud / Scam","Inappropriate content","Other"].forEach(function(r, i) { %>
+          <label class="report-reason-opt">
+            <input type="radio" name="reportReason" value="<%= r %>" onchange="markReportReason(this)"> <%= r %>
+          </label>
+        <% }) %>
+      </div>
+      <textarea id="reportDetails" rows="3" maxlength="1000" placeholder="Additional details (optional)"></textarea>
+      <div class="rm-actions">
+        <button class="cancel" onclick="closeReportModal()">Cancel</button>
+        <button class="confirm" onclick="submitReport()">Submit Report</button>
+      </div>
+    </div>
+    <div id="reportSuccess" class="rm-success" style="display:none">
+      <i class="fa-solid fa-circle-check"></i>
+      <p style="font-size:13.5px;color:var(--ink)">Thanks — our team will review this report.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Block confirmation -->
+<div class="rm-overlay" id="blockOverlay" onclick="if(event.target===this) closeBlockModal()" role="dialog" aria-modal="true" aria-labelledby="blockModalTitle">
+  <div class="rm-box">
+    <h3 id="blockModalTitle">Block <%= counterpart?.firstName || 'this user' %>?</h3>
+    <ul>
+      <li>They won't be able to send you new connection requests</li>
+      <li>They won't be able to message you</li>
+      <li>Any active connection between you will end</li>
+      <li>Your private information will no longer be visible to them</li>
+    </ul>
+    <div class="rm-actions">
+      <button class="cancel" onclick="closeBlockModal()">Cancel</button>
+      <button class="confirm" onclick="blockUser()">Block User</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script>
+const CONVERSATION_ID = "<%= conversation._id %>";
+const CONNECTION_ID = <%- connection ? JSON.stringify(connection._id.toString()) : 'null' %>;
+let lastMessageTime = <%- messages.length ? JSON.stringify(messages[messages.length-1].createdAt) : 'null' %>;
+
+const thread = document.getElementById('chatThread');
+thread.scrollTop = thread.scrollHeight;
+
+function toggleChatMenu() {
+  document.getElementById('chatMenu').classList.toggle('open');
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.chat-menu-btn') && !e.target.closest('.chat-menu-dropdown')) {
+    document.getElementById('chatMenu')?.classList.remove('open');
+  }
+});
+
+// Accessibility audit (Phase 7): none of the three confirmation modals
+// below (Remove Connection / Report / Block) had an Escape handler —
+// background-click already closed each of them, Escape didn't.
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  const openModal = document.querySelector('.rm-overlay.open');
+  if (!openModal) return;
+  if (openModal.id === 'rmOverlay') closeRemoveModal();
+  else if (openModal.id === 'reportOverlay') closeReportModal();
+  else if (openModal.id === 'blockOverlay') closeBlockModal();
+});
+
+function openRemoveModal() { document.getElementById('rmOverlay').classList.add('open'); toggleChatMenu(); }
+function closeRemoveModal() { document.getElementById('rmOverlay').classList.remove('open'); }
+
+const COUNTERPART_ID = <%- counterpart ? JSON.stringify(counterpart._id.toString()) : 'null' %>;
+const LISTING_ID = <%- (conversation.listing && conversation.listing._id) ? JSON.stringify(conversation.listing._id.toString()) : 'null' %>;
+
+function openReportModal() { document.getElementById('reportOverlay').classList.add('open'); toggleChatMenu(); }
+function closeReportModal() { document.getElementById('reportOverlay').classList.remove('open'); }
+function markReportReason(input) {
+  document.querySelectorAll('.report-reason-opt').forEach(el => el.classList.remove('checked'));
+  input.closest('.report-reason-opt').classList.add('checked');
+}
+async function submitReport() {
+  const reasonEl = document.querySelector('input[name="reportReason"]:checked');
+  if (!reasonEl) { alert('Please select a reason.'); return; }
+  try {
+    const res = await fetch('/messages/report', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        reportedUserId: COUNTERPART_ID, listingId: LISTING_ID, conversationId: CONVERSATION_ID,
+        reason: reasonEl.value, details: document.getElementById('reportDetails').value.trim(),
+      }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('reportForm').style.display = 'none';
+      document.getElementById('reportSuccess').style.display = 'block';
+      setTimeout(closeReportModal, 1800);
+    } else {
+      alert(data.error || 'Could not submit report.');
+    }
+  } catch (err) { alert('Network error — please try again.'); }
+}
+
+function openBlockModal() { document.getElementById('blockOverlay').classList.add('open'); toggleChatMenu(); }
+function closeBlockModal() { document.getElementById('blockOverlay').classList.remove('open'); }
+async function blockUser() {
+  try {
+    const res = await fetch('/messages/block/' + COUNTERPART_ID, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) { window.location.href = '/messages'; }
+    else alert(data.error || 'Could not block user.');
+  } catch (err) { alert('Network error — please try again.'); }
+}
+
+async function removeConnection() {
+  try {
+    const res = await fetch('/messages/connection/' + CONNECTION_ID + '/remove', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) window.location.reload();
+    else alert(data.error || 'Could not remove connection.');
+  } catch (err) { alert('Network error — please try again.'); }
+}
+
+function tickHtml(msg) {
+  if (msg.readAt) return '<i class="fa-solid fa-check-double tick tick-read"></i>';
+  if (msg.deliveredAt) return '<i class="fa-solid fa-check-double tick tick-delivered"></i>';
+  return '<i class="fa-solid fa-check tick tick-sent"></i>';
+}
+
+function appendBubble(msg) {
+  const div = document.createElement('div');
+  div.className = 'bubble ' + (msg.mine ? 'mine' : 'theirs');
+  if (msg._id) div.dataset.id = msg._id;
+  const time = new Date(msg.createdAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+  div.innerHTML = msg.text.replace(/</g,'&lt;') + '<span class="time">' + time + (msg.mine ? tickHtml(msg) : '') + '</span>';
+  thread.appendChild(div);
+  thread.scrollTop = thread.scrollHeight;
+  lastMessageTime = msg.createdAt;
+}
+
+// Upgrade ticks on an already-rendered bubble (called from the poll
+// loop's statusUpdates — never re-renders the whole bubble, just the
+// tick icon, so it can't clobber anything else in it).
+function updateTicks(id, deliveredAt, readAt) {
+  const bubble = thread.querySelector('[data-id="' + id + '"]');
+  if (!bubble) return;
+  const tick = bubble.querySelector('.tick');
+  if (!tick) return;
+  tick.outerHTML = tickHtml({ deliveredAt, readAt });
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  hideSuggestions();
+  try {
+    const res = await fetch('/messages/' + CONVERSATION_ID + '/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    if (data.success) appendBubble(data.message);
+    else alert(data.error || 'Could not send message.');
+  } catch (err) { alert('Network error — please try again.'); }
+}
+
+function useSuggestion(btn) {
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  input.value = btn.textContent;
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+}
+function hideSuggestions() {
+  const wrap = document.getElementById('suggestionWrap');
+  if (wrap) wrap.classList.remove('visible');
+}
+function dismissSuggestions() { hideSuggestions(); }
+
+// "Read" is a real signal, not a poll side-effect: only ack it while
+// this tab is actually visible AND focused, so switching away or
+// backgrounding the tab correctly leaves messages at "delivered" (grey
+// double tick) rather than falsely showing them as read. Debounced so
+// rapid focus/visibility churn or several incoming messages in a row
+// don't fire a flood of requests.
+let readAckTimer = null;
+function ackReadIfFocused() {
+  if (document.visibilityState !== 'visible' || !document.hasFocus()) return;
+  clearTimeout(readAckTimer);
+  readAckTimer = setTimeout(function () {
+    fetch('/messages/' + CONVERSATION_ID + '/read', { method: 'POST' }).catch(function () {});
+  }, 600);
+}
+document.addEventListener('visibilitychange', ackReadIfFocused);
+window.addEventListener('focus', ackReadIfFocused);
+ackReadIfFocused();
+
+/* Lightweight polling (no socket.io in this project) — check for new
+   messages from the other side every 4s, and pick up delivered/read
+   tick updates for the viewer's own messages. */
+setInterval(async function () {
+  try {
+    const qs = lastMessageTime ? '?after=' + encodeURIComponent(lastMessageTime) : '';
+    const res = await fetch('/messages/' + CONVERSATION_ID + '/poll' + qs);
+    const data = await res.json();
+    if (!data.success) return;
+    let gotIncoming = false;
+    if (data.messages.length) {
+      data.messages.forEach(function(m) {
+        if (!m.mine) { appendBubble(m); gotIncoming = true; }
+      });
+    }
+    if (data.statusUpdates && data.statusUpdates.length) {
+      data.statusUpdates.forEach(function(s) { updateTicks(s._id, s.deliveredAt, s.readAt); });
+    }
+    if (gotIncoming) ackReadIfFocused();
+  } catch (err) { /* silent — network hiccups shouldn't spam the user */ }
+}, 4000);
+</script>
+
+<% } %>
+</body>
+</html>
