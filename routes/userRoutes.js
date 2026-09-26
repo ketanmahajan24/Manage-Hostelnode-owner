@@ -1531,6 +1531,7 @@ router.post("/new-list-property", jwtAuthMiddleware, attachHostel, listingUpload
   }
 });
 
+
 // ============================================================
 //  MY LISTINGS
 // ============================================================
