@@ -106,6 +106,10 @@ app.use("/user",        userRouter);
 app.use("/user",        ownerMessagesRouter); // Phase 4 — /user/messages, /user/messages/:conversationId
 app.use("/messages",    messagesRouter);      // this repo's SLIM, PG-chat-only variant
 
+// ── Root — this deployment has no public homepage (that's
+//   hostelnode.com's job), so send a bare visit straight to login. ──
+app.get("/", (req, res) => res.redirect("/login"));
+
 // ── Auth pages — the Owner's own login/signup (userRoutes.js handles
 //   the POST /user/signup submit; these just render the forms) ──
 app.get("/signup",       (req, res) => res.render("authPrivate/signup.ejs"));
