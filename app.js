@@ -18,35 +18,30 @@ const mongoose     = require("mongoose");
 const cron         = require("node-cron");
 const moment       = require("moment");
 const jwt          = require("jsonwebtoken");
-const sitemap      = require("express-sitemap-xml");
 
 // ── DB ──────────────────────────────────────────────────────
 const connectDB = require("./config/db");
 connectDB();
 
 // ── Models ──────────────────────────────────────────────────
+// Trimmed: Admin/User (superadmin panel — a different system, not
+// this owner dashboard) removed, along with everything only they used.
 const Student  = require("./models/studentSchema");
 const Floor    = require("./models/floor.js");
 const Room     = require("./models/room.js");
 const Member   = require("./models/member.js");
 const Payment  = require("./models/payment.js");
-const User     = require("./models/user.js");
-const Admin    = require("./models/admin.js");
-
-// ── Middlewares ──────────────────────────────────────────────
-const { visitorTracker, trackGpsLocation } = require("./Middlewares/visitorTracker");
 
 // ── Routes ───────────────────────────────────────────────────
-const publicRoutes      = require("./routes/public.js");
-const findHostelsRouter = require("./routes/findHostels-route");
-const studentRouter     = require("./routes/studentRoutes");
-const adminRouter       = require("./routes/adminRoutes");
-const cityRouter        = require("./routes/cityRoutes");
-const flatmateRouter    = require("./routes/flatmateRoutes");
+// Trimmed to owner-admin (existing) + owner chat (new) only. Removed:
+// publicRoutes, findHostelsRouter, studentRouter, adminRouter,
+// cityRouter, flatmateRouter, notificationsRouter, sitemapRouter — all
+// student-facing/public-site/Flatmate/superadmin routes that belong on
+// hostelnode.com, not this owner-only deployment. messagesRouter below
+// is this repo's own SLIM, PG-chat-only variant (see that file's own
+// header) — not the main repo's shared Flatmate+PG one.
 const messagesRouter    = require("./routes/messagesRoutes");
-const ownerMessagesRouter = require("./routes/ownerMessagesRoutes"); // NEW (Phase 4) — owner-side PG/Hostel inbox + chat pages, mounted at /user
-const notificationsRouter = require("./routes/notificationsRoutes");
-const sitemapRouter     = require("./routes/sitemapRoute");
+const ownerMessagesRouter = require("./routes/ownerMessagesRoutes"); // Phase 4 — owner-side PG/Hostel inbox + chat pages, mounted at /user
 const waBot             = require("./app-wa-bot");
 
 // ════════════════════════════════════════════════════════════
@@ -86,9 +81,6 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// ── Visitor tracker ─────────────────────────────────────────
-app.use(visitorTracker);
-
 // ════════════════════════════════════════════════════════════
 //   STATIC FILES
 // ════════════════════════════════════════════════════════════
@@ -109,65 +101,15 @@ app.engine("ejs", ejsMate);
 // ════════════════════════════════════════════════════════════
 //   ROUTES  —  ORDER MATTERS
 // ════════════════════════════════════════════════════════════
-app.post("/track-location", trackGpsLocation);
-
 app.use("/webhook",     waBot);
 app.use("/user",        userRouter);
-app.use("/user",        ownerMessagesRouter); // NEW (Phase 4) — /user/messages, /user/messages/:conversationId
-app.use("/admin",       adminRouter);
-app.use("/student",     studentRouter);
-app.use("/findHostels", findHostelsRouter);
-app.use("/city",        cityRouter);
-app.use("/flatmate",    flatmateRouter);
-app.use("/messages",    messagesRouter);
-app.use("/notifications", notificationsRouter);
-app.use("/",            sitemapRouter);
-app.use("/",            publicRoutes);
+app.use("/user",        ownerMessagesRouter); // Phase 4 — /user/messages, /user/messages/:conversationId
+app.use("/messages",    messagesRouter);      // this repo's SLIM, PG-chat-only variant
 
-// ── Auth pages ──────────────────────────────────────────────
+// ── Auth pages — the Owner's own login/signup (userRoutes.js handles
+//   the POST /user/signup submit; these just render the forms) ──
 app.get("/signup",       (req, res) => res.render("authPrivate/signup.ejs"));
 app.get("/login",        (req, res) => res.render("authPrivate/login.ejs"));
-app.get("/loginforadmin",(req, res) => res.render("authPrivate/login-admin.ejs"));
-
-// ── Admin login ─────────────────────────────────────────────
-app.post("/admin-login", async (req, res) => {
-  try {
-    const { username, password } = req.body.admin;
-    const admin = await Admin.findOne({ username });
-
-    if (!admin) {
-      return res.render("authPrivate/login-admin.ejs", { error: "Invalid username or password" });
-    }
-    if (admin.status !== "Active") {
-      return res.render("authPrivate/login-admin.ejs", { error: "Account inactive. Contact support." });
-    }
-    if (password !== admin.password) {
-      return res.render("authPrivate/login-admin.ejs", { error: "Invalid Password" });
-    }
-
-    const users   = await User.find();
-    const isadmin = await Admin.findOne({ username });
-    res.render("superAdmin/admin", { users, isadmin });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-// ── Toggle user status ───────────────────────────────────────
-app.put("/dashboard/:id", async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
-    const newStatus = user.status === "Active" ? "Inactive" : "Active";
-    await User.findByIdAndUpdate(req.params.id, { status: newStatus });
-    res.send("STATUS UPDATED");
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error updating user status");
-  }
-});
 
 // ── Privacy & Terms ──────────────────────────────────────────
 app.get("/privacy-policy", (req, res) => {
@@ -176,12 +118,6 @@ app.get("/privacy-policy", (req, res) => {
 app.get("/terms", (req, res) => {
   res.send(`<h1>Terms of Service - HostelNode</h1><p>Last updated: May 2026</p><p>Email: support@hostelnode.com</p>`);
 });
-
-// ── Sitemap ──────────────────────────────────────────────────
-app.use(sitemap(
-  async () => ["https://hostelnode.com/", "https://hostelnode.com/findHostels"],
-  "https://hostelnode.com"
-));
 
 // ════════════════════════════════════════════════════════════
 //   CRON — Monthly Fee Check (midnight daily)
@@ -221,20 +157,8 @@ cron.schedule("0 0 * * *", async () => {
   }
 });
 
-// ════════════════════════════════════════════════════════════
-//   CRON — Flatmate reminder sweep (hourly) — Phase 10
-//   Pending-request reminders, unread-message reminders, listing
-//   expiring-soon warnings, auto-expiry, and re-activate reminders.
-//   Hourly is the finest granularity these reminder windows need
-//   (the shortest, unread-message, defaults to 3h) — see
-//   utils/flatmateReminders.js for each sweep's exact logic and env
-//   var overrides.
-// ════════════════════════════════════════════════════════════
-cron.schedule("0 * * * *", async () => {
-  console.log("🔄 Running Flatmate reminder sweep...");
-  const { runFlatmateReminderSweep } = require("./utils/flatmateReminders");
-  await runFlatmateReminderSweep();
-});
+// (Flatmate reminder cron removed — Flatmate doesn't run on this
+//   deployment at all, so there's nothing for it to sweep here.)
 
 // ════════════════════════════════════════════════════════════
 //   START SERVER
