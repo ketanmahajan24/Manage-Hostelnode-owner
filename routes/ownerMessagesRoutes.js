@@ -46,6 +46,26 @@ function getUnread(conv, ownerId) {
   return conv.unreadCounts[ownerId] || 0;
 }
 
+/* ── Suggested opening replies — NEW. The main hostelnode.com repo's
+   routes/messagesRoutes.js has an equivalent PG_TENANT_SUGGESTIONS
+   list for the Student side; this is that file's Owner-side
+   counterpart, duplicated here rather than shared across repos since
+   this is a separate deployment with its own codebase. Only one set
+   needed here (unlike that file, which also needs a tenant set) —
+   every viewer on this route is always the Owner. ── */
+const PG_OWNER_SUGGESTIONS = [
+  "Hi! Thanks for reaching out — yes, we do have rooms available.",
+  "When are you looking to move in?",
+  "Let me know your budget and preferred sharing type (single/double/triple).",
+  "I can share more photos or arrange a visit — what works for you?",
+  "Are you a student or a working professional?",
+  "Do you have any specific requirements I should know about?",
+  "I'll need a valid ID and one month's advance to confirm the booking.",
+  "Feel free to ask me anything about the PG or the area!",
+  "Would a video call work before an in-person visit?",
+  "Let me know if you'd like more details about the amenities.",
+];
+
 /* ─────────────────────────────────────────────
    INBOX  →  GET /user/messages
    Every PG_INQUIRY conversation where this Owner is the
@@ -105,7 +125,7 @@ router.get("/messages/:conversationId", jwtAuthMiddleware, async (req, res) => {
     // renders the same "not found" state as a missing id.
     if (!conv || conv.type !== "PG_INQUIRY" || !conv.ownerParticipant || conv.ownerParticipant.toString() !== ownerId) {
       return res.status(404).render("messages/owner-conversation", {
-        conversation: null, messages: [], counterpart: null, viewerId: null, listingText: "",
+        conversation: null, messages: [], counterpart: null, viewerId: null, listingText: "", suggestions: [],
       });
     }
 
@@ -127,12 +147,19 @@ router.get("/messages/:conversationId", jwtAuthMiddleware, async (req, res) => {
       { $set: { deliveredAt: now } }
     );
 
+    // NEW — same "empty/near-empty active chat" gate as the Student
+    // side's PG_TENANT_SUGGESTIONS in the main repo.
+    const suggestions = (conv.status === "active" && messages.length <= 2)
+      ? PG_OWNER_SUGGESTIONS
+      : [];
+
     res.render("messages/owner-conversation", {
       conversation: conv,
       messages,
       counterpart,
       viewerId: ownerId,
       listingText: listingTitle(conv.listing),
+      suggestions,
     });
   } catch (err) {
     console.error("Owner conversation view error:", err);

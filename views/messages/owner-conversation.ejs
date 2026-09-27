@@ -52,6 +52,16 @@
 
     .chat-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 40px 0; }
 
+    /* NEW — suggested opening replies, same pattern as the Student
+       side's messages/conversation.ejs in the main hostelnode.com repo. */
+    .suggestion-row { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 12px; scrollbar-width: thin; }
+    .suggestion-row::-webkit-scrollbar { height: 4px; }
+    .suggestion-chip { flex-shrink: 0; border: 1.5px solid var(--border); background: #fff; color: var(--ink); font-size: 12.5px; padding: 7px 13px; border-radius: 999px; cursor: pointer; white-space: nowrap; transition: border-color .15s, background .15s; }
+    .suggestion-chip:hover { border-color: var(--green); background: var(--green-glow); }
+    .suggestion-dismiss { flex-shrink: 0; align-self: center; background: none; border: none; color: var(--muted); font-size: 13px; padding: 0 4px; cursor: pointer; }
+    .suggestion-wrap { display: none; }
+    .suggestion-wrap.visible { display: flex; align-items: center; }
+
     .chat-input-row { display: flex; gap: 10px; padding: 12px 0 16px; border-top: 1px solid var(--border); }
     .chat-input-row textarea { flex: 1; border: 1.5px solid var(--border); border-radius: 16px; padding: 11px 14px; font-size: 13.5px; font-family: inherit; resize: none; outline: none; }
     .chat-input-row textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-glow); }
@@ -106,6 +116,17 @@
     <% }) %>
   </div>
 
+  <% if (conversation.status === 'active' && suggestions && suggestions.length) { %>
+    <div class="suggestion-wrap visible" id="suggestionWrap">
+      <div class="suggestion-row" id="suggestionRow">
+        <% suggestions.forEach(function(s) { %>
+          <button type="button" class="suggestion-chip" onclick="useSuggestion(this)"><%= s %></button>
+        <% }) %>
+      </div>
+      <button type="button" class="suggestion-dismiss" onclick="dismissSuggestions()" title="Hide suggestions"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  <% } %>
+
   <div class="chat-input-row">
     <textarea id="chatInput" rows="1" placeholder="Type a reply…" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
     <button class="chat-send-btn" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
@@ -149,6 +170,7 @@ async function sendMessage() {
   const text = input.value.trim();
   if (!text) return;
   input.value = '';
+  hideSuggestions();
   try {
     const res = await fetch('/messages/' + CONVERSATION_ID + '/messages', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
@@ -158,6 +180,19 @@ async function sendMessage() {
     else alert(data.error || 'Could not send message.');
   } catch (err) { alert('Network error — please try again.'); }
 }
+
+function useSuggestion(btn) {
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  input.value = btn.textContent;
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+}
+function hideSuggestions() {
+  const wrap = document.getElementById('suggestionWrap');
+  if (wrap) wrap.classList.remove('visible');
+}
+function dismissSuggestions() { hideSuggestions(); }
 
 let readAckTimer = null;
 function ackReadIfFocused() {
