@@ -1,0 +1,247 @@
+<% layout("/layouts/boilerplate") -%>
+<%#
+  views/dashboard-v2.ejs — Phase 2: the approved global dashboard.
+  Data comes from utils/dashboardData.js (`dash`). The previous
+  views/dashboard.ejs is unchanged and still used when HN_NEW_UI=0.
+%>
+<%
+  const d  = dash;
+  const s  = d.snapshot;
+  const firstName = String((user && user.name) || "there").trim().split(/\s+/)[0];
+  const propsText = d.propertyCount === 1 ? "your property" : `all ${d.propertyCount} of your properties`;
+  const I = {
+    bed:    '<path d="M2 4v16"></path><path d="M2 8h18a2 2 0 0 1 2 2v10"></path><path d="M2 17h20"></path><path d="M6 8v9"></path>',
+    rooms:  '<rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path>',
+    people: '<path d="M16 21v-4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"></path><circle cx="12" cy="7" r="4"></circle>',
+    rupee:  '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>',
+    alert:  '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v5M12 16h.01"></path>',
+    chat:   '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>',
+    mail:   '<rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path>',
+    plus:   '<path d="M12 5v14M5 12h14"></path>',
+    check:  '<path d="M20 6 9 17l-5-5"></path>'
+  };
+  const icon = (name, size, stroke, w) =>
+    '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="' + stroke +
+    '" stroke-width="' + (w || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + I[name] + '</svg>';
+  const ATT = {
+    overdue:   { icon: 'alert', chip: 'is-red',  stroke: '#dc2626', btn: 'is-primary' },
+    vacant:    { icon: 'bed',   chip: 'is-grey', stroke: '#475467', btn: '' },
+    enquiries: { icon: 'chat',  chip: 'is-grey', stroke: '#475467', btn: '' },
+    messages:  { icon: 'mail',  chip: 'is-grey', stroke: '#475467', btn: '' }
+  };
+%>
+
+<style>
+  .hn2d, .hn2d * { box-sizing: border-box; font-family: 'DM Sans', sans-serif; }
+  .hn2d { background: #f7f8fa; min-height: calc(100vh - var(--nav-h, 64px)); padding: 28px 32px 40px; color: #12151a; }
+  .hn2d a, .hn2d a:hover { text-decoration: none; }
+
+  .hn2d-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .hn2d .hn2d-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; margin: 0; color: #12151a; letter-spacing: -0.01em; }
+  .hn2d-sub { font-size: 13px; color: #667085; margin-top: 4px; font-weight: 500; }
+  .hn2d-btn, .hn2d-btn:hover, .hn2d-btn:focus {
+    display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px; border-radius: 10px;
+    background: #0EA968; color: #fff; font-size: 13px; font-weight: 700; box-shadow: 0 1px 2px rgba(14,169,104,0.28); white-space: nowrap;
+  }
+  .hn2d-btn:hover { background: #0c9a5f; color: #fff; }
+
+  .hn2d-sec { margin-bottom: 12px; }
+  .hn2d-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; color: #475467; text-transform: uppercase; }
+  .hn2d-eyebrow.is-quiet { color: #8a93a1; }
+  .hn2d-note { font-size: 12.5px; color: #8a93a1; font-weight: 500; margin-top: 2px; }
+  .hn2d-note.is-quiet { color: #a3abb8; }
+
+  .hn2d-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-bottom: 32px; }
+  .hn2d-card { background: #fff; border: 1px solid #eef1f4; border-radius: 14px; padding: 20px; box-shadow: 0 1px 2px rgba(15,17,23,0.03); }
+  .hn2d-card.is-alert { border-color: #f7d9d9; }
+  .hn2d-chip { width: 36px; height: 36px; border-radius: 9px; background: #f2f4f7; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+  .hn2d-chip.is-green { background: #e8f9f0; }
+  .hn2d-chip.is-red { background: #fdecec; }
+  .hn2d-num { font-size: 26px; font-weight: 800; line-height: 1.1; color: #12151a; }
+  .hn2d-num span { font-size: 15px; font-weight: 600; color: #98a2b3; }
+  .hn2d-label { font-size: 12.5px; color: #667085; font-weight: 600; margin-top: 4px; }
+
+  .hn2d-att-head { display: flex; align-items: center; gap: 9px; }
+  .hn2d-att-title { font-size: 16px; font-weight: 800; color: #12151a; }
+  .hn2d-att-count { font-size: 11.5px; font-weight: 800; color: #fff; background: #dc2626; padding: 2px 9px; border-radius: 99px; }
+  .hn2d-att { background: #fffdf9; border: 1px solid #f3e2b8; border-left: 4px solid #d97706; border-radius: 14px; padding: 8px; margin-bottom: 32px; box-shadow: 0 2px 6px rgba(217,119,6,0.06); }
+  .hn2d-att.is-clear { background: #fff; border: 1px solid #eef1f4; border-left: 4px solid #0EA968; box-shadow: 0 1px 2px rgba(15,17,23,0.03); }
+  .hn2d-row { display: flex; align-items: center; gap: 16px; padding: 15px 16px; border-radius: 10px; }
+  .hn2d-row + .hn2d-row { position: relative; }
+  .hn2d-row + .hn2d-row::before { content: ""; position: absolute; top: 0; left: 16px; right: 16px; height: 1px; background: #f3e9d6; }
+  .hn2d-rchip { width: 38px; height: 38px; border-radius: 10px; background: #f2f4f7; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .hn2d-rchip.is-red { background: #fdecec; }
+  .hn2d-rchip.is-green { background: #e8f9f0; }
+  .hn2d-rtext { flex-grow: 1; min-width: 0; }
+  .hn2d-rtitle { font-size: 14.5px; font-weight: 700; line-height: 1.3; color: #12151a; }
+  .hn2d-rdetail { font-size: 12.5px; color: #667085; font-weight: 600; margin-top: 1px; overflow-wrap: anywhere; }
+  .hn2d-act, .hn2d-act:hover, .hn2d-act:focus {
+    display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 9px 16px; border-radius: 9px;
+    border: 1px solid #eef1f4; background: #fff; color: #475467; font-size: 13px; font-weight: 700; white-space: nowrap; flex-shrink: 0;
+  }
+  .hn2d-act:hover { background: #f6f8fa; color: #344054; }
+  .hn2d-act.is-primary, .hn2d-act.is-primary:hover { border-color: #d7ece1; background: #f4faf7; color: #0a7d4c; }
+  .hn2d-act.is-primary:hover { background: #e8f5ee; }
+
+  .hn2d-recent { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; }
+  .hn2d-recent > *, .hn2d-stats > * { min-width: 0; }
+  .hn2d-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .hn2d-panel-title { font-size: 14px; font-weight: 800; color: #12151a; }
+  .hn2d-link, .hn2d-link:hover { font-size: 12px; font-weight: 700; color: #0a7d4c; }
+  .hn2d-list { display: flex; flex-direction: column; gap: 10px; }
+  .hn2d-item { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 10px; background: #fafbfc; }
+  .hn2d-avatar { width: 34px; height: 34px; border-radius: 50%; background: #f2f4f7; color: #475467; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .hn2d-item-text { flex-grow: 1; min-width: 0; }
+  .hn2d-item-name { font-size: 13px; font-weight: 700; color: #12151a; }
+  .hn2d-item-detail { font-size: 11.5px; color: #667085; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hn2d-status { font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 99px; flex-shrink: 0; }
+  .hn2d-status.is-new { color: #c2540c; background: #fdeee2; }
+  .hn2d-status.is-contacted { color: #475467; background: #f2f4f7; }
+  .hn2d-status.is-closed { color: #98a2b3; background: #f7f8fa; }
+  .hn2d-empty { font-size: 12.5px; color: #98a2b3; font-weight: 600; padding: 10px 2px; }
+  .hn2d-empty a, .hn2d-empty a:hover { color: #0a7d4c; font-weight: 700; }
+  .hn2d-fee-sub { font-size: 11.5px; color: #98a2b3; font-weight: 600; margin: 2px 0 12px; }
+  .hn2d-fee-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+  .hn2d-bar { width: 100%; height: 8px; border-radius: 99px; background: #eef1f4; overflow: hidden; }
+  .hn2d-bar > span { display: block; height: 100%; background: #0EA968; }
+
+  @media (max-width: 1199px) { .hn2d-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 991px)  { .hn2d-recent { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 767px)  {
+    .hn2d { padding: 20px 14px 32px; }
+    .hn2d-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .hn2d-row { flex-wrap: wrap; gap: 12px; }
+    .hn2d-row .hn2d-rtext { flex-basis: calc(100% - 54px); }
+    .hn2d-row .hn2d-act { margin-left: 54px; }
+    .hn2d-stats > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  }
+  @media (max-width: 379px) { .hn2d-num { font-size: 22px; } .hn2d-card { padding: 16px; } }
+</style>
+
+<div class="hn2d">
+
+  <!-- Greeting -->
+  <div class="hn2d-head">
+    <div>
+      <h1 class="hn2d-title"><%= d.greeting %>, <%= firstName %></h1>
+      <div class="hn2d-sub">Across <%= propsText %> · here's what's happening today</div>
+    </div>
+    <a class="hn2d-btn" href="/user/newmember"><%- icon('plus', 14, '#fff', 2.4) %> Add Tenant</a>
+  </div>
+
+  <!-- BUSINESS SNAPSHOT -->
+  <div class="hn2d-sec">
+    <div class="hn2d-eyebrow">Business snapshot</div>
+    <div class="hn2d-note">
+      <% if (d.propertyCount > 1) { %>Totals across all <%= d.propertyCount %> properties — not just the one selected in the sidebar<% } else { %>Totals for your property<% } %>
+    </div>
+  </div>
+  <div class="hn2d-stats">
+    <div class="hn2d-card">
+      <div class="hn2d-chip"><%- icon('bed', 17, '#667085') %></div>
+      <div class="hn2d-num"><%= s.occupiedBeds %><span>/<%= s.totalBeds %></span></div>
+      <div class="hn2d-label">Beds occupied</div>
+    </div>
+    <div class="hn2d-card">
+      <div class="hn2d-chip"><%- icon('rooms', 17, '#667085') %></div>
+      <div class="hn2d-num"><%= s.bookedRooms %><span>/<%= s.totalRooms %></span></div>
+      <div class="hn2d-label">Rooms booked</div>
+    </div>
+    <div class="hn2d-card">
+      <div class="hn2d-chip"><%- icon('people', 17, '#667085') %></div>
+      <div class="hn2d-num"><%= s.tenants %></div>
+      <div class="hn2d-label">Total tenants</div>
+    </div>
+    <div class="hn2d-card">
+      <div class="hn2d-chip is-green"><%- icon('rupee', 17, '#0EA968') %></div>
+      <div class="hn2d-num"><%= s.collectedThisMonth %></div>
+      <div class="hn2d-label">Collected this month</div>
+    </div>
+    <div class="hn2d-card is-alert">
+      <div class="hn2d-chip is-red"><%- icon('alert', 17, '#dc2626') %></div>
+      <div class="hn2d-num"><%= s.pending %></div>
+      <div class="hn2d-label">Pending dues</div>
+    </div>
+  </div>
+
+  <!-- NEEDS ATTENTION TODAY -->
+  <div class="hn2d-sec">
+    <div class="hn2d-att-head">
+      <div class="hn2d-att-title">Needs attention today</div>
+      <% if (d.attention.length) { %><div class="hn2d-att-count"><%= d.attention.length %></div><% } %>
+    </div>
+    <div class="hn2d-note" style="margin-top:3px">
+      <% if (d.propertyCount > 1) { %>Pulled from every property — clear these first, everything else can wait<% } else { %>Clear these first — everything else can wait<% } %>
+    </div>
+  </div>
+
+  <% if (d.attention.length) { %>
+    <div class="hn2d-att">
+      <% d.attention.forEach(function (a) { const t = ATT[a.kind] || ATT.messages; %>
+        <div class="hn2d-row">
+          <div class="hn2d-rchip <%= t.chip %>"><%- icon(t.icon, 18, t.stroke) %></div>
+          <div class="hn2d-rtext">
+            <div class="hn2d-rtitle"><%= a.title %></div>
+            <div class="hn2d-rdetail"><%= a.detail %></div>
+          </div>
+          <a class="hn2d-act <%= t.btn %>" href="<%= a.href %>" title="<%= a.hint %>"><%= a.action %></a>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <div class="hn2d-att is-clear">
+      <div class="hn2d-row">
+        <div class="hn2d-rchip is-green"><%- icon('check', 18, '#0EA968', 2.4) %></div>
+        <div class="hn2d-rtext">
+          <div class="hn2d-rtitle">You're all caught up</div>
+          <div class="hn2d-rdetail">No overdue payments, vacant beds, new enquiries or unread messages.</div>
+        </div>
+      </div>
+    </div>
+  <% } %>
+
+  <!-- RECENT ACTIVITY -->
+  <div class="hn2d-sec">
+    <div class="hn2d-eyebrow is-quiet">Recent activity</div>
+    <div class="hn2d-note is-quiet">For reference — nothing here needs action right now</div>
+  </div>
+  <div class="hn2d-recent">
+    <div class="hn2d-card">
+      <div class="hn2d-panel-head">
+        <div class="hn2d-panel-title">Recent enquiries</div>
+        <a class="hn2d-link" href="/user/my-listings">View all</a>
+      </div>
+      <% if (d.recent.length) { %>
+        <div class="hn2d-list">
+          <% d.recent.forEach(function (r) { %>
+            <div class="hn2d-item">
+              <div class="hn2d-avatar"><%= r.initials %></div>
+              <div class="hn2d-item-text">
+                <div class="hn2d-item-name"><%= r.name %></div>
+                <div class="hn2d-item-detail" title="<%= r.detail %>"><%= r.detail %></div>
+              </div>
+              <div class="hn2d-status <%= r.statusClass %>"><%= r.status %></div>
+            </div>
+          <% }) %>
+        </div>
+      <% } else if (d.hasListings) { %>
+        <div class="hn2d-empty">No enquiries yet. They'll appear here as soon as someone contacts you about a listing.</div>
+      <% } else { %>
+        <div class="hn2d-empty">No listings yet. <a href="/user/list-property">List a property</a> to start receiving enquiries.</div>
+      <% } %>
+    </div>
+
+    <div class="hn2d-card">
+      <div class="hn2d-panel-title">Fee collection</div>
+      <div class="hn2d-fee-sub"><%= d.propertyCount > 1 ? `All ${d.propertyCount} properties combined` : "Your property" %>, all time</div>
+      <div class="hn2d-fee-row">
+        <div class="hn2d-num"><%= d.fee.pctLabel %></div>
+        <div class="hn2d-label" style="margin-top:0">of <%= d.fee.expected %> expected</div>
+      </div>
+      <div class="hn2d-bar" role="progressbar" aria-valuenow="<%= d.fee.pct %>" aria-valuemin="0" aria-valuemax="100" aria-label="Fee collection">
+        <span style="width:<%= d.fee.pct %>%"></span>
+      </div>
+    </div>
+  </div>
+
+</div>

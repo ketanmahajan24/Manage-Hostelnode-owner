@@ -17,6 +17,7 @@ const Room = require("../models/room.js");
 const Member = require("../models/member.js");
 const Payment = require("../models/payment.js");
 const Hostel = require("../models/hostel.js");
+const { buildDashboard } = require("../utils/dashboardData.js"); // Phase 2
 const crypto = require('crypto');
 const fs = require('fs');
 const moment = require("moment-timezone");
@@ -173,7 +174,8 @@ const attachHostel = async (req, res, next) => {
     let selectedHostel = null;
 
     if (req.session?.selectedHostel) {
-      selectedHostel = await Hostel.findById(req.session.selectedHostel).catch(() => null);
+      // Phase 1 — only ever select one of this owner's own properties.
+      selectedHostel = await Hostel.findOne({ _id: req.session.selectedHostel, owner: userId }).catch(() => null);
     }
     if (!selectedHostel && hostels.length > 0) selectedHostel = hostels[0];
 
@@ -427,6 +429,23 @@ router.get('/', jwtAuthMiddleware, attachHostel, async (req, res) => {
       return safeRender(res, "onboarding.ejs", { user });
     }
 
+    // Phase 2 — global dashboard across all properties (approved design).
+    // HN_NEW_UI=0 — or an error while gathering its data — falls through
+    // to the previous per-property dashboard below, which is unchanged.
+    if (process.env.HN_NEW_UI !== "0") {
+      let dash = null;
+      try {
+        dash = await buildDashboard(userId, hostels);
+      } catch (dashErr) {
+        console.error("Global dashboard error (showing previous dashboard):", dashErr.message);
+      }
+      if (dash) {
+        return safeRender(res, "dashboard-v2.ejs", {
+          user, hostels, selectedHostel: res.locals.selectedHostel, dash
+        });
+      }
+    }
+
     const selectedHostelId = res.locals.selectedHostel?._id || hostels[0]._id;
 
     const [rooms, floors, members] = await Promise.all([
@@ -539,12 +558,42 @@ router.post("/editOwner", jwtAuthMiddleware, handleMulterError(upload.single("pr
 // ============================================================
 //  SELECT HOSTEL
 // ============================================================
+// Phase 1 — after switching, return the owner to the section they were
+// on (?next=...) instead of always the dashboard. `next` is only
+// honoured if it matches a known owner list page, so it can't be used
+// as an open redirect or land on a record from the previous property.
+const SWITCH_RETURN_EXACT = new Set([
+  "/user", "/user/members", "/user/activeMember", "/user/newmember",
+  "/user/allfeesrecords", "/user/upcomingPayments", "/user/deureports", "/user/revenue",
+  "/user/allrooms", "/user/managerooms", "/user/newroom",
+  "/user/floors", "/user/managefloor", "/user/newfloor",
+  "/user/my-listings", "/user/list-property", "/user/messages",
+  "/user/editOwner", "/user/addnewhostel",
+]);
+const SWITCH_RETURN_SECTION = [
+  [/^\/user\/(member-edit\/|member\/|activeMember\/|newAdded)/, "/user/members"],
+  [/^\/user\/(members\/[^/]+\/addpayment|addpayment\/|payment-receipt\/|payment-history\/|searchfeesrecords)/, "/user/allfeesrecords"],
+  [/^\/user\/(managerooms\/|manageroom\/)/, "/user/managerooms"],
+  [/^\/user\/listing\//, "/user/my-listings"],
+  [/^\/user\/messages\//, "/user/messages"],
+];
+function switchReturnPath(next) {
+  if (typeof next !== "string") return "/user";
+  const p = next.split("?")[0].split("#")[0];
+  if (SWITCH_RETURN_EXACT.has(p)) return p;
+  for (const [re, target] of SWITCH_RETURN_SECTION) if (re.test(p)) return target;
+  return "/user";
+}
+
 router.get("/hostel/:id", jwtAuthMiddleware, async (req, res) => {
   try {
     const hostelId = clean(req.params.id || "");
     if (!hostelId) return res.redirect("/user");
+    // Only select a property that belongs to this owner.
+    const owned = await Hostel.exists({ _id: hostelId, owner: req.user.id });
+    if (!owned) return res.redirect("/user");
     req.session.selectedHostel = hostelId;
-    res.redirect("/user");
+    res.redirect(switchReturnPath(req.query.next));
   } catch (err) {
     console.error("Hostel select error:", err.message);
     res.redirect("/user");
