@@ -1,0 +1,36 @@
+diff --git a/routes/userRoutes.js b/routes/userRoutes.js
+index 0a663f1..1c99154 100644
+--- a/routes/userRoutes.js
++++ b/routes/userRoutes.js
+@@ -17,6 +17,7 @@ const Room = require("../models/room.js");
+ const Member = require("../models/member.js");
+ const Payment = require("../models/payment.js");
+ const Hostel = require("../models/hostel.js");
++const { buildDashboard } = require("../utils/dashboardData.js"); // Phase 2
+ const crypto = require('crypto');
+ const fs = require('fs');
+ const moment = require("moment-timezone");
+@@ -428,6 +429,23 @@ router.get('/', jwtAuthMiddleware, attachHostel, async (req, res) => {
+       return safeRender(res, "onboarding.ejs", { user });
+     }
+ 
++    // Phase 2 — global dashboard across all properties (approved design).
++    // HN_NEW_UI=0 — or an error while gathering its data — falls through
++    // to the previous per-property dashboard below, which is unchanged.
++    if (process.env.HN_NEW_UI !== "0") {
++      let dash = null;
++      try {
++        dash = await buildDashboard(userId, hostels);
++      } catch (dashErr) {
++        console.error("Global dashboard error (showing previous dashboard):", dashErr.message);
++      }
++      if (dash) {
++        return safeRender(res, "dashboard-v2.ejs", {
++          user, hostels, selectedHostel: res.locals.selectedHostel, dash
++        });
++      }
++    }
++
+     const selectedHostelId = res.locals.selectedHostel?._id || hostels[0]._id;
+ 
+     const [rooms, floors, members] = await Promise.all([

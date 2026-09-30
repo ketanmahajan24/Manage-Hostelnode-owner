@@ -101,6 +101,10 @@ app.engine("ejs", ejsMate);
 // ════════════════════════════════════════════════════════════
 //   ROUTES  —  ORDER MATTERS
 // ════════════════════════════════════════════════════════════
+// Phase 1 — counts for the new navbar (messages / enquiries badges,
+// setup chip). Read-only; never blocks or redirects a request.
+app.use(require("./Middlewares/navData"));
+
 app.use("/webhook",     waBot);
 app.use("/user",        userRouter);
 app.use("/user",        ownerMessagesRouter); // Phase 4 — /user/messages, /user/messages/:conversationId
