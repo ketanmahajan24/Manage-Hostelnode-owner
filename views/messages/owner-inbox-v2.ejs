@@ -1,0 +1,61 @@
+<% layout("/layouts/boilerplate") -%>
+<%#
+  views/messages/owner-inbox-v2.ejs — Redesign Phase 3.
+  Same inbox as messages/owner-inbox.ejs (which is unchanged and still
+  used when HN_NEW_UI=0), now inside the main layout with the sidebar.
+  Messages are global: every property's chats in one list.
+%>
+<style>
+  .hn2m, .hn2m * { box-sizing: border-box; font-family: 'DM Sans', sans-serif; }
+  .hn2m { background: #f7f8fa; min-height: calc(100vh - var(--nav-h, 64px)); padding: 28px 32px 40px; color: #12151a; }
+  .hn2m a, .hn2m a:hover { text-decoration: none; }
+  .hn2m-inner { max-width: 760px; }
+  .hn2m .hn2m-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; margin: 0; color: #12151a; letter-spacing: -0.01em; }
+  .hn2m-sub { font-size: 13px; color: #667085; margin: 4px 0 18px; font-weight: 500; }
+
+  .hn2m-list { background: #fff; border: 1px solid #eef1f4; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 2px rgba(15,17,23,0.03); }
+  .hn2m-row, .hn2m-row:hover, .hn2m-row:focus { display: flex; align-items: center; gap: 12px; padding: 14px 18px; color: inherit; }
+  .hn2m-row + .hn2m-row { border-top: 1px solid #f2f4f7; }
+  .hn2m-row:hover { background: #fafbfc; }
+  .hn2m-row.is-unread { background: #fbfefc; }
+  .hn2m-avatar { width: 40px; height: 40px; border-radius: 50%; background: #f2f4f7; color: #475467; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex-shrink: 0; }
+  .hn2m-body { flex: 1; min-width: 0; }
+  .hn2m-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .hn2m-name { font-size: 14px; font-weight: 700; color: #12151a; }
+  .hn2m-row.is-unread .hn2m-name { font-weight: 800; }
+  .hn2m-time { font-size: 11.5px; color: #98a2b3; font-weight: 600; flex-shrink: 0; }
+  .hn2m-listing { font-size: 11.5px; color: #0a7d4c; font-weight: 700; margin: 2px 0; }
+  .hn2m-last { font-size: 12.5px; color: #667085; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hn2m-unread { background: #dc2626; color: #fff; font-size: 11px; font-weight: 800; min-width: 20px; height: 20px; border-radius: 999px; display: flex; align-items: center; justify-content: center; padding: 0 6px; flex-shrink: 0; }
+  .hn2m-empty { text-align: center; padding: 56px 20px; color: #98a2b3; font-size: 13px; font-weight: 600; background: #fff; border: 1px solid #eef1f4; border-radius: 14px; }
+
+  @media (max-width: 767px) { .hn2m { padding: 20px 14px 32px; } .hn2m-row { padding: 12px 14px; } }
+</style>
+
+<div class="hn2m">
+  <div class="hn2m-inner">
+    <h1 class="hn2m-title">Messages</h1>
+    <div class="hn2m-sub">Chats from people enquiring about your listings — all properties</div>
+
+    <% if (!rows || rows.length === 0) { %>
+      <div class="hn2m-empty">No chats yet. When someone starts a chat from one of your listings, it'll show up here.</div>
+    <% } else { %>
+      <div class="hn2m-list">
+        <% rows.forEach(function (row) { %>
+          <a class="hn2m-row <%= row.unread > 0 ? 'is-unread' : '' %>" href="/user/messages/<%= row.conversationId %>">
+            <div class="hn2m-avatar"><%= (row.studentName || 'S')[0] %></div>
+            <div class="hn2m-body">
+              <div class="hn2m-top">
+                <span class="hn2m-name"><%= row.studentName %></span>
+                <span class="hn2m-time"><%= row.updatedAt ? new Date(row.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '' %></span>
+              </div>
+              <div class="hn2m-listing"><%= row.listingTitle %></div>
+              <div class="hn2m-last"><%= row.lastMessage || 'No messages yet' %></div>
+            </div>
+            <% if (row.unread > 0) { %><div class="hn2m-unread" aria-label="<%= row.unread %> unread"><%= row.unread %></div><% } %>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+</div>

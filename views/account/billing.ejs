@@ -1,0 +1,50 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Redesign Phase 4 — Billing (read-only view of the owner's account status and billing records). %>
+<%- include("_style.ejs") %>
+<%
+  const st = user.status || "Pending";
+  const stClass = st === "Active" ? "is-ok" : st === "Inactive" ? "is-bad" : "is-warn";
+  const inr = n => "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(n) || 0);
+  const day = d => d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : "—";
+%>
+<div class="hn2a">
+  <div class="hn2a-inner">
+    <h1 class="hn2a-title">Billing</h1>
+    <div class="hn2a-sub">Your HostelNode account status and billing records</div>
+
+    <div class="hn2a-card">
+      <div class="hn2a-row">
+        <div>
+          <div class="hn2a-card-title">Account status</div>
+          <div class="hn2a-card-sub" style="margin:0">
+            <% if (st === "Active") { %>Your account is active.<% } else if (st === "Inactive") { %>Your account is inactive. Contact support to reactivate it.<% } else { %>Your account is pending activation.<% } %>
+          </div>
+        </div>
+        <span class="hn2a-pill <%= stClass %>"><%= String(st).toUpperCase() %></span>
+      </div>
+    </div>
+
+    <div class="hn2a-card" style="padding:0;overflow:hidden">
+      <div style="padding:18px 20px 12px"><div class="hn2a-card-title">Billing history</div></div>
+      <% if (!history.length) { %>
+        <div class="hn2a-empty">No billing records yet.</div>
+      <% } else { %>
+        <table class="hn2a-table">
+          <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Status</th></tr></thead>
+          <tbody>
+            <% history.forEach(function (b) { %>
+              <tr>
+                <td><%= day(b.date) %></td>
+                <td><%= b.description || "—" %></td>
+                <td><%= inr(b.amount) %></td>
+                <td><span class="hn2a-pill <%= b.paid ? 'is-ok' : 'is-warn' %>"><%= b.paid ? 'PAID' : 'DUE' %></span></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+
+    <div class="hn2a-help">Questions about billing? Email <a href="mailto:hostelnodehelp@gmail.com" style="color:#0a7d4c;font-weight:700">hostelnodehelp@gmail.com</a>.</div>
+  </div>
+</div>

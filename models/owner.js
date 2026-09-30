@@ -101,6 +101,29 @@ const ownerSchema = new mongoose.Schema({
   role: {
     type: String,
     default: "Owner"
+  },
+
+  // ── Redesign Phase 4 — account settings & KYC ──
+  // All optional with defaults: existing owner records need no update.
+  loginAlerts: {            // email on every new login (Settings)
+    type: Boolean,
+    default: true
+  },
+  kyc: {
+    status: {
+      type: String,
+      enum: ["Not submitted", "Pending", "Verified", "Rejected"],
+      default: "Not submitted"
+    },
+    docType: {
+      type: String,
+      enum: ["Aadhaar", "PAN", "Driving licence", "Passport"]
+    },
+    docNumberMasked: String,  // only the last 4 characters are kept
+    docFile: String,          // file name under /secure_uploads/kyc
+    submittedAt: Date,
+    reviewedAt: Date,
+    rejectionReason: String
   }
 }, { timestamps: true });
 

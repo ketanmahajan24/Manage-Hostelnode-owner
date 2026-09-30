@@ -43,9 +43,13 @@
 
   /* ── Active page ── */
   shell.querySelectorAll("[data-hn2-match]").forEach(function (el) {
-    var re;
-    try { re = new RegExp(el.getAttribute("data-hn2-match")); } catch (e) { return; }
+    var re, qre = null;
+    try {
+      re = new RegExp(el.getAttribute("data-hn2-match"));
+      if (el.hasAttribute("data-hn2-query")) qre = new RegExp(el.getAttribute("data-hn2-query"));
+    } catch (e) { return; }
     if (!re.test(path)) return;
+    if (qre && !qre.test(window.location.search)) return;
     el.classList.add("is-active");
     el.setAttribute("aria-current", "page");
     var sub = el.closest(".hn2-sub");
@@ -134,7 +138,9 @@
         Set on load so it also works for new-tab / middle clicks. ── */
   shell.querySelectorAll("[data-hn2-switch-opt]").forEach(function (a) {
     var href = a.getAttribute("href").split("?")[0];
-    a.setAttribute("href", href + "?next=" + encodeURIComponent(path));
+    // Include the query so e.g. a "Convert enquiry" Add Tenant form survives
+    // the switch; the server only honours known pages.
+    a.setAttribute("href", href + "?next=" + encodeURIComponent(path + window.location.search));
   });
 
   var search = shell.querySelector("[data-hn2-switch-search]");

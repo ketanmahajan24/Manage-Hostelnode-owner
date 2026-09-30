@@ -11,7 +11,8 @@
      node scripts/smoke-test.js
 
    Optional, to also open pages that need a record id:
-     SMOKE_MEMBER_ID=...  SMOKE_ROOM_ID=...  SMOKE_LISTING_ID=...  SMOKE_HOSTEL_ID=...
+     SMOKE_MEMBER_ID=...  SMOKE_ROOM_ID=...  SMOKE_LISTING_ID=...  SMOKE_HOSTEL_ID=...  SMOKE_ENQUIRY_ID=...
+   With HN_NEW_UI=0 on the server, also set HN_NEW_UI=0 here.
 ============================================================ */
 
 const BASE  = (process.env.SMOKE_BASE || "http://localhost:6060").replace(/\/$/, "");
@@ -45,15 +46,24 @@ const PAGES = [
   "/user/list-property",
   "/user/my-listings",
   "/user/messages",
+  "/user/leads",
+  "/user/leads?lead=Hot",
+  "/user/leads?view=visits",
+  "/user/leads?status=New",
+  "/user/account/settings",
+  "/user/account/billing",
+  "/user/account/kyc",
+  "/user/notifications",
 ];
 
 const { SMOKE_MEMBER_ID: M, SMOKE_ROOM_ID: R, SMOKE_LISTING_ID: L } = process.env;
 if (M) PAGES.push(`/user/member-edit/${M}/edit`, `/user/members/${M}/addpayment`, `/user/payment-history/${M}`);
 if (R) PAGES.push(`/user/managerooms/${R}/edit`);
 if (L) PAGES.push(`/user/listing/${L}/edit`);
+if (process.env.SMOKE_ENQUIRY_ID) PAGES.push(`/user/newmember?enquiry=${process.env.SMOKE_ENQUIRY_ID}`);
 
-// Pages that render outside the shared layout (no navbar by design today).
-const NO_NAVBAR = new Set(["/user/messages"]);
+// Pages that render outside the shared layout when HN_NEW_UI=0 (old Messages pages).
+const NO_NAVBAR = new Set(process.env.HN_NEW_UI === "0" ? ["/user/messages"] : []);
 
 async function login() {
   const body = new URLSearchParams({ "user[email]": EMAIL, "user[password]": PASS, "user[role]": ROLE });
