@@ -80,6 +80,36 @@ async function setEnquiryStatus(enquiryId, ownerId, status) {
   return true;
 }
 
+/**
+ * The HostelNode chat for an enquiry, created if it doesn't exist yet.
+ * Same rule as hostelnode.com's utils/pgConversation.js
+ * (findOrCreatePgConversation): one PG_INQUIRY chat per (student, listing),
+ * so the tenant sees the owner's reply in the chat they already have.
+ * Returns the conversation id, or null if not allowed / not possible.
+ */
+async function openEnquiryChat(enquiryId, ownerId) {
+  const e = await loadOwnedEnquiry(enquiryId, ownerId);
+  if (!e || !e.student || !e.student._id) return null;
+  let conv = await Conversation.findOne({
+    type: "PG_INQUIRY",
+    listing: e.listing._id,
+    participants: e.student._id,
+  }).lean();
+  if (!conv) {
+    conv = await Conversation.create({
+      type: "PG_INQUIRY",
+      participants: [e.student._id],
+      ownerParticipant: ownerId,
+      listing: e.listing._id,
+      listingModel: "Listing",
+      status: "active",
+    });
+  }
+  // Only open chats this owner is part of (the Messages page checks this too).
+  if (!conv.ownerParticipant || String(conv.ownerParticipant) !== String(ownerId)) return null;
+  return String(conv._id);
+}
+
 /** After "Convert to tenant" saves a tenant: close the enquiry. Never throws. */
 async function closeEnquiryAfterConvert(enquiryId, ownerId) {
   try {
@@ -146,7 +176,10 @@ async function buildLeadsPage(ownerId, q = {}, now = new Date()) {
     // Two ways to reply: the HostelNode chat (only if the enquirer has
     // started one — owners can't open a new chat) and WhatsApp (if the
     // enquirer's number is a valid Indian mobile).
-    const replyChat = thread ? { href: `/user/messages/${thread}` } : null;
+    // If the chat already exists, link straight to it. Otherwise the button
+    // posts to /user/enquiries/:id/chat, which finds or creates the SAME
+    // chat the tenant sees on hostelnode.com (one per student + listing).
+    const replyChat = thread ? { href: `/user/messages/${thread}` } : (s ? { startFor: String(e._id) } : null);
     const replyWhatsApp = mobile ? {
       href: `https://wa.me/91${mobile}?text=${encodeURIComponent(`Hi ${s.firstName || ""}, thanks for your enquiry about ${listingTitle} on HostelNode.`.replace("Hi ,", "Hi,"))}`,
     } : null;
@@ -184,5 +217,5 @@ async function buildLeadsPage(ownerId, q = {}, now = new Date()) {
 
 module.exports = {
   STATUSES, LEADS,
-  loadOwnedEnquiry, setEnquiryStatus, closeEnquiryAfterConvert, buildLeadsPage, indianMobile,
+  loadOwnedEnquiry, setEnquiryStatus, closeEnquiryAfterConvert, buildLeadsPage, indianMobile, openEnquiryChat,
 };

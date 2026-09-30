@@ -111,6 +111,7 @@
   .hn2l-actions > :nth-child(2) { grid-column: 1; grid-row: 2; }
   .hn2l-actions > :nth-child(3) { grid-column: 2; grid-row: 1 / span 2; }
   .hn2l-actions > :nth-child(-n+2) { justify-content: flex-start; width: 100%; }
+  .hn2l-actions form .hn2l-btn { width: 100%; justify-content: flex-start; font-family: 'DM Sans', sans-serif; cursor: pointer; }
   @media (max-width: 1359px) {
     .hn2l-actions { grid-template-columns: max-content; }
     .hn2l-actions > :nth-child(3) { grid-column: 1; grid-row: 3; justify-self: start; }
@@ -253,10 +254,14 @@
           <% } else { %>
             <span class="hn2l-btn is-off" role="link" aria-disabled="true" title="No valid mobile number on this enquiry"><%- svg(WA, 13, 'currentColor', 2) %> Reply on WhatsApp</span>
           <% } %>
-          <% if (e.replyChat) { %>
+          <% if (e.replyChat && e.replyChat.href) { %>
             <a class="hn2l-btn is-hn" href="<%= e.replyChat.href %>" aria-label="Reply to <%= e.name %> in HostelNode messages"><%- svg(CHAT, 13, 'currentColor', 2) %> Reply on HostelNode</a>
+          <% } else if (e.replyChat) { %>
+            <form method="POST" action="/user/enquiries/<%= e.replyChat.startFor %>/chat" style="margin:0">
+              <button type="submit" class="hn2l-btn is-hn" aria-label="Reply to <%= e.name %> in HostelNode messages"><%- svg(CHAT, 13, 'currentColor', 2) %> Reply on HostelNode</button>
+            </form>
           <% } else { %>
-            <span class="hn2l-btn is-off" role="link" aria-disabled="true" title="They haven't started a HostelNode chat yet — reply on WhatsApp instead"><%- svg(CHAT, 13, 'currentColor', 2) %> Reply on HostelNode</span>
+            <span class="hn2l-btn is-off" role="link" aria-disabled="true" title="This enquiry has no HostelNode account attached"><%- svg(CHAT, 13, 'currentColor', 2) %> Reply on HostelNode</span>
           <% } %>
           <% if (e.canConvert) { %>
             <a class="hn2l-btn is-green" href="/user/newmember?enquiry=<%= e.id %>" title="Add as a tenant in <%= selName %>">Convert</a>

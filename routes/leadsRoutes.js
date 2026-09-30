@@ -3,6 +3,7 @@
    Mounted at /user in app.js:
      GET  /user/leads                   the Leads & CRM page
      POST /user/enquiries/:id/status    change one enquiry's status
+     POST /user/enquiries/:id/chat      open (or start) the enquiry's HostelNode chat
    "Convert to tenant" is a link to the existing Add Tenant page
    (/user/newmember?enquiry=<id>), which pre-fills from the enquiry.
 ============================================================ */
@@ -13,7 +14,7 @@ const router  = express.Router();
 const { jwtAuthMiddleware } = require("../jwt.js");
 const attachHostel = require("../Middlewares/attachHostel");
 const Owner = require("../models/owner");
-const { buildLeadsPage, setEnquiryStatus } = require("../utils/leads");
+const { buildLeadsPage, setEnquiryStatus, openEnquiryChat } = require("../utils/leads");
 
 // Where to go back to after a status change: only the Leads page itself.
 function safeReturn(p) {
@@ -37,7 +38,10 @@ router.get("/leads", jwtAuthMiddleware, attachHostel, async (req, res) => {
     res.render("leads/index.ejs", {
       user,
       leads,
-      notice: req.query.updated === "1" ? "Status updated." : req.query.updated === "0" ? "That status change could not be saved." : "",
+      notice: req.query.updated === "1" ? "Status updated."
+            : req.query.updated === "0" ? "That status change could not be saved."
+            : req.query.chat === "0" ? "Couldn't open a HostelNode chat for that enquiry."
+            : "",
       currentUrl: leadsUrl(leads.filters, leads.page),
     });
   } catch (err) {
@@ -55,6 +59,18 @@ router.post("/enquiries/:id/status", jwtAuthMiddleware, async (req, res) => {
   } catch (err) {
     console.error("Enquiry status error:", err.message);
     res.redirect(back + sep + "updated=0");
+  }
+});
+
+// Reply on HostelNode: open (or start) this enquiry's chat in Messages.
+router.post("/enquiries/:id/chat", jwtAuthMiddleware, async (req, res) => {
+  try {
+    const convId = await openEnquiryChat(String(req.params.id || ""), req.user.id);
+    if (!convId) return res.redirect("/user/leads?chat=0");
+    res.redirect(`/user/messages/${convId}`);
+  } catch (err) {
+    console.error("Open enquiry chat error:", err.message);
+    res.redirect("/user/leads?chat=0");
   }
 });
 
