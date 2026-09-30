@@ -1,5 +1,55 @@
+diff --git a/routes/leadsRoutes.js b/routes/leadsRoutes.js
+index 76a65a9..69ad73c 100644
+--- a/routes/leadsRoutes.js
++++ b/routes/leadsRoutes.js
+@@ -3,6 +3,7 @@
+    Mounted at /user in app.js:
+      GET  /user/leads                   the Leads & CRM page
+      POST /user/enquiries/:id/status    change one enquiry's status
++     POST /user/enquiries/:id/chat      open (or start) the enquiry's HostelNode chat
+    "Convert to tenant" is a link to the existing Add Tenant page
+    (/user/newmember?enquiry=<id>), which pre-fills from the enquiry.
+ ============================================================ */
+@@ -13,7 +14,7 @@ const router  = express.Router();
+ const { jwtAuthMiddleware } = require("../jwt.js");
+ const attachHostel = require("../Middlewares/attachHostel");
+ const Owner = require("../models/owner");
+-const { buildLeadsPage, setEnquiryStatus } = require("../utils/leads");
++const { buildLeadsPage, setEnquiryStatus, openEnquiryChat } = require("../utils/leads");
+ 
+ // Where to go back to after a status change: only the Leads page itself.
+ function safeReturn(p) {
+@@ -37,7 +38,10 @@ router.get("/leads", jwtAuthMiddleware, attachHostel, async (req, res) => {
+     res.render("leads/index.ejs", {
+       user,
+       leads,
+-      notice: req.query.updated === "1" ? "Status updated." : req.query.updated === "0" ? "That status change could not be saved." : "",
++      notice: req.query.updated === "1" ? "Status updated."
++            : req.query.updated === "0" ? "That status change could not be saved."
++            : req.query.chat === "0" ? "Couldn't open a HostelNode chat for that enquiry."
++            : "",
+       currentUrl: leadsUrl(leads.filters, leads.page),
+     });
+   } catch (err) {
+@@ -58,4 +62,16 @@ router.post("/enquiries/:id/status", jwtAuthMiddleware, async (req, res) => {
+   }
+ });
+ 
++// Reply on HostelNode: open (or start) this enquiry's chat in Messages.
++router.post("/enquiries/:id/chat", jwtAuthMiddleware, async (req, res) => {
++  try {
++    const convId = await openEnquiryChat(String(req.params.id || ""), req.user.id);
++    if (!convId) return res.redirect("/user/leads?chat=0");
++    res.redirect(`/user/messages/${convId}`);
++  } catch (err) {
++    console.error("Open enquiry chat error:", err.message);
++    res.redirect("/user/leads?chat=0");
++  }
++});
++
+ module.exports = router;
 diff --git a/utils/leads.js b/utils/leads.js
-index b358062..518b42d 100644
+index b358062..21105ad 100644
 --- a/utils/leads.js
 +++ b/utils/leads.js
 @@ -21,13 +21,17 @@ const LEADS    = ["Hot", "Warm", "Cold"];          // = models/enquiry.js enum
@@ -26,7 +76,44 @@ index b358062..518b42d 100644
  
  const isId = v => typeof v === "string" && mongoose.isValidObjectId(v);
  
-@@ -139,24 +143,27 @@ async function buildLeadsPage(ownerId, q = {}, now = new Date()) {
+@@ -76,6 +80,36 @@ async function setEnquiryStatus(enquiryId, ownerId, status) {
+   return true;
+ }
+ 
++/**
++ * The HostelNode chat for an enquiry, created if it doesn't exist yet.
++ * Same rule as hostelnode.com's utils/pgConversation.js
++ * (findOrCreatePgConversation): one PG_INQUIRY chat per (student, listing),
++ * so the tenant sees the owner's reply in the chat they already have.
++ * Returns the conversation id, or null if not allowed / not possible.
++ */
++async function openEnquiryChat(enquiryId, ownerId) {
++  const e = await loadOwnedEnquiry(enquiryId, ownerId);
++  if (!e || !e.student || !e.student._id) return null;
++  let conv = await Conversation.findOne({
++    type: "PG_INQUIRY",
++    listing: e.listing._id,
++    participants: e.student._id,
++  }).lean();
++  if (!conv) {
++    conv = await Conversation.create({
++      type: "PG_INQUIRY",
++      participants: [e.student._id],
++      ownerParticipant: ownerId,
++      listing: e.listing._id,
++      listingModel: "Listing",
++      status: "active",
++    });
++  }
++  // Only open chats this owner is part of (the Messages page checks this too).
++  if (!conv.ownerParticipant || String(conv.ownerParticipant) !== String(ownerId)) return null;
++  return String(conv._id);
++}
++
+ /** After "Convert to tenant" saves a tenant: close the enquiry. Never throws. */
+ async function closeEnquiryAfterConvert(enquiryId, ownerId) {
+   try {
+@@ -139,24 +173,30 @@ async function buildLeadsPage(ownerId, q = {}, now = new Date()) {
      const listingTitle = titleOf.get(String(e.listing)) || "Listing";
      const thread = s ? threads.get(convKey(e.listing, s._id)) : null;
      const mobile = s ? indianMobile(s.phone) : "";
@@ -36,7 +123,10 @@ index b358062..518b42d 100644
 +    // Two ways to reply: the HostelNode chat (only if the enquirer has
 +    // started one — owners can't open a new chat) and WhatsApp (if the
 +    // enquirer's number is a valid Indian mobile).
-+    const replyChat = thread ? { href: `/user/messages/${thread}` } : null;
++    // If the chat already exists, link straight to it. Otherwise the button
++    // posts to /user/enquiries/:id/chat, which finds or creates the SAME
++    // chat the tenant sees on hostelnode.com (one per student + listing).
++    const replyChat = thread ? { href: `/user/messages/${thread}` } : (s ? { startFor: String(e._id) } : null);
 +    const replyWhatsApp = mobile ? {
        href: `https://wa.me/91${mobile}?text=${encodeURIComponent(`Hi ${s.firstName || ""}, thanks for your enquiry about ${listingTitle} on HostelNode.`.replace("Hi ,", "Hi,"))}`,
 -      label: "Reply", external: true, hint: "Reply on WhatsApp",
@@ -61,8 +151,15 @@ index b358062..518b42d 100644
        canConvert: e.status !== "Closed",
        roomType: e.roomType || "",
      };
+@@ -177,5 +217,5 @@ async function buildLeadsPage(ownerId, q = {}, now = new Date()) {
+ 
+ module.exports = {
+   STATUSES, LEADS,
+-  loadOwnedEnquiry, setEnquiryStatus, closeEnquiryAfterConvert, buildLeadsPage, indianMobile,
++  loadOwnedEnquiry, setEnquiryStatus, closeEnquiryAfterConvert, buildLeadsPage, indianMobile, openEnquiryChat,
+ };
 diff --git a/views/leads/index.ejs b/views/leads/index.ejs
-index 9d6e5b7..2920b3a 100644
+index 9d6e5b7..bed9cf4 100644
 --- a/views/leads/index.ejs
 +++ b/views/leads/index.ejs
 @@ -22,6 +22,15 @@
@@ -106,7 +203,7 @@ index 9d6e5b7..2920b3a 100644
    .hn2l-cell { font-size: 12.5px; font-weight: 600; color: #344054; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
    .hn2l-tag { display: inline-block; font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
    .hn2l-tag.is-hot  { color: #dc2626; background: #fdecec; }
-@@ -89,13 +105,27 @@
+@@ -89,13 +105,28 @@
    .hn2l-status.is-contacted select { color: #475467; background: #f2f4f7; }
    .hn2l-status.is-closed select    { color: #98a2b3; background: #f7f8fa; }
  
@@ -117,6 +214,7 @@ index 9d6e5b7..2920b3a 100644
 +  .hn2l-actions > :nth-child(2) { grid-column: 1; grid-row: 2; }
 +  .hn2l-actions > :nth-child(3) { grid-column: 2; grid-row: 1 / span 2; }
 +  .hn2l-actions > :nth-child(-n+2) { justify-content: flex-start; width: 100%; }
++  .hn2l-actions form .hn2l-btn { width: 100%; justify-content: flex-start; font-family: 'DM Sans', sans-serif; cursor: pointer; }
 +  @media (max-width: 1359px) {
 +    .hn2l-actions { grid-template-columns: max-content; }
 +    .hn2l-actions > :nth-child(3) { grid-column: 1; grid-row: 3; justify-self: start; }
@@ -135,7 +233,7 @@ index 9d6e5b7..2920b3a 100644
    .hn2l-btn.is-off, .hn2l-btn.is-off:hover { color: #c2c8d1; background: #fff; cursor: default; }
  
    .hn2l-empty { padding: 40px 18px; text-align: center; color: #98a2b3; font-size: 13px; font-weight: 600; }
-@@ -108,6 +138,8 @@
+@@ -108,6 +139,8 @@
      .hn2l-row.is-head { display: none; }
      .hn2l-row { grid-template-columns: 1fr 1fr; gap: 10px 14px; padding: 14px; }
      .hn2l-row .hn2l-who, .hn2l-row .hn2l-actions { grid-column: 1 / -1; }
@@ -144,7 +242,7 @@ index 9d6e5b7..2920b3a 100644
      .hn2l-row [data-label]::before { content: attr(data-label); display: block; font-size: 10.5px; font-weight: 800; color: #98a2b3; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
      .hn2l-listing select { max-width: 200px; }
    }
-@@ -191,7 +223,10 @@
+@@ -191,7 +224,10 @@
            <div class="hn2l-avatar"><%= e.initials %></div>
            <div style="min-width:0">
              <div class="hn2l-name" title="<%= e.name %>"><%= e.name %></div>
@@ -156,7 +254,7 @@ index 9d6e5b7..2920b3a 100644
            </div>
          </div>
          <div class="hn2l-cell" data-label="Listing" title="<%= e.listingTitle %><%= e.roomType ? ' — ' + e.roomType : '' %>"><%= e.listingTitle %><%= e.roomType ? ' — ' + e.roomType : '' %></div>
-@@ -213,10 +248,15 @@
+@@ -213,10 +249,19 @@
            </form>
          </div>
          <div class="hn2l-actions">
@@ -167,11 +265,15 @@ index 9d6e5b7..2920b3a 100644
 +          <% } else { %>
 +            <span class="hn2l-btn is-off" role="link" aria-disabled="true" title="No valid mobile number on this enquiry"><%- svg(WA, 13, 'currentColor', 2) %> Reply on WhatsApp</span>
 +          <% } %>
-+          <% if (e.replyChat) { %>
++          <% if (e.replyChat && e.replyChat.href) { %>
 +            <a class="hn2l-btn is-hn" href="<%= e.replyChat.href %>" aria-label="Reply to <%= e.name %> in HostelNode messages"><%- svg(CHAT, 13, 'currentColor', 2) %> Reply on HostelNode</a>
++          <% } else if (e.replyChat) { %>
++            <form method="POST" action="/user/enquiries/<%= e.replyChat.startFor %>/chat" style="margin:0">
++              <button type="submit" class="hn2l-btn is-hn" aria-label="Reply to <%= e.name %> in HostelNode messages"><%- svg(CHAT, 13, 'currentColor', 2) %> Reply on HostelNode</button>
++            </form>
            <% } else { %>
 -            <span class="hn2l-btn is-off" role="link" aria-disabled="true" title="No chat or phone number for this enquiry">Reply</span>
-+            <span class="hn2l-btn is-off" role="link" aria-disabled="true" title="They haven't started a HostelNode chat yet — reply on WhatsApp instead"><%- svg(CHAT, 13, 'currentColor', 2) %> Reply on HostelNode</span>
++            <span class="hn2l-btn is-off" role="link" aria-disabled="true" title="This enquiry has no HostelNode account attached"><%- svg(CHAT, 13, 'currentColor', 2) %> Reply on HostelNode</span>
            <% } %>
            <% if (e.canConvert) { %>
              <a class="hn2l-btn is-green" href="/user/newmember?enquiry=<%= e.id %>" title="Add as a tenant in <%= selName %>">Convert</a>
