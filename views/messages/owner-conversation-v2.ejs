@@ -1,0 +1,211 @@
+<% layout("/layouts/boilerplate") -%>
+<%#
+  views/messages/owner-conversation-v2.ejs — Redesign Phase 3.
+  The same chat page as messages/owner-conversation.ejs (unchanged, still
+  used when HN_NEW_UI=0), now inside the main layout with the sidebar.
+  The chat script (send / poll / read receipts) is copied unchanged.
+%>
+<style>
+  /* Colours the standalone page took from findhostel.css — scoped here. */
+  .hn2c {
+    --bg: #f6f8f6; --border: #dde8e0; --muted: #6b7c72; --ink: #0e1a12;
+    --green: #09b850; --green-dark: #078a3c; --green-glow: rgba(9,184,80,0.15);
+    --card-bg: #ffffff; --border-dark: #b8d0c0; --shadow-sm: 0 2px 12px rgba(0,0,0,0.07);
+    --font-d: 'Syne', sans-serif;
+    background: var(--bg);
+  }
+  .hn2c, .hn2c * { box-sizing: border-box; font-family: 'DM Sans', sans-serif; }
+  .hn2c .fa-solid { font-family: "Font Awesome 6 Free"; }
+  .chat-back { color: var(--muted); font-size: 16px; text-decoration: none; margin-right: 2px; }
+  .chat-back:hover { color: var(--ink); }
+
+    .chat-wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 0; display: flex; flex-direction: column; height: calc(100vh - var(--nav-h, 64px)); height: calc(100dvh - var(--nav-h, 64px)); }
+    .chat-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+    .chat-header-left { display: flex; align-items: center; gap: 12px; }
+    .chat-avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, var(--green), #00c264); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+    .chat-name { font-size: 14.5px; font-weight: 700; color: var(--ink); }
+    .chat-sub { font-size: 11.5px; color: var(--muted); }
+
+    .chat-thread { flex: 1; overflow-y: auto; padding: 16px 4px; display: flex; flex-direction: column; gap: 10px; }
+    .bubble { max-width: 75%; padding: 10px 14px; border-radius: 16px; font-size: 13.5px; line-height: 1.5; }
+    .bubble.mine { align-self: flex-end; background: var(--green); color: #fff; border-bottom-right-radius: 4px; }
+    .bubble.theirs { align-self: flex-start; background: var(--card-bg); border: 1px solid var(--border); color: var(--ink); border-bottom-left-radius: 4px; }
+    .bubble .time { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: 10px; opacity: .8; margin-top: 4px; }
+    .bubble .tick { font-size: 11px; }
+    .bubble .tick.tick-sent { opacity: .75; }
+    .bubble .tick.tick-delivered { opacity: .85; }
+    .bubble .tick.tick-read { color: #53d1ff; opacity: 1; }
+
+    .chat-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 40px 0; }
+
+    /* NEW — suggested opening replies, same pattern as the Student
+       side's messages/conversation.ejs in the main hostelnode.com repo. */
+    .suggestion-row { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 12px; scrollbar-width: thin; }
+    .suggestion-row::-webkit-scrollbar { height: 4px; }
+    .suggestion-chip { flex-shrink: 0; border: 1.5px solid var(--border); background: #fff; color: var(--ink); font-size: 12.5px; padding: 7px 13px; border-radius: 999px; cursor: pointer; white-space: nowrap; transition: border-color .15s, background .15s; }
+    .suggestion-chip:hover { border-color: var(--green); background: var(--green-glow); }
+    .suggestion-dismiss { flex-shrink: 0; align-self: center; background: none; border: none; color: var(--muted); font-size: 13px; padding: 0 4px; cursor: pointer; }
+    .suggestion-wrap { display: none; }
+    .suggestion-wrap.visible { display: flex; align-items: center; }
+
+    .chat-input-row { display: flex; gap: 10px; padding: 12px 0 16px; border-top: 1px solid var(--border); }
+    .chat-input-row textarea { flex: 1; border: 1.5px solid var(--border); border-radius: 16px; padding: 11px 14px; font-size: 13.5px; font-family: inherit; resize: none; outline: none; }
+    .chat-input-row textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-glow); }
+    .chat-send-btn { background: linear-gradient(135deg, var(--green), #00c264); color: #fff; border: none; border-radius: 50%; width: 44px; height: 44px; flex-shrink: 0; }
+
+    .not-found { text-align: center; padding: 80px 20px; }
+    .not-found i { font-size: 2.4rem; color: var(--border-dark); }
+</style>
+
+<div class="hn2c">
+<% if (!conversation) { %>
+  <div class="not-found">
+    <i class="fa-solid fa-lock"></i>
+    <h2 style="font-family:var(--font-d);margin:16px 0 8px">Conversation not found</h2>
+    <p style="color:var(--muted);font-size:13.5px">This conversation doesn't exist, or you don't have access to it.</p>
+    <a href="/user/messages" style="color:var(--green-dark);font-weight:700">&larr; Back to Messages</a>
+  </div>
+<% } else { %>
+
+<div class="chat-wrap">
+  <div class="chat-header">
+    <div class="chat-header-left">
+      <a href="/user/messages" class="chat-back" aria-label="Back to Messages"><i class="fa-solid fa-arrow-left"></i></a>
+      <div class="chat-avatar"><%= (counterpart?.firstName || 'S')[0] %></div>
+      <div>
+        <div class="chat-name"><%= counterpart?.firstName || 'HostelNode User' %></div>
+        <div class="chat-sub"><%= listingText %></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-thread" id="chatThread">
+    <% if (!messages || messages.length === 0) { %>
+      <div class="chat-empty">No messages yet.</div>
+    <% } %>
+    <% messages.forEach(function(m) { %>
+      <% const mine = m.sender.toString() === viewerId; %>
+      <div class="bubble <%= mine ? 'mine' : 'theirs' %>" data-id="<%= m._id %>">
+        <%= m.text %>
+        <span class="time">
+          <%= new Date(m.createdAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }) %>
+          <% if (mine) { %>
+            <i class="fa-solid tick <%= m.readAt ? 'fa-check-double tick-read' : (m.deliveredAt ? 'fa-check-double tick-delivered' : 'fa-check tick-sent') %>"></i>
+          <% } %>
+        </span>
+      </div>
+    <% }) %>
+  </div>
+
+  <% if (conversation.status === 'active' && suggestions && suggestions.length) { %>
+    <div class="suggestion-wrap visible" id="suggestionWrap">
+      <div class="suggestion-row" id="suggestionRow">
+        <% suggestions.forEach(function(s) { %>
+          <button type="button" class="suggestion-chip" onclick="useSuggestion(this)"><%= s %></button>
+        <% }) %>
+      </div>
+      <button type="button" class="suggestion-dismiss" onclick="dismissSuggestions()" title="Hide suggestions"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  <% } %>
+
+  <div class="chat-input-row">
+    <textarea id="chatInput" rows="1" placeholder="Type a reply…" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+    <button class="chat-send-btn" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+  </div>
+</div>
+
+<script>
+const CONVERSATION_ID = "<%= conversation._id %>";
+let lastMessageTime = <%- messages.length ? JSON.stringify(messages[messages.length-1].createdAt) : 'null' %>;
+
+const thread = document.getElementById('chatThread');
+thread.scrollTop = thread.scrollHeight;
+
+function tickHtml(msg) {
+  if (msg.readAt) return '<i class="fa-solid fa-check-double tick tick-read"></i>';
+  if (msg.deliveredAt) return '<i class="fa-solid fa-check-double tick tick-delivered"></i>';
+  return '<i class="fa-solid fa-check tick tick-sent"></i>';
+}
+
+function appendBubble(msg) {
+  const div = document.createElement('div');
+  div.className = 'bubble ' + (msg.mine ? 'mine' : 'theirs');
+  if (msg._id) div.dataset.id = msg._id;
+  const time = new Date(msg.createdAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+  div.innerHTML = msg.text.replace(/</g,'&lt;') + '<span class="time">' + time + (msg.mine ? tickHtml(msg) : '') + '</span>';
+  thread.appendChild(div);
+  thread.scrollTop = thread.scrollHeight;
+  lastMessageTime = msg.createdAt;
+}
+
+function updateTicks(id, deliveredAt, readAt) {
+  const bubble = thread.querySelector('[data-id="' + id + '"]');
+  if (!bubble) return;
+  const tick = bubble.querySelector('.tick');
+  if (!tick) return;
+  tick.outerHTML = tickHtml({ deliveredAt, readAt });
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  hideSuggestions();
+  try {
+    const res = await fetch('/messages/' + CONVERSATION_ID + '/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    if (data.success) appendBubble(data.message);
+    else alert(data.error || 'Could not send message.');
+  } catch (err) { alert('Network error — please try again.'); }
+}
+
+function useSuggestion(btn) {
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  input.value = btn.textContent;
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+}
+function hideSuggestions() {
+  const wrap = document.getElementById('suggestionWrap');
+  if (wrap) wrap.classList.remove('visible');
+}
+function dismissSuggestions() { hideSuggestions(); }
+
+let readAckTimer = null;
+function ackReadIfFocused() {
+  if (document.visibilityState !== 'visible' || !document.hasFocus()) return;
+  clearTimeout(readAckTimer);
+  readAckTimer = setTimeout(function () {
+    fetch('/messages/' + CONVERSATION_ID + '/read', { method: 'POST' }).catch(function () {});
+  }, 600);
+}
+document.addEventListener('visibilitychange', ackReadIfFocused);
+window.addEventListener('focus', ackReadIfFocused);
+ackReadIfFocused();
+
+setInterval(async function () {
+  try {
+    const qs = lastMessageTime ? '?after=' + encodeURIComponent(lastMessageTime) : '';
+    const res = await fetch('/messages/' + CONVERSATION_ID + '/poll' + qs);
+    const data = await res.json();
+    if (!data.success) return;
+    let gotIncoming = false;
+    if (data.messages.length) {
+      data.messages.forEach(function(m) {
+        if (!m.mine) { appendBubble(m); gotIncoming = true; }
+      });
+    }
+    if (data.statusUpdates && data.statusUpdates.length) {
+      data.statusUpdates.forEach(function(s) { updateTicks(s._id, s.deliveredAt, s.readAt); });
+    }
+    if (gotIncoming) ackReadIfFocused();
+  } catch (err) { /* silent — network hiccups shouldn't spam the user */ }
+}, 4000);
+</script>
+
+<% } %>
+</div>

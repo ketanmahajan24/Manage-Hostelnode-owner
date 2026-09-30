@@ -1,0 +1,133 @@
+diff --git a/app.js b/app.js
+index 3f62aa0..092159f 100644
+--- a/app.js
++++ b/app.js
+@@ -109,6 +109,10 @@ app.use("/webhook",     waBot);
+ app.use("/user",        userRouter);
+ app.use("/user",        ownerMessagesRouter); // Phase 4 — /user/messages, /user/messages/:conversationId
+ app.use("/user",        require("./routes/leadsRoutes")); // Phase 3 (redesign) — /user/leads, /user/enquiries/:id/status
++app.use("/user",        require("./routes/accountRoutes")); // Phase 4 (redesign) — /user/account/*, /user/notifications
++// Phase 4 (redesign) — the previous navbar linked here; send those to the real pages.
++app.get("/account/settings", (req, res) => res.redirect("/user/account/settings"));
++app.get("/billing",          (req, res) => res.redirect("/user/account/billing"));
+ app.use("/messages",    messagesRouter);      // this repo's SLIM, PG-chat-only variant
+ 
+ // ── Root — this deployment has no public homepage (that's
+diff --git a/models/owner.js b/models/owner.js
+index 2ae6806..2b3e84c 100644
+--- a/models/owner.js
++++ b/models/owner.js
+@@ -101,6 +101,29 @@ const ownerSchema = new mongoose.Schema({
+   role: {
+     type: String,
+     default: "Owner"
++  },
++
++  // ── Redesign Phase 4 — account settings & KYC ──
++  // All optional with defaults: existing owner records need no update.
++  loginAlerts: {            // email on every new login (Settings)
++    type: Boolean,
++    default: true
++  },
++  kyc: {
++    status: {
++      type: String,
++      enum: ["Not submitted", "Pending", "Verified", "Rejected"],
++      default: "Not submitted"
++    },
++    docType: {
++      type: String,
++      enum: ["Aadhaar", "PAN", "Driving licence", "Passport"]
++    },
++    docNumberMasked: String,  // only the last 4 characters are kept
++    docFile: String,          // file name under /secure_uploads/kyc
++    submittedAt: Date,
++    reviewedAt: Date,
++    rejectionReason: String
+   }
+ }, { timestamps: true });
+ 
+diff --git a/routes/userRoutes.js b/routes/userRoutes.js
+index f2fd863..66ca3af 100644
+--- a/routes/userRoutes.js
++++ b/routes/userRoutes.js
+@@ -390,8 +390,9 @@ router.post('/login', async (req, res) => {
+     const token = generateToken({ id: user._id, email: user.email, role: user.role });
+     res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+ 
+-    // Login alert email (non-blocking)
+-    sendMail(
++    // Login alert email (non-blocking). Phase 4 (redesign): owners can turn
++    // this off in Settings; missing field = on, as before.
++    if (user.loginAlerts !== false) sendMail(
+       user.email,
+       "🔐 New Login Detected - HostelNode",
+       `<div style="font-family:Arial;padding:20px">
+diff --git a/scripts/smoke-test.js b/scripts/smoke-test.js
+index 4a75e5c..4443b69 100644
+--- a/scripts/smoke-test.js
++++ b/scripts/smoke-test.js
+@@ -50,6 +50,10 @@ const PAGES = [
+   "/user/leads?lead=Hot",
+   "/user/leads?view=visits",
+   "/user/leads?status=New",
++  "/user/account/settings",
++  "/user/account/billing",
++  "/user/account/kyc",
++  "/user/notifications",
+ ];
+ 
+ const { SMOKE_MEMBER_ID: M, SMOKE_ROOM_ID: R, SMOKE_LISTING_ID: L } = process.env;
+diff --git a/views/includes/navbar-v2.ejs b/views/includes/navbar-v2.ejs
+index 1d96c65..8ebfc26 100644
+--- a/views/includes/navbar-v2.ejs
++++ b/views/includes/navbar-v2.ejs
+@@ -31,6 +31,9 @@
+ 
+   const hnStatus = hnUser.status || "Pending";
+   const hnStatusClass = hnStatus === "Active" ? "is-ok" : hnStatus === "Inactive" ? "is-bad" : "is-warn";
++  // Redesign Phase 4 — real KYC status from the owner record.
++  const hnKyc = (hnUser.kyc && hnUser.kyc.status) || "Not submitted";
++  const hnKycClass = hnKyc === "Verified" ? "is-ok" : hnKyc === "Rejected" ? "is-bad" : "is-warn";
+ 
+   const hnCount = n => (n > 99 ? "99+" : String(n));
+ 
+@@ -281,10 +284,10 @@
+         </div>
+       </div>
+ 
+-      <button type="button" class="hn2-iconbtn" aria-disabled="true" aria-label="Notifications<%= hnNotif > 0 ? ' (' + hnNotif + ' unread)' : '' %>" title="Notifications — coming soon">
++      <a class="hn2-iconbtn" href="/user/notifications" data-hn2-match="^/user/notifications" aria-label="Notifications<%= hnNotif > 0 ? ' (' + hnNotif + ' unread)' : '' %>" title="Notifications">
+         <%- svg('bell', 16, '#475467', 2) %>
+         <% if (hnNotif > 0) { %><span class="hn2-bell-dot"></span><% } %>
+-      </button>
++      </a>
+ 
+       <button type="button" class="hn2-tour" aria-disabled="true" title="Guided tour — coming soon">
+         <%- svg('clock', 14, '#475467', 2.2) %> Tour
+@@ -319,19 +322,19 @@
+           <div class="hn2-pop-sep"></div>
+           <div class="hn2-pop-group">
+             <a class="hn2-pop-item" href="/user/editOwner"><%- svg('user', 15, '#667085', 2) %> Profile</a>
+-            <span class="hn2-pop-item" role="link" aria-disabled="true" title="Settings — available in the next update"><%- svg('gear', 15, '#667085', 2) %> Settings</span>
+-            <span class="hn2-pop-item" role="link" aria-disabled="true" title="Billing — available in the next update">
++            <a class="hn2-pop-item" href="/user/account/settings"><%- svg('gear', 15, '#667085', 2) %> Settings</a>
++            <a class="hn2-pop-item" href="/user/account/billing">
+               <%- svg('card', 15, '#667085', 2) %> <span class="hn2-grow">Billing</span>
+               <span class="hn2-status <%= hnStatusClass %>"><%= String(hnStatus).toUpperCase() %></span>
+-            </span>
++            </a>
+           </div>
+ 
+           <div class="hn2-pop-sep"></div>
+           <div class="hn2-pop-group">
+-            <span class="hn2-pop-item" role="link" aria-disabled="true" title="KYC verification — available in the next update">
++            <a class="hn2-pop-item" href="/user/account/kyc">
+               <%- svg('shield', 15, '#667085', 2) %> <span class="hn2-grow">KYC Verification</span>
+-              <span class="hn2-status is-warn">PENDING</span>
+-            </span>
++              <span class="hn2-status <%= hnKycClass %>"><%= hnKyc.toUpperCase() %></span>
++            </a>
+           </div>
+ 
+           <div class="hn2-pop-sep"></div>

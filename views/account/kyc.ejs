@@ -1,0 +1,67 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Redesign Phase 4 — KYC verification. %>
+<%- include("_style.ejs") %>
+<%
+  const k = kyc || {};
+  const st = k.status || "Not submitted";
+  const pill = { "Verified": "is-ok", "Rejected": "is-bad" }[st] || "is-warn";
+  const day = d => d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : "—";
+  const canSubmit = st === "Not submitted" || st === "Rejected";
+%>
+<div class="hn2a">
+  <div class="hn2a-inner">
+    <h1 class="hn2a-title">KYC Verification</h1>
+    <div class="hn2a-sub">Verify your identity as a property owner on HostelNode</div>
+
+    <% if (notice) { %><div class="hn2a-notice is-<%= notice.kind %>" role="status"><%= notice.text %></div><% } %>
+
+    <div class="hn2a-card">
+      <div class="hn2a-row" style="margin-bottom:<%= st === 'Not submitted' ? '0' : '14px' %>">
+        <div>
+          <div class="hn2a-card-title">Status</div>
+          <div class="hn2a-card-sub" style="margin:0">
+            <% if (st === "Verified") { %>You're verified.<% } else if (st === "Pending") { %>We've received your document and are reviewing it.<% } else if (st === "Rejected") { %>Your last submission wasn't accepted. Please submit again.<% } else { %>You haven't submitted a document yet.<% } %>
+          </div>
+        </div>
+        <span class="hn2a-pill <%= pill %>"><%= st.toUpperCase() %></span>
+      </div>
+
+      <% if (st !== "Not submitted") { %>
+        <dl class="hn2a-kv" style="margin:0">
+          <dt>Document</dt><dd><%= k.docType || "—" %><%= k.docNumberMasked ? " · " + k.docNumberMasked : "" %></dd>
+          <dt>Submitted</dt><dd><%= day(k.submittedAt) %></dd>
+          <% if (k.reviewedAt) { %><dt>Reviewed</dt><dd><%= day(k.reviewedAt) %></dd><% } %>
+          <% if (st === "Rejected" && k.rejectionReason) { %><dt>Reason</dt><dd><%= k.rejectionReason %></dd><% } %>
+          <% if (k.docFile) { %><dt>File</dt><dd><a href="/user/account/kyc/document" target="_blank" rel="noopener" style="color:#0a7d4c;font-weight:700">View your document</a></dd><% } %>
+        </dl>
+      <% } %>
+    </div>
+
+    <% if (canSubmit) { %>
+      <div class="hn2a-card">
+        <div class="hn2a-card-title"><%= st === "Rejected" ? "Submit again" : "Submit a document" %></div>
+        <div class="hn2a-card-sub">We keep only the last 4 characters of the number. The file is private — only you and the HostelNode team can see it.</div>
+        <form method="POST" action="/user/account/kyc" enctype="multipart/form-data">
+          <div class="hn2a-field">
+            <label class="hn2a-label" for="kycType">Document type</label>
+            <select class="hn2a-select" id="kycType" name="docType" required>
+              <option value="">Choose…</option>
+              <% types.forEach(function (t) { %><option value="<%= t %>"><%= t %></option><% }) %>
+            </select>
+          </div>
+          <div class="hn2a-field">
+            <label class="hn2a-label" for="kycNum">Document number</label>
+            <input class="hn2a-input" id="kycNum" name="docNumber" required maxlength="24" autocomplete="off">
+            <div class="hn2a-help">Aadhaar: 12 digits · PAN: e.g. ABCDE1234F · Passport: e.g. K1234567</div>
+          </div>
+          <div class="hn2a-field">
+            <label class="hn2a-label" for="kycFile">Photo or scan</label>
+            <input class="hn2a-file" type="file" id="kycFile" name="document" required accept="image/jpeg,image/png,image/webp,application/pdf">
+            <div class="hn2a-help">JPG, PNG, WEBP or PDF, up to 5 MB.</div>
+          </div>
+          <button class="hn2a-btn" type="submit">Submit for verification</button>
+        </form>
+      </div>
+    <% } %>
+  </div>
+</div>

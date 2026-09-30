@@ -108,6 +108,11 @@ app.use(require("./Middlewares/navData"));
 app.use("/webhook",     waBot);
 app.use("/user",        userRouter);
 app.use("/user",        ownerMessagesRouter); // Phase 4 — /user/messages, /user/messages/:conversationId
+app.use("/user",        require("./routes/leadsRoutes")); // Phase 3 (redesign) — /user/leads, /user/enquiries/:id/status
+app.use("/user",        require("./routes/accountRoutes")); // Phase 4 (redesign) — /user/account/*, /user/notifications
+// Phase 4 (redesign) — the previous navbar linked here; send those to the real pages.
+app.get("/account/settings", (req, res) => res.redirect("/user/account/settings"));
+app.get("/billing",          (req, res) => res.redirect("/user/account/billing"));
 app.use("/messages",    messagesRouter);      // this repo's SLIM, PG-chat-only variant
 
 // ── Root — this deployment has no public homepage (that's

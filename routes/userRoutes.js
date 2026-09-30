@@ -18,6 +18,7 @@ const Member = require("../models/member.js");
 const Payment = require("../models/payment.js");
 const Hostel = require("../models/hostel.js");
 const { buildDashboard } = require("../utils/dashboardData.js"); // Phase 2
+const { loadOwnedEnquiry, closeEnquiryAfterConvert, indianMobile } = require("../utils/leads.js"); // Phase 3
 const crypto = require('crypto');
 const fs = require('fs');
 const moment = require("moment-timezone");
@@ -389,8 +390,9 @@ router.post('/login', async (req, res) => {
     const token = generateToken({ id: user._id, email: user.email, role: user.role });
     res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
 
-    // Login alert email (non-blocking)
-    sendMail(
+    // Login alert email (non-blocking). Phase 4 (redesign): owners can turn
+    // this off in Settings; missing field = on, as before.
+    if (user.loginAlerts !== false) sendMail(
       user.email,
       "🔐 New Login Detected - HostelNode",
       `<div style="font-family:Arial;padding:20px">
@@ -580,6 +582,11 @@ const SWITCH_RETURN_SECTION = [
 function switchReturnPath(next) {
   if (typeof next !== "string") return "/user";
   const p = next.split("?")[0].split("#")[0];
+  // Phase 3 — keep an in-progress "Convert enquiry to tenant" across a switch.
+  const conv = next.match(/^\/user\/newmember\?enquiry=([a-f0-9]{24})$/i);
+  if (conv) return `/user/newmember?enquiry=${conv[1]}`;
+  // Phase 3 — keep Leads & CRM filters (Leads is global; filters are harmless).
+  if (p === "/user/leads") return /^\/user\/leads(\?[\w=&%.+-]*)?$/.test(next) ? next : "/user/leads";
   if (SWITCH_RETURN_EXACT.has(p)) return p;
   for (const [re, target] of SWITCH_RETURN_SECTION) if (re.test(p)) return target;
   return "/user";
@@ -1018,7 +1025,22 @@ router.get("/newmember", jwtAuthMiddleware, attachHostel, async (req, res) => {
       selectedHostel ? Room.find({ user: userId, hostel: selectedHostel }) : [],
       selectedHostel ? Floor.find({ user: userId, hostel: selectedHostel }) : []
     ]);
-    safeRender(res, "showPage/memberData/newmember.ejs", { rooms, floors, user });
+
+    // Phase 3 — "Convert" from Leads & CRM: pre-fill from the owner's own enquiry.
+    let prefill = null;
+    if (req.query.enquiry) {
+      const e = await loadOwnedEnquiry(String(req.query.enquiry), userId).catch(() => null);
+      if (e) {
+        const st = e.student || {};
+        prefill = {
+          enquiryId: String(e._id),
+          name: [st.firstName, st.lastName].filter(Boolean).join(" "),
+          mobileNo: indianMobile(st.phone),
+          listingTitle: e.listing?.title || "",
+        };
+      }
+    }
+    safeRender(res, "showPage/memberData/newmember.ejs", { rooms, floors, user, prefill });
   } catch (err) {
     console.error("newmember GET error:", err.message);
     res.status(500).send("Server Error.");
@@ -1059,6 +1081,10 @@ router.post("/newMember", jwtAuthMiddleware, attachHostel, async (req, res) => {
 
     await Room.findByIdAndUpdate(assignedRoom_id, { $inc: { occupied_beds: 1 } });
     await Floor.findByIdAndUpdate(room.floor_id, { $inc: { active_number: 1, occupied_beds: 1 } });
+
+    // Phase 3 — tenant added from an enquiry ("Convert"): close that enquiry.
+    // Only runs when the form carried an enquiry id; never throws.
+    if (req.body.enquiryId) await closeEnquiryAfterConvert(req.body.enquiryId, userId);
 
     res.redirect("/user/newAdded/successfully");
   } catch (err) {

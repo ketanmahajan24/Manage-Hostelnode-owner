@@ -1,0 +1,319 @@
+diff --git a/app.js b/app.js
+index 20dc30d..3f62aa0 100644
+--- a/app.js
++++ b/app.js
+@@ -108,6 +108,7 @@ app.use(require("./Middlewares/navData"));
+ app.use("/webhook",     waBot);
+ app.use("/user",        userRouter);
+ app.use("/user",        ownerMessagesRouter); // Phase 4 — /user/messages, /user/messages/:conversationId
++app.use("/user",        require("./routes/leadsRoutes")); // Phase 3 (redesign) — /user/leads, /user/enquiries/:id/status
+ app.use("/messages",    messagesRouter);      // this repo's SLIM, PG-chat-only variant
+ 
+ // ── Root — this deployment has no public homepage (that's
+diff --git a/public/js/hn-shell.js b/public/js/hn-shell.js
+index 659d399..47d463e 100644
+--- a/public/js/hn-shell.js
++++ b/public/js/hn-shell.js
+@@ -43,9 +43,13 @@
+ 
+   /* ── Active page ── */
+   shell.querySelectorAll("[data-hn2-match]").forEach(function (el) {
+-    var re;
+-    try { re = new RegExp(el.getAttribute("data-hn2-match")); } catch (e) { return; }
++    var re, qre = null;
++    try {
++      re = new RegExp(el.getAttribute("data-hn2-match"));
++      if (el.hasAttribute("data-hn2-query")) qre = new RegExp(el.getAttribute("data-hn2-query"));
++    } catch (e) { return; }
+     if (!re.test(path)) return;
++    if (qre && !qre.test(window.location.search)) return;
+     el.classList.add("is-active");
+     el.setAttribute("aria-current", "page");
+     var sub = el.closest(".hn2-sub");
+@@ -134,7 +138,9 @@
+         Set on load so it also works for new-tab / middle clicks. ── */
+   shell.querySelectorAll("[data-hn2-switch-opt]").forEach(function (a) {
+     var href = a.getAttribute("href").split("?")[0];
+-    a.setAttribute("href", href + "?next=" + encodeURIComponent(path));
++    // Include the query so e.g. a "Convert enquiry" Add Tenant form survives
++    // the switch; the server only honours known pages.
++    a.setAttribute("href", href + "?next=" + encodeURIComponent(path + window.location.search));
+   });
+ 
+   var search = shell.querySelector("[data-hn2-switch-search]");
+diff --git a/routes/ownerMessagesRoutes.js b/routes/ownerMessagesRoutes.js
+index aebdce0..e657465 100644
+--- a/routes/ownerMessagesRoutes.js
++++ b/routes/ownerMessagesRoutes.js
+@@ -34,6 +34,12 @@ const router = express.Router();
+ const { jwtAuthMiddleware } = require("../jwt.js");
+ const Conversation = require("../models/Conversation");
+ const Message = require("../models/Message");
++// Redesign Phase 3 — Messages now render inside the main layout (sidebar +
++// top bar), which needs the owner and their properties.
++const attachHostel = require("../Middlewares/attachHostel");
++const Owner = require("../models/owner");
++// HN_NEW_UI=0 keeps the previous standalone pages (unchanged files).
++const view = name => (process.env.HN_NEW_UI === "0" ? `messages/${name}` : `messages/${name}-v2`);
+ 
+ function listingTitle(listing) {
+   if (!listing) return "PG / Hostel listing";
+@@ -72,7 +78,7 @@ const PG_OWNER_SUGGESTIONS = [
+    ownerParticipant, newest activity first. Flatmate has no owner
+    side, so this list is PG/Hostel-only by construction.
+ ───────────────────────────────────────────── */
+-router.get("/messages", jwtAuthMiddleware, async (req, res) => {
++router.get("/messages", jwtAuthMiddleware, attachHostel, async (req, res) => {
+   try {
+     const ownerId = req.user.id;
+ 
+@@ -97,7 +103,8 @@ router.get("/messages", jwtAuthMiddleware, async (req, res) => {
+       };
+     });
+ 
+-    res.render("messages/owner-inbox", { rows });
++    const user = await Owner.findById(ownerId).lean();
++    res.render(view("owner-inbox"), { rows, user });
+   } catch (err) {
+     console.error("Owner inbox error:", err);
+     res.status(500).send("Something went wrong loading your messages. Please try again.");
+@@ -110,7 +117,7 @@ router.get("/messages", jwtAuthMiddleware, async (req, res) => {
+    existing shared /messages/:id/... endpoints from Phase 2 — this
+    route only has to fetch and hand over the initial page of messages.
+ ───────────────────────────────────────────── */
+-router.get("/messages/:conversationId", jwtAuthMiddleware, async (req, res) => {
++router.get("/messages/:conversationId", jwtAuthMiddleware, attachHostel, async (req, res) => {
+   try {
+     const ownerId = req.user.id;
+ 
+@@ -123,9 +130,11 @@ router.get("/messages/:conversationId", jwtAuthMiddleware, async (req, res) => {
+     // its ownerParticipant — never trust the conversationId in the URL
+     // alone. A Flatmate conversation, or another owner's conversation,
+     // renders the same "not found" state as a missing id.
++    const user = await Owner.findById(ownerId).lean();
++
+     if (!conv || conv.type !== "PG_INQUIRY" || !conv.ownerParticipant || conv.ownerParticipant.toString() !== ownerId) {
+-      return res.status(404).render("messages/owner-conversation", {
+-        conversation: null, messages: [], counterpart: null, viewerId: null, listingText: "", suggestions: [],
++      return res.status(404).render(view("owner-conversation"), {
++        conversation: null, messages: [], counterpart: null, viewerId: null, listingText: "", suggestions: [], user,
+       });
+     }
+ 
+@@ -137,6 +146,11 @@ router.get("/messages/:conversationId", jwtAuthMiddleware, async (req, res) => {
+     // Same "opening the chat = delivered + read" stamping as the
+     // student-side thread route in routes/messagesRoutes.js.
+     const now = new Date();
++    // Redesign Phase 3 — this chat is being read now, so take it off the
++    // sidebar's Messages badge on this page too.
++    if (res.locals.hn2 && res.locals.hn2.unreadMessages) {
++      res.locals.hn2 = { ...res.locals.hn2, unreadMessages: Math.max(0, res.locals.hn2.unreadMessages - getUnread(conv, ownerId)) };
++    }
+     await Conversation.updateOne({ _id: conv._id }, { $set: { [`unreadCounts.${ownerId}`]: 0 } });
+     await Message.updateMany(
+       { conversation: conv._id, sender: { $ne: ownerId }, readAt: null },
+@@ -153,13 +167,14 @@ router.get("/messages/:conversationId", jwtAuthMiddleware, async (req, res) => {
+       ? PG_OWNER_SUGGESTIONS
+       : [];
+ 
+-    res.render("messages/owner-conversation", {
++    res.render(view("owner-conversation"), {
+       conversation: conv,
+       messages,
+       counterpart,
+       viewerId: ownerId,
+       listingText: listingTitle(conv.listing),
+       suggestions,
++      user,
+     });
+   } catch (err) {
+     console.error("Owner conversation view error:", err);
+diff --git a/routes/userRoutes.js b/routes/userRoutes.js
+index 1c99154..f2fd863 100644
+--- a/routes/userRoutes.js
++++ b/routes/userRoutes.js
+@@ -18,6 +18,7 @@ const Member = require("../models/member.js");
+ const Payment = require("../models/payment.js");
+ const Hostel = require("../models/hostel.js");
+ const { buildDashboard } = require("../utils/dashboardData.js"); // Phase 2
++const { loadOwnedEnquiry, closeEnquiryAfterConvert, indianMobile } = require("../utils/leads.js"); // Phase 3
+ const crypto = require('crypto');
+ const fs = require('fs');
+ const moment = require("moment-timezone");
+@@ -580,6 +581,11 @@ const SWITCH_RETURN_SECTION = [
+ function switchReturnPath(next) {
+   if (typeof next !== "string") return "/user";
+   const p = next.split("?")[0].split("#")[0];
++  // Phase 3 — keep an in-progress "Convert enquiry to tenant" across a switch.
++  const conv = next.match(/^\/user\/newmember\?enquiry=([a-f0-9]{24})$/i);
++  if (conv) return `/user/newmember?enquiry=${conv[1]}`;
++  // Phase 3 — keep Leads & CRM filters (Leads is global; filters are harmless).
++  if (p === "/user/leads") return /^\/user\/leads(\?[\w=&%.+-]*)?$/.test(next) ? next : "/user/leads";
+   if (SWITCH_RETURN_EXACT.has(p)) return p;
+   for (const [re, target] of SWITCH_RETURN_SECTION) if (re.test(p)) return target;
+   return "/user";
+@@ -1018,7 +1024,22 @@ router.get("/newmember", jwtAuthMiddleware, attachHostel, async (req, res) => {
+       selectedHostel ? Room.find({ user: userId, hostel: selectedHostel }) : [],
+       selectedHostel ? Floor.find({ user: userId, hostel: selectedHostel }) : []
+     ]);
+-    safeRender(res, "showPage/memberData/newmember.ejs", { rooms, floors, user });
++
++    // Phase 3 — "Convert" from Leads & CRM: pre-fill from the owner's own enquiry.
++    let prefill = null;
++    if (req.query.enquiry) {
++      const e = await loadOwnedEnquiry(String(req.query.enquiry), userId).catch(() => null);
++      if (e) {
++        const st = e.student || {};
++        prefill = {
++          enquiryId: String(e._id),
++          name: [st.firstName, st.lastName].filter(Boolean).join(" "),
++          mobileNo: indianMobile(st.phone),
++          listingTitle: e.listing?.title || "",
++        };
++      }
++    }
++    safeRender(res, "showPage/memberData/newmember.ejs", { rooms, floors, user, prefill });
+   } catch (err) {
+     console.error("newmember GET error:", err.message);
+     res.status(500).send("Server Error.");
+@@ -1060,6 +1081,10 @@ router.post("/newMember", jwtAuthMiddleware, attachHostel, async (req, res) => {
+     await Room.findByIdAndUpdate(assignedRoom_id, { $inc: { occupied_beds: 1 } });
+     await Floor.findByIdAndUpdate(room.floor_id, { $inc: { active_number: 1, occupied_beds: 1 } });
+ 
++    // Phase 3 — tenant added from an enquiry ("Convert"): close that enquiry.
++    // Only runs when the form carried an enquiry id; never throws.
++    if (req.body.enquiryId) await closeEnquiryAfterConvert(req.body.enquiryId, userId);
++
+     res.redirect("/user/newAdded/successfully");
+   } catch (err) {
+     console.error("newMember POST error:", err.message);
+diff --git a/scripts/smoke-test.js b/scripts/smoke-test.js
+index 76ca684..4a75e5c 100644
+--- a/scripts/smoke-test.js
++++ b/scripts/smoke-test.js
+@@ -11,7 +11,8 @@
+      node scripts/smoke-test.js
+ 
+    Optional, to also open pages that need a record id:
+-     SMOKE_MEMBER_ID=...  SMOKE_ROOM_ID=...  SMOKE_LISTING_ID=...  SMOKE_HOSTEL_ID=...
++     SMOKE_MEMBER_ID=...  SMOKE_ROOM_ID=...  SMOKE_LISTING_ID=...  SMOKE_HOSTEL_ID=...  SMOKE_ENQUIRY_ID=...
++   With HN_NEW_UI=0 on the server, also set HN_NEW_UI=0 here.
+ ============================================================ */
+ 
+ const BASE  = (process.env.SMOKE_BASE || "http://localhost:6060").replace(/\/$/, "");
+@@ -45,15 +46,20 @@ const PAGES = [
+   "/user/list-property",
+   "/user/my-listings",
+   "/user/messages",
++  "/user/leads",
++  "/user/leads?lead=Hot",
++  "/user/leads?view=visits",
++  "/user/leads?status=New",
+ ];
+ 
+ const { SMOKE_MEMBER_ID: M, SMOKE_ROOM_ID: R, SMOKE_LISTING_ID: L } = process.env;
+ if (M) PAGES.push(`/user/member-edit/${M}/edit`, `/user/members/${M}/addpayment`, `/user/payment-history/${M}`);
+ if (R) PAGES.push(`/user/managerooms/${R}/edit`);
+ if (L) PAGES.push(`/user/listing/${L}/edit`);
++if (process.env.SMOKE_ENQUIRY_ID) PAGES.push(`/user/newmember?enquiry=${process.env.SMOKE_ENQUIRY_ID}`);
+ 
+-// Pages that render outside the shared layout (no navbar by design today).
+-const NO_NAVBAR = new Set(["/user/messages"]);
++// Pages that render outside the shared layout when HN_NEW_UI=0 (old Messages pages).
++const NO_NAVBAR = new Set(process.env.HN_NEW_UI === "0" ? ["/user/messages"] : []);
+ 
+ async function login() {
+   const body = new URLSearchParams({ "user[email]": EMAIL, "user[password]": PASS, "user[role]": ROLE });
+diff --git a/utils/dashboardData.js b/utils/dashboardData.js
+index 83ebff1..1fdcec9 100644
+--- a/utils/dashboardData.js
++++ b/utils/dashboardData.js
+@@ -197,8 +197,8 @@ async function buildDashboard(ownerId, hostels, now = new Date()) {
+       title: `${newEnquiryCount} new enquir${newEnquiryCount === 1 ? "y" : "ies"} unanswered`,
+       detail: `${personName(e)} (${listingTitle.get(String(e.listing)) || "your listing"}) · ${timeAgo(e.createdAt, now)}${more}`,
+       action: "Reply",
+-      href: "/user/my-listings",
+-      hint: "Opens your listings and their enquiries",
++      href: "/user/leads?status=New",
++      hint: "Opens Leads & CRM, new enquiries",
+     });
+   }
+ 
+diff --git a/views/dashboard-v2.ejs b/views/dashboard-v2.ejs
+index 6bd49bf..75f9bae 100644
+--- a/views/dashboard-v2.ejs
++++ b/views/dashboard-v2.ejs
+@@ -209,7 +209,7 @@
+     <div class="hn2d-card">
+       <div class="hn2d-panel-head">
+         <div class="hn2d-panel-title">Recent enquiries</div>
+-        <a class="hn2d-link" href="/user/my-listings">View all</a>
++        <a class="hn2d-link" href="/user/leads">View all</a>
+       </div>
+       <% if (d.recent.length) { %>
+         <div class="hn2d-list">
+diff --git a/views/includes/navbar-v2.ejs b/views/includes/navbar-v2.ejs
+index da30c30..1d96c65 100644
+--- a/views/includes/navbar-v2.ejs
++++ b/views/includes/navbar-v2.ejs
+@@ -204,17 +204,15 @@
+         <span class="hn2-label hn2-hide-rail">List New Property</span>
+       </a>
+ 
+-      <%# Leads & CRM page arrives in Phase 3; until then these open the
+-          enquiries shown on My Listings. %>
+       <button type="button" class="hn2-item" data-hn2-sub="hn2SubLeads" aria-controls="hn2SubLeads" title="Leads &amp; CRM" aria-expanded="false">
+         <%- svg('funnel', 16, '#828b96', 2, 'hn2-ic') %>
+         <span class="hn2-label hn2-hide-rail">Leads &amp; CRM</span>
+         <% if (hnNewEnq > 0) { %><span class="hn2-pill-new hn2-hide-rail"><%= hnCount(hnNewEnq) %> NEW</span><% } %>
+       </button>
+       <div class="hn2-sub" id="hn2SubLeads">
+-        <a class="hn2-subitem" href="/user/my-listings">All Enquiries</a>
+-        <a class="hn2-subitem" href="/user/my-listings">Hot Leads <span class="hn2-dot" aria-hidden="true"></span></a>
+-        <a class="hn2-subitem" href="/user/my-listings">Scheduled Visits</a>
++        <a class="hn2-subitem" href="/user/leads" data-hn2-match="^/user/leads$" data-hn2-query="^(?!.*(lead=Hot|view=visits))">All Enquiries</a>
++        <a class="hn2-subitem" href="/user/leads?lead=Hot" data-hn2-match="^/user/leads$" data-hn2-query="lead=Hot">Hot Leads <span class="hn2-dot" aria-hidden="true"></span></a>
++        <a class="hn2-subitem" href="/user/leads?view=visits" data-hn2-match="^/user/leads$" data-hn2-query="view=visits">Scheduled Visits</a>
+       </div>
+ 
+       <div class="hn2-divider"></div>
+diff --git a/views/showPage/memberData/newmember.ejs b/views/showPage/memberData/newmember.ejs
+index bbfb6f6..5f634ab 100644
+--- a/views/showPage/memberData/newmember.ejs
++++ b/views/showPage/memberData/newmember.ejs
+@@ -151,12 +151,25 @@ hr {
+ 
+ <hr>
+ 
++    <% const pf = (typeof prefill !== "undefined" && prefill) || null; %>
++    <% if (pf) { %>
++    <%# Phase 3 — converting an enquiry from Leads & CRM %>
++    <div class="container" style="margin-bottom:14px">
++        <div style="background:#f4faf7;border:1px solid #d7ece1;border-radius:12px;padding:12px 16px;font-size:14px;color:#0a7d4c;font-weight:600">
++            Adding <b><%= pf.name || "this enquirer" %></b> from an enquiry<%= pf.listingTitle ? " on " + pf.listingTitle : "" %>.
++            They'll be added to <b><%= (typeof selectedHostel !== "undefined" && selectedHostel) ? selectedHostel.hostelName : "your selected property" %></b>
++            — switch property in the sidebar first if that's not right. The enquiry is marked Closed once you save.
++        </div>
++    </div>
++    <% } %>
++
+     <div class="container student-box">
+         <form method="POST" action="/user/newMember" class="row g-4 needs-validation">
++            <% if (pf) { %><input type="hidden" name="enquiryId" value="<%= pf.enquiryId %>"><% } %>
+             
+             <div class="col-md-4">
+                 <label class="form-label">Name</label>
+-                <input type="text" name="member[name]" class="form-control" required>
++                <input type="text" name="member[name]" class="form-control" required value="<%= pf ? pf.name : '' %>">
+             </div>
+             
+             <div class="col-md-4">
+@@ -166,7 +179,7 @@ hr {
+             
+             <div class="col-md-4">
+                 <label class="form-label">Mobile No.</label>
+-                <input type="number" name="member[mobileNo]" class="form-control" required>
++                <input type="number" name="member[mobileNo]" class="form-control" required value="<%= pf ? pf.mobileNo : '' %>">
+             </div>
+             
+             <div class="col-md-4">

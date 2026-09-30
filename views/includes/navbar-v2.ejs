@@ -31,6 +31,9 @@
 
   const hnStatus = hnUser.status || "Pending";
   const hnStatusClass = hnStatus === "Active" ? "is-ok" : hnStatus === "Inactive" ? "is-bad" : "is-warn";
+  // Redesign Phase 4 — real KYC status from the owner record.
+  const hnKyc = (hnUser.kyc && hnUser.kyc.status) || "Not submitted";
+  const hnKycClass = hnKyc === "Verified" ? "is-ok" : hnKyc === "Rejected" ? "is-bad" : "is-warn";
 
   const hnCount = n => (n > 99 ? "99+" : String(n));
 
@@ -204,17 +207,15 @@
         <span class="hn2-label hn2-hide-rail">List New Property</span>
       </a>
 
-      <%# Leads & CRM page arrives in Phase 3; until then these open the
-          enquiries shown on My Listings. %>
       <button type="button" class="hn2-item" data-hn2-sub="hn2SubLeads" aria-controls="hn2SubLeads" title="Leads &amp; CRM" aria-expanded="false">
         <%- svg('funnel', 16, '#828b96', 2, 'hn2-ic') %>
         <span class="hn2-label hn2-hide-rail">Leads &amp; CRM</span>
         <% if (hnNewEnq > 0) { %><span class="hn2-pill-new hn2-hide-rail"><%= hnCount(hnNewEnq) %> NEW</span><% } %>
       </button>
       <div class="hn2-sub" id="hn2SubLeads">
-        <a class="hn2-subitem" href="/user/my-listings">All Enquiries</a>
-        <a class="hn2-subitem" href="/user/my-listings">Hot Leads <span class="hn2-dot" aria-hidden="true"></span></a>
-        <a class="hn2-subitem" href="/user/my-listings">Scheduled Visits</a>
+        <a class="hn2-subitem" href="/user/leads" data-hn2-match="^/user/leads$" data-hn2-query="^(?!.*(lead=Hot|view=visits))">All Enquiries</a>
+        <a class="hn2-subitem" href="/user/leads?lead=Hot" data-hn2-match="^/user/leads$" data-hn2-query="lead=Hot">Hot Leads <span class="hn2-dot" aria-hidden="true"></span></a>
+        <a class="hn2-subitem" href="/user/leads?view=visits" data-hn2-match="^/user/leads$" data-hn2-query="view=visits">Scheduled Visits</a>
       </div>
 
       <div class="hn2-divider"></div>
@@ -283,10 +284,10 @@
         </div>
       </div>
 
-      <button type="button" class="hn2-iconbtn" aria-disabled="true" aria-label="Notifications<%= hnNotif > 0 ? ' (' + hnNotif + ' unread)' : '' %>" title="Notifications — coming soon">
+      <a class="hn2-iconbtn" href="/user/notifications" data-hn2-match="^/user/notifications" aria-label="Notifications<%= hnNotif > 0 ? ' (' + hnNotif + ' unread)' : '' %>" title="Notifications">
         <%- svg('bell', 16, '#475467', 2) %>
         <% if (hnNotif > 0) { %><span class="hn2-bell-dot"></span><% } %>
-      </button>
+      </a>
 
       <button type="button" class="hn2-tour" aria-disabled="true" title="Guided tour — coming soon">
         <%- svg('clock', 14, '#475467', 2.2) %> Tour
@@ -321,19 +322,19 @@
           <div class="hn2-pop-sep"></div>
           <div class="hn2-pop-group">
             <a class="hn2-pop-item" href="/user/editOwner"><%- svg('user', 15, '#667085', 2) %> Profile</a>
-            <span class="hn2-pop-item" role="link" aria-disabled="true" title="Settings — available in the next update"><%- svg('gear', 15, '#667085', 2) %> Settings</span>
-            <span class="hn2-pop-item" role="link" aria-disabled="true" title="Billing — available in the next update">
+            <a class="hn2-pop-item" href="/user/account/settings"><%- svg('gear', 15, '#667085', 2) %> Settings</a>
+            <a class="hn2-pop-item" href="/user/account/billing">
               <%- svg('card', 15, '#667085', 2) %> <span class="hn2-grow">Billing</span>
               <span class="hn2-status <%= hnStatusClass %>"><%= String(hnStatus).toUpperCase() %></span>
-            </span>
+            </a>
           </div>
 
           <div class="hn2-pop-sep"></div>
           <div class="hn2-pop-group">
-            <span class="hn2-pop-item" role="link" aria-disabled="true" title="KYC verification — available in the next update">
+            <a class="hn2-pop-item" href="/user/account/kyc">
               <%- svg('shield', 15, '#667085', 2) %> <span class="hn2-grow">KYC Verification</span>
-              <span class="hn2-status is-warn">PENDING</span>
-            </span>
+              <span class="hn2-status <%= hnKycClass %>"><%= hnKyc.toUpperCase() %></span>
+            </a>
           </div>
 
           <div class="hn2-pop-sep"></div>

@@ -1,0 +1,54 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Redesign Phase 4 — Settings (profile link, password, login alerts). %>
+<%- include("_style.ejs") %>
+<div class="hn2a">
+  <div class="hn2a-inner">
+    <h1 class="hn2a-title">Settings</h1>
+    <div class="hn2a-sub">Your account and sign-in preferences</div>
+
+    <% if (notice) { %><div class="hn2a-notice is-<%= notice.kind %>" role="status"><%= notice.text %></div><% } %>
+
+    <div class="hn2a-card">
+      <div class="hn2a-row">
+        <div>
+          <div class="hn2a-card-title">Profile</div>
+          <div class="hn2a-card-sub" style="margin:0"><%= user.name %> · <%= user.email %><%= user.phone ? ' · ' + user.phone : '' %></div>
+        </div>
+        <a class="hn2a-btn is-ghost" href="/user/editOwner">Edit profile</a>
+      </div>
+    </div>
+
+    <div class="hn2a-card" id="password">
+      <div class="hn2a-card-title">Change password</div>
+      <div class="hn2a-card-sub">You'll stay signed in on this device.</div>
+      <form method="POST" action="/user/account/settings/password" autocomplete="off">
+        <div class="hn2a-field">
+          <label class="hn2a-label" for="curPw">Current password</label>
+          <input class="hn2a-input" type="password" id="curPw" name="currentPassword" required autocomplete="current-password">
+        </div>
+        <div class="hn2a-field">
+          <label class="hn2a-label" for="newPw">New password</label>
+          <input class="hn2a-input" type="password" id="newPw" name="newPassword" required minlength="6" autocomplete="new-password">
+          <div class="hn2a-help">At least 6 characters, with an uppercase letter, a lowercase letter, a number and a symbol.</div>
+        </div>
+        <div class="hn2a-field">
+          <label class="hn2a-label" for="newPw2">Confirm new password</label>
+          <input class="hn2a-input" type="password" id="newPw2" name="confirmPassword" required minlength="6" autocomplete="new-password">
+        </div>
+        <button class="hn2a-btn" type="submit">Change password</button>
+      </form>
+    </div>
+
+    <div class="hn2a-card" id="alerts">
+      <div class="hn2a-card-title">Login alerts</div>
+      <div class="hn2a-card-sub">Get an email each time someone signs in to your account.</div>
+      <form method="POST" action="/user/account/settings/alerts" class="hn2a-row">
+        <label class="hn2a-switch">
+          <input type="checkbox" name="loginAlerts" <%= user.loginAlerts !== false ? 'checked' : '' %>>
+          Email me when there's a new sign-in
+        </label>
+        <button class="hn2a-btn is-ghost" type="submit">Save</button>
+      </form>
+    </div>
+  </div>
+</div>

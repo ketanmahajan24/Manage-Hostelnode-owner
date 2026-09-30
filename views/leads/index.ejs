@@ -1,0 +1,242 @@
+<% layout("/layouts/boilerplate") -%>
+<%#
+  views/leads/index.ejs — Phase 3: Leads & CRM (approved design).
+  Data from utils/leads.js (`leads`). Enquiries from every listing the
+  owner has; "All Listings" scopes the table to one listing.
+%>
+<%
+  const L = leads;
+  const f = L.filters;
+  const selName = (typeof selectedHostel !== "undefined" && selectedHostel && selectedHostel.hostelName) || "the selected property";
+  // Build a Leads URL from the current filters with some changed (page resets).
+  const url = (changes) => {
+    const next = Object.assign({}, f, changes || {});
+    const qs = [];
+    ["listing", "lead", "status", "view"].forEach(k => { if (next[k]) qs.push(k + "=" + encodeURIComponent(next[k])); });
+    return "/user/leads" + (qs.length ? "?" + qs.join("&") : "");
+  };
+  const pageUrl = (p) => { const u = url({}); return p > 1 ? u + (u.includes("?") ? "&" : "?") + "page=" + p : u; };
+  const LEAD_CLASS = { Hot: "is-hot", Warm: "is-warm", Cold: "is-cold" };
+  const STATUS_CLASS = { New: "is-new", Contacted: "is-contacted", Closed: "is-closed" };
+  const svg = (inner, size, stroke, w) => '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="' + stroke + '" stroke-width="' + (w || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
+  const HOME = '<path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path>';
+  const DOWN = '<path d="m6 9 6 6 6-6"></path>';
+  const X    = '<path d="M18 6 6 18M6 6l12 12"></path>';
+%>
+
+<style>
+  .hn2l, .hn2l * { box-sizing: border-box; font-family: 'DM Sans', sans-serif; }
+  .hn2l { background: #f7f8fa; min-height: calc(100vh - var(--nav-h, 64px)); padding: 28px 32px 40px; color: #12151a; }
+  .hn2l a, .hn2l a:hover { text-decoration: none; }
+  .hn2l .hn2l-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; margin: 0; color: #12151a; letter-spacing: -0.01em; }
+  .hn2l-sub { font-size: 13px; color: #667085; margin-top: 4px; font-weight: 500; }
+  .hn2l-head { margin-bottom: 18px; }
+
+  .hn2l-sr { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .hn2l-notice { margin-bottom: 14px; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+  .hn2l-notice.is-ok { background: #e8f9f0; border: 1px solid #bfeed3; color: #0a7d4c; }
+  .hn2l-notice.is-bad { background: #fef3f2; border: 1px solid #fecdca; color: #b42318; }
+
+  .hn2l-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+  .hn2l-left, .hn2l-chips, .hn2l-active { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .hn2l-listing { position: relative; display: inline-flex; align-items: center; gap: 7px; background: #fff; border: 1px solid #d7ece1; border-radius: 9px; padding: 0 12px; height: 36px; }
+  .hn2l-listing select {
+    appearance: none; -webkit-appearance: none; border: 0; background: transparent; outline: none;
+    font-size: 12.5px; font-weight: 700; color: #0a7d4c; padding-right: 16px; max-width: 260px; cursor: pointer; height: 100%;
+  }
+  .hn2l-listing .hn2l-caret { position: absolute; right: 11px; pointer-events: none; }
+  .hn2l-listing:focus-within { box-shadow: 0 0 0 3px rgba(14,169,104,0.18); }
+  .hn2l-count { font-size: 12px; color: #98a2b3; font-weight: 600; }
+
+  .hn2l-chip, .hn2l-chip:hover, .hn2l-chip:focus {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; padding: 7px 13px; border-radius: 99px;
+    border: 1px solid #eef1f4; color: #667085; background: #fff;
+  }
+  .hn2l-chip.is-hot  { border-color: #f7d9d9; color: #dc2626; }
+  .hn2l-chip.is-warm { border-color: #fbe6b8; color: #92660c; }
+  .hn2l-chip.is-on, .hn2l-chip.is-on:hover { background: #12151a; border-color: #12151a; color: #fff; }
+  .hn2l-pill, .hn2l-pill:hover {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 99px;
+    background: #eef6f1; color: #0a7d4c; border: 1px solid #d7ece1;
+  }
+
+  .hn2l-table { background: #fff; border: 1px solid #eef1f4; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 2px rgba(15,17,23,0.03); }
+  .hn2l-row { display: grid; grid-template-columns: 1.6fr 1.5fr 1fr 1fr 0.9fr 1.1fr 1.3fr; gap: 10px; padding: 14px 18px; align-items: center; border-bottom: 1px solid #f2f4f7; }
+  .hn2l-row:last-child { border-bottom: 0; }
+  .hn2l-row > * { min-width: 0; }
+  .hn2l-row.is-head { padding: 12px 18px; background: #fafbfc; border-bottom: 1px solid #eef1f4; }
+  .hn2l-th { font-size: 11px; font-weight: 800; color: #98a2b3; text-transform: uppercase; letter-spacing: 0.04em; }
+  .hn2l-who { display: flex; align-items: center; gap: 10px; }
+  .hn2l-avatar { width: 30px; height: 30px; border-radius: 50%; background: #f2f4f7; color: #475467; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .hn2l-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #12151a; }
+  .hn2l-meta { font-size: 11px; color: #98a2b3; font-weight: 600; }
+  .hn2l-cell { font-size: 12.5px; font-weight: 600; color: #344054; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hn2l-tag { display: inline-block; font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+  .hn2l-tag.is-hot  { color: #dc2626; background: #fdecec; }
+  .hn2l-tag.is-warm { color: #92660c; background: #fff8ec; }
+  .hn2l-tag.is-cold { color: #667085; background: #f2f4f7; }
+  .hn2l-none { color: #c2c8d1; font-size: 12.5px; font-weight: 600; }
+
+  /* Status: a real <select>, styled as the chip in the design */
+  .hn2l-status { position: relative; display: inline-flex; align-items: center; }
+  .hn2l-status select {
+    appearance: none; -webkit-appearance: none; border: 0; outline: none; cursor: pointer;
+    font-size: 11px; font-weight: 800; padding: 4px 22px 4px 10px; border-radius: 99px; line-height: 1.3;
+  }
+  .hn2l-status select:focus-visible { box-shadow: 0 0 0 3px rgba(14,169,104,0.25); }
+  .hn2l-status .hn2l-caret { position: absolute; right: 8px; pointer-events: none; }
+  .hn2l-status.is-new select       { color: #c2540c; background: #fdeee2; }
+  .hn2l-status.is-contacted select { color: #475467; background: #f2f4f7; }
+  .hn2l-status.is-closed select    { color: #98a2b3; background: #f7f8fa; }
+
+  .hn2l-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .hn2l-btn, .hn2l-btn:hover, .hn2l-btn:focus {
+    display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #475467;
+    border: 1px solid #eef1f4; background: #fff; padding: 6px 11px; border-radius: 8px; white-space: nowrap; min-height: 32px;
+  }
+  .hn2l-btn:hover { background: #f6f8fa; }
+  .hn2l-btn.is-green, .hn2l-btn.is-green:hover { color: #0a7d4c; border-color: #d7ece1; background: #f4faf7; }
+  .hn2l-btn.is-off, .hn2l-btn.is-off:hover { color: #c2c8d1; background: #fff; cursor: default; }
+
+  .hn2l-empty { padding: 40px 18px; text-align: center; color: #98a2b3; font-size: 13px; font-weight: 600; }
+  .hn2l-empty a, .hn2l-empty a:hover { color: #0a7d4c; font-weight: 700; }
+  .hn2l-foot { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12px; color: #98a2b3; font-weight: 600; }
+  .hn2l-pages { display: flex; gap: 6px; }
+
+  @media (max-width: 991px) {
+    .hn2l { padding: 20px 14px 32px; }
+    .hn2l-row.is-head { display: none; }
+    .hn2l-row { grid-template-columns: 1fr 1fr; gap: 10px 14px; padding: 14px; }
+    .hn2l-row .hn2l-who, .hn2l-row .hn2l-actions { grid-column: 1 / -1; }
+    .hn2l-row [data-label]::before { content: attr(data-label); display: block; font-size: 10.5px; font-weight: 800; color: #98a2b3; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+    .hn2l-listing select { max-width: 200px; }
+  }
+</style>
+
+<div class="hn2l">
+  <div class="hn2l-head">
+    <h1 class="hn2l-title">Leads &amp; CRM</h1>
+    <div class="hn2l-sub">Every enquiry across all your listings, in one place</div>
+  </div>
+
+  <% if (notice) { %>
+    <div class="hn2l-notice <%= notice === 'Status updated.' ? 'is-ok' : 'is-bad' %>" role="status"><%= notice %></div>
+  <% } %>
+
+  <!-- Filters -->
+  <div class="hn2l-bar">
+    <div class="hn2l-left">
+      <form class="hn2l-listing" method="GET" action="/user/leads">
+        <%- svg(HOME, 13, '#0a7d4c', 2.3) %>
+        <label class="hn2l-sr" for="hn2lListing">Listing</label>
+        <select id="hn2lListing" name="listing" onchange="this.form.submit()">
+          <option value="">All Listings</option>
+          <% L.listings.forEach(function (l) { %>
+            <option value="<%= l.id %>" <%= f.listing === l.id ? 'selected' : '' %>><%= l.title %></option>
+          <% }) %>
+        </select>
+        <span class="hn2l-caret"><%- svg(DOWN, 11, '#0a7d4c', 2.6) %></span>
+        <% ["lead", "status", "view"].forEach(function (k) { if (f[k]) { %>
+          <input type="hidden" name="<%= k %>" value="<%= f[k] %>">
+        <% } }) %>
+        <noscript><button type="submit" class="hn2l-btn">Go</button></noscript>
+      </form>
+      <div class="hn2l-count">
+        <% if (f.listing) { %>Showing enquiries for <%= L.listingTitle %><% } else { %><%= L.liveCount %> listing<%= L.liveCount === 1 ? '' : 's' %> live<% } %>
+      </div>
+    </div>
+
+    <div class="hn2l-chips" aria-label="Filter by lead temperature">
+      <a class="hn2l-chip <%= !f.lead ? 'is-on' : '' %>" href="<%= url({ lead: '' }) %>">All</a>
+      <a class="hn2l-chip is-hot <%= f.lead === 'Hot' ? 'is-on' : '' %>" href="<%= url({ lead: 'Hot' }) %>">🔥 Hot</a>
+      <a class="hn2l-chip is-warm <%= f.lead === 'Warm' ? 'is-on' : '' %>" href="<%= url({ lead: 'Warm' }) %>">Warm</a>
+      <a class="hn2l-chip <%= f.lead === 'Cold' ? 'is-on' : '' %>" href="<%= url({ lead: 'Cold' }) %>">Cold</a>
+    </div>
+  </div>
+
+  <% if (f.view || f.status) { %>
+    <div class="hn2l-active" style="margin:-4px 0 14px">
+      <% if (f.view === 'visits') { %>
+        <a class="hn2l-pill" href="<%= url({ view: '' }) %>" aria-label="Remove filter: scheduled visits">Scheduled visits <%- svg(X, 11, '#0a7d4c', 2.6) %></a>
+      <% } %>
+      <% if (f.status) { %>
+        <a class="hn2l-pill" href="<%= url({ status: '' }) %>" aria-label="Remove filter: status <%= f.status %>">Status: <%= f.status %> <%- svg(X, 11, '#0a7d4c', 2.6) %></a>
+      <% } %>
+    </div>
+  <% } %>
+
+  <!-- Table -->
+  <div class="hn2l-table">
+    <div class="hn2l-row is-head" role="row">
+      <div class="hn2l-th">Enquirer</div>
+      <div class="hn2l-th">Listing</div>
+      <div class="hn2l-th"><%= f.view === 'visits' ? 'Visit date' : 'Move-in' %></div>
+      <div class="hn2l-th">Budget</div>
+      <div class="hn2l-th">Lead</div>
+      <div class="hn2l-th">Status</div>
+      <div class="hn2l-th">Action</div>
+    </div>
+
+    <% if (!L.listings.length) { %>
+      <div class="hn2l-empty">No listings yet. <a href="/user/list-property">List a property</a> to start receiving enquiries.</div>
+    <% } else if (!L.items.length) { %>
+      <div class="hn2l-empty">
+        <% if (f.listing || f.lead || f.status || f.view) { %>No enquiries match these filters. <a href="/user/leads">Show all enquiries</a><% } else { %>No enquiries yet. They'll appear here as soon as someone contacts you about a listing.<% } %>
+      </div>
+    <% } %>
+
+    <% L.items.forEach(function (e) { %>
+      <div class="hn2l-row">
+        <div class="hn2l-who">
+          <div class="hn2l-avatar"><%= e.initials %></div>
+          <div style="min-width:0">
+            <div class="hn2l-name" title="<%= e.name %>"><%= e.name %></div>
+            <div class="hn2l-meta"><%= e.contact %></div>
+          </div>
+        </div>
+        <div class="hn2l-cell" data-label="Listing" title="<%= e.listingTitle %><%= e.roomType ? ' — ' + e.roomType : '' %>"><%= e.listingTitle %><%= e.roomType ? ' — ' + e.roomType : '' %></div>
+        <div class="hn2l-cell" data-label="<%= f.view === 'visits' ? 'Visit date' : 'Move-in' %>"><%= e.moveIn %></div>
+        <div class="hn2l-cell" data-label="Budget"><%= e.budget %></div>
+        <div data-label="Lead">
+          <% if (e.lead) { %><span class="hn2l-tag <%= LEAD_CLASS[e.lead] %>"><%= e.lead === 'Hot' ? '🔥 Hot' : e.lead %></span><% } else { %><span class="hn2l-none">—</span><% } %>
+        </div>
+        <div data-label="Status">
+          <form method="POST" action="/user/enquiries/<%= e.id %>/status" class="hn2l-status <%= STATUS_CLASS[e.status] %>">
+            <input type="hidden" name="returnTo" value="<%= currentUrl %>">
+            <select name="status" aria-label="Status for <%= e.name %>" onchange="this.form.submit()">
+              <% L.statuses.forEach(function (st) { %>
+                <option value="<%= st %>" <%= st === e.status ? 'selected' : '' %>><%= st %></option>
+              <% }) %>
+            </select>
+            <span class="hn2l-caret"><%- svg(DOWN, 10, 'currentColor', 2.8) %></span>
+            <noscript><button type="submit" class="hn2l-btn" style="margin-left:6px">Save</button></noscript>
+          </form>
+        </div>
+        <div class="hn2l-actions">
+          <% if (e.reply) { %>
+            <a class="hn2l-btn" href="<%= e.reply.href %>" title="<%= e.reply.hint %>" <%- e.reply.external ? 'target="_blank" rel="noopener"' : '' %>><%= e.reply.label %></a>
+          <% } else { %>
+            <span class="hn2l-btn is-off" role="link" aria-disabled="true" title="No chat or phone number for this enquiry">Reply</span>
+          <% } %>
+          <% if (e.canConvert) { %>
+            <a class="hn2l-btn is-green" href="/user/newmember?enquiry=<%= e.id %>" title="Add as a tenant in <%= selName %>">Convert</a>
+          <% } else { %>
+            <span class="hn2l-btn is-off" role="link" aria-disabled="true" title="This enquiry is closed">Convert</span>
+          <% } %>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+
+  <% if (L.total > 0) { %>
+    <div class="hn2l-foot">
+      <div><%= L.total %> enquir<%= L.total === 1 ? 'y' : 'ies' %><%= L.pages > 1 ? ' · page ' + L.page + ' of ' + L.pages : '' %></div>
+      <% if (L.pages > 1) { %>
+        <div class="hn2l-pages">
+          <% if (L.page > 1) { %><a class="hn2l-btn" href="<%= pageUrl(L.page - 1) %>">Previous</a><% } %>
+          <% if (L.page < L.pages) { %><a class="hn2l-btn" href="<%= pageUrl(L.page + 1) %>">Next</a><% } %>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+</div>

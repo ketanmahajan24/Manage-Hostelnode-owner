@@ -197,8 +197,8 @@ async function buildDashboard(ownerId, hostels, now = new Date()) {
       title: `${newEnquiryCount} new enquir${newEnquiryCount === 1 ? "y" : "ies"} unanswered`,
       detail: `${personName(e)} (${listingTitle.get(String(e.listing)) || "your listing"}) · ${timeAgo(e.createdAt, now)}${more}`,
       action: "Reply",
-      href: "/user/my-listings",
-      hint: "Opens your listings and their enquiries",
+      href: "/user/leads?status=New",
+      hint: "Opens Leads & CRM, new enquiries",
     });
   }
 

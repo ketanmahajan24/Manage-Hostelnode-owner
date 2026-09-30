@@ -34,6 +34,12 @@ const router = express.Router();
 const { jwtAuthMiddleware } = require("../jwt.js");
 const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
+// Redesign Phase 3 — Messages now render inside the main layout (sidebar +
+// top bar), which needs the owner and their properties.
+const attachHostel = require("../Middlewares/attachHostel");
+const Owner = require("../models/owner");
+// HN_NEW_UI=0 keeps the previous standalone pages (unchanged files).
+const view = name => (process.env.HN_NEW_UI === "0" ? `messages/${name}` : `messages/${name}-v2`);
 
 function listingTitle(listing) {
   if (!listing) return "PG / Hostel listing";
@@ -72,7 +78,7 @@ const PG_OWNER_SUGGESTIONS = [
    ownerParticipant, newest activity first. Flatmate has no owner
    side, so this list is PG/Hostel-only by construction.
 ───────────────────────────────────────────── */
-router.get("/messages", jwtAuthMiddleware, async (req, res) => {
+router.get("/messages", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
     const ownerId = req.user.id;
 
@@ -97,7 +103,8 @@ router.get("/messages", jwtAuthMiddleware, async (req, res) => {
       };
     });
 
-    res.render("messages/owner-inbox", { rows });
+    const user = await Owner.findById(ownerId).lean();
+    res.render(view("owner-inbox"), { rows, user });
   } catch (err) {
     console.error("Owner inbox error:", err);
     res.status(500).send("Something went wrong loading your messages. Please try again.");
@@ -110,7 +117,7 @@ router.get("/messages", jwtAuthMiddleware, async (req, res) => {
    existing shared /messages/:id/... endpoints from Phase 2 — this
    route only has to fetch and hand over the initial page of messages.
 ───────────────────────────────────────────── */
-router.get("/messages/:conversationId", jwtAuthMiddleware, async (req, res) => {
+router.get("/messages/:conversationId", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
     const ownerId = req.user.id;
 
@@ -123,9 +130,11 @@ router.get("/messages/:conversationId", jwtAuthMiddleware, async (req, res) => {
     // its ownerParticipant — never trust the conversationId in the URL
     // alone. A Flatmate conversation, or another owner's conversation,
     // renders the same "not found" state as a missing id.
+    const user = await Owner.findById(ownerId).lean();
+
     if (!conv || conv.type !== "PG_INQUIRY" || !conv.ownerParticipant || conv.ownerParticipant.toString() !== ownerId) {
-      return res.status(404).render("messages/owner-conversation", {
-        conversation: null, messages: [], counterpart: null, viewerId: null, listingText: "", suggestions: [],
+      return res.status(404).render(view("owner-conversation"), {
+        conversation: null, messages: [], counterpart: null, viewerId: null, listingText: "", suggestions: [], user,
       });
     }
 
@@ -137,6 +146,11 @@ router.get("/messages/:conversationId", jwtAuthMiddleware, async (req, res) => {
     // Same "opening the chat = delivered + read" stamping as the
     // student-side thread route in routes/messagesRoutes.js.
     const now = new Date();
+    // Redesign Phase 3 — this chat is being read now, so take it off the
+    // sidebar's Messages badge on this page too.
+    if (res.locals.hn2 && res.locals.hn2.unreadMessages) {
+      res.locals.hn2 = { ...res.locals.hn2, unreadMessages: Math.max(0, res.locals.hn2.unreadMessages - getUnread(conv, ownerId)) };
+    }
     await Conversation.updateOne({ _id: conv._id }, { $set: { [`unreadCounts.${ownerId}`]: 0 } });
     await Message.updateMany(
       { conversation: conv._id, sender: { $ne: ownerId }, readAt: null },
@@ -153,13 +167,14 @@ router.get("/messages/:conversationId", jwtAuthMiddleware, async (req, res) => {
       ? PG_OWNER_SUGGESTIONS
       : [];
 
-    res.render("messages/owner-conversation", {
+    res.render(view("owner-conversation"), {
       conversation: conv,
       messages,
       counterpart,
       viewerId: ownerId,
       listingText: listingTitle(conv.listing),
       suggestions,
+      user,
     });
   } catch (err) {
     console.error("Owner conversation view error:", err);

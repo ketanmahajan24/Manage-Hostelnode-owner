@@ -1,0 +1,58 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Redesign Phase 4 — Notifications (the bell). %>
+<%- include("_style.ejs") %>
+
+<style>
+  .hn2n-list { background: #fff; border: 1px solid #eef1f4; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 2px rgba(15,17,23,0.03); }
+  .hn2n-item { display: block; width: 100%; text-align: left; border: 0; background: #fff; padding: 14px 18px; cursor: pointer; font: inherit; }
+  .hn2n-item:hover { background: #fafbfc; }
+  .hn2n-form + .hn2n-form .hn2n-item { border-top: 1px solid #f2f4f7; }
+  .hn2n-item.is-unread { background: #f7fcf9; }
+  .hn2n-top { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+  .hn2n-title { font-size: 13.5px; font-weight: 700; color: #12151a; display: flex; align-items: center; gap: 8px; }
+  .hn2n-dot { width: 8px; height: 8px; border-radius: 50%; background: #0EA968; flex-shrink: 0; }
+  .hn2n-time { font-size: 11.5px; color: #98a2b3; font-weight: 600; flex-shrink: 0; }
+  .hn2n-body { font-size: 12.5px; color: #667085; font-weight: 500; margin-top: 3px; }
+</style>
+<div class="hn2a">
+  <div class="hn2a-inner">
+    <div class="hn2a-row" style="align-items:flex-end;margin-bottom:20px">
+      <div>
+        <h1 class="hn2a-title">Notifications</h1>
+        <div class="hn2a-sub" style="margin-bottom:0"><%= unread ? unread + " unread" : "You're all caught up" %></div>
+      </div>
+      <% if (unread) { %>
+        <form method="POST" action="/user/notifications/read-all"><button class="hn2a-btn is-ghost" type="submit">Mark all as read</button></form>
+      <% } %>
+    </div>
+
+    <% if (notice) { %><div class="hn2a-notice is-<%= notice.kind %>" role="status"><%= notice.text %></div><% } %>
+
+    <% if (!items.length) { %>
+      <div class="hn2a-card hn2a-empty">No notifications yet.</div>
+    <% } else { %>
+      <div class="hn2n-list">
+        <% items.forEach(function (n) { %>
+          <form class="hn2n-form" method="POST" action="/user/notifications/<%= n._id %>/open">
+            <button type="submit" class="hn2n-item <%= n.isRead ? '' : 'is-unread' %>">
+              <div class="hn2n-top">
+                <div class="hn2n-title"><% if (!n.isRead) { %><span class="hn2n-dot" aria-label="Unread"></span><% } %><%= n.title %></div>
+                <div class="hn2n-time"><%= n.when %></div>
+              </div>
+              <% if (n.body) { %><div class="hn2n-body"><%= n.body %></div><% } %>
+            </button>
+          </form>
+        <% }) %>
+      </div>
+      <% if (pages > 1) { %>
+        <div class="hn2a-row" style="margin-top:14px">
+          <div class="hn2a-help">Page <%= page %> of <%= pages %></div>
+          <div style="display:flex;gap:8px">
+            <% if (page > 1) { %><a class="hn2a-btn is-ghost" href="/user/notifications?page=<%= page - 1 %>">Previous</a><% } %>
+            <% if (page < pages) { %><a class="hn2a-btn is-ghost" href="/user/notifications?page=<%= page + 1 %>">Next</a><% } %>
+          </div>
+        </div>
+      <% } %>
+    <% } %>
+  </div>
+</div>
