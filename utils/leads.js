@@ -21,13 +21,17 @@ const LEADS    = ["Hot", "Warm", "Cold"];          // = models/enquiry.js enum
 const PAGE_SIZE = 25;
 const QUERY_MS  = 8000;   // give up rather than hang if the database is slow
 
-const CONTACT_LABEL = {
-  request_callback:  "Callback",
-  whatsapp_callback: "WhatsApp",
-  schedule_visit:    "Visit",
-  virtual_tour:      "Virtual tour",
+// What the enquirer asked for — shown as a highlighted tag under their name.
+// `key` picks the tag colour and icon in views/leads/index.ejs.
+const CONTACT_TYPE = {
+  request_callback:  { key: "callback", label: "Callback request" },
+  whatsapp_callback: { key: "whatsapp", label: "WhatsApp request" },
+  schedule_visit:    { key: "visit",    label: "Visit request" },
+  virtual_tour:      { key: "tour",     label: "Virtual tour" },
+  default:           { key: "general",  label: "Enquiry" },
 };
-const METHOD_LABEL = { call: "Call", whatsapp: "WhatsApp", visit: "Visit" };
+// Older enquiries only have contactMethod.
+const METHOD_TO_TYPE = { call: "request_callback", whatsapp: "whatsapp_callback", visit: "schedule_visit" };
 
 const isId = v => typeof v === "string" && mongoose.isValidObjectId(v);
 
@@ -139,24 +143,27 @@ async function buildLeadsPage(ownerId, q = {}, now = new Date()) {
     const listingTitle = titleOf.get(String(e.listing)) || "Listing";
     const thread = s ? threads.get(convKey(e.listing, s._id)) : null;
     const mobile = s ? indianMobile(s.phone) : "";
-    let reply = null;
-    if (thread) reply = { href: `/user/messages/${thread}`, label: "Reply", external: false, hint: "Open the chat in Messages" };
-    else if (mobile) reply = {
+    // Two ways to reply: the HostelNode chat (only if the enquirer has
+    // started one — owners can't open a new chat) and WhatsApp (if the
+    // enquirer's number is a valid Indian mobile).
+    const replyChat = thread ? { href: `/user/messages/${thread}` } : null;
+    const replyWhatsApp = mobile ? {
       href: `https://wa.me/91${mobile}?text=${encodeURIComponent(`Hi ${s.firstName || ""}, thanks for your enquiry about ${listingTitle} on HostelNode.`.replace("Hi ,", "Hi,"))}`,
-      label: "Reply", external: true, hint: "Reply on WhatsApp",
-    };
+    } : null;
     const visitDate = e.preferredDate ? moment(e.preferredDate).tz(TZ).format("D MMM") : "";
     return {
       id: String(e._id),
       name,
       initials: initials(name),
-      contact: [CONTACT_LABEL[e.actionType] || METHOD_LABEL[e.contactMethod] || "Enquiry", timeAgo(e.createdAt, now)].join(" · "),
+      contactType: CONTACT_TYPE[e.actionType] || CONTACT_TYPE[METHOD_TO_TYPE[e.contactMethod]] || CONTACT_TYPE.default,
+      when: timeAgo(e.createdAt, now),
       listingTitle,
       moveIn: f.view === "visits" ? (visitDate || "—") : (e.moveIn || visitDate || "—"),
       budget: e.budgetRange || "—",
       lead: LEADS.includes(e.leadCategory) ? e.leadCategory : "",
       status: STATUSES.includes(e.status) ? e.status : "New",
-      reply,
+      replyChat,
+      replyWhatsApp,
       canConvert: e.status !== "Closed",
       roomType: e.roomType || "",
     };
