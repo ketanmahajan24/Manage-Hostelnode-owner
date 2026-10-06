@@ -1,0 +1,215 @@
+<% layout("/layouts/boilerplate") -%>
+
+<style>
+
+/* 🌟 Page */
+.main-body-page {
+    background: #F8FAFC;
+    padding: 30px;
+    min-height: 100vh;
+}
+
+/* 🌟 Header */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.page-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #0F172A;
+}
+
+/* 🌟 Back Button */
+.btn-back {
+    border: 1px solid #09B850;
+    color: #09B850;
+    border-radius: 25px;
+    padding: 6px 14px;
+    transition: 0.3s;
+}
+
+.btn-back:hover {
+    background: #09B850;
+    color: #fff;
+}
+
+/* 🌟 Card */
+.receipt-card {
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 650px;
+    margin: auto;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    animation: fadeUp 0.5s ease;
+}
+
+/* 🌟 Success Banner */
+.success-banner {
+    background: linear-gradient(135deg, #09B850, #22C55E);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.success-banner i {
+    font-size: 28px;
+    margin-bottom: 5px;
+}
+
+/* 🌟 Info Row */
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px dashed #E2E8F0;
+}
+
+.label {
+    color: #475569;
+}
+
+.value {
+    font-weight: 600;
+    color: #0F172A;
+}
+
+/* 🌟 Amount Highlight */
+.amount {
+    color: #09B850;
+    font-size: 18px;
+}
+
+/* 🌟 Buttons */
+.btn-primary-custom {
+    background: linear-gradient(135deg, #09B850, #22C55E);
+    color: #fff;
+    border: none;
+    border-radius: 25px;
+    padding: 10px 16px;
+    transition: 0.3s;
+}
+
+.btn-primary-custom:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(9,184,80,0.25);
+}
+
+.btn-outline-custom {
+    border: 1px solid #CBD5E1;
+    color: #0F172A;
+    border-radius: 25px;
+    padding: 10px 16px;
+    background: white;
+}
+
+.btn-outline-custom:hover {
+    border-color: #09B850;
+    color: #09B850;
+}
+
+/* 🌟 Animations */
+@keyframes fadeUp {
+    from {opacity: 0; transform: translateY(20px);}
+    to {opacity: 1; transform: translateY(0);}
+}
+
+/* 🌟 Responsive */
+@media(max-width: 768px){
+    .info-row {
+        flex-direction: column;
+        gap: 4px;
+    }
+}
+
+</style>
+
+
+<div class="main-body-page">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-title">
+            <i class="fa-solid fa-receipt" style="color:#09B850;"></i>
+            Payment Receipt
+        </div>
+
+        <a href="/user/allfeesrecords" class="btn-back">
+            <i class="fa-solid fa-chevron-left"></i> Back
+        </a>
+    </div>
+
+
+    <!-- Card -->
+    <div class="receipt-card">
+
+        <!-- Success -->
+        <div class="success-banner">
+            <i class="fa-solid fa-circle-check"></i>
+            <div>Payment Successfully Added</div>
+        </div>
+
+        <!-- Details -->
+        <div class="info-row">
+            <span class="label">Name</span>
+            <span class="value"><%= member.name %></span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Father Name</span>
+            <span class="value"><%= member.fatherName %></span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Mobile</span>
+            <span class="value"><%= member.mobileNo %></span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Room No</span>
+            <span class="value"><%= member.assignedRoom %></span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Paid Amount</span>
+            <span class="value amount">
+                ₹<%= payment.amountPaid.toLocaleString() %>
+            </span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Payment Mode</span>
+            <span class="value"><%= payment.paymentMode %></span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Payment Date</span>
+            <span class="value">
+                <%= new Date(payment.paymentDate).toLocaleDateString('en-GB') %>
+            </span>
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
+
+            <button onclick="window.print()" class="btn-outline-custom">
+                <i class="fa-solid fa-print"></i> Print
+            </button>
+
+            <a 
+              href="https://wa.me/91<%=member.mobileNo%>?text=Dear <%=member.name%>, your payment receipt:%0AAmount: ₹<%=payment.amountPaid%>%0ADate: <%= new Date(payment.paymentDate).toLocaleDateString('en-GB')%>"
+              target="_blank"
+              class="btn-primary-custom"
+            >
+              <i class="fa-solid fa-share"></i> Send Receipt
+            </a>
+        </div>
+    </div>
+</div>

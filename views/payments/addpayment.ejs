@@ -1,0 +1,224 @@
+<% layout("/layouts/boilerplate") -%>
+
+<style>
+
+/* 🌟 Page */
+.main-body-page {
+    background: #F8FAFC;
+    padding: 30px;
+    min-height: 100vh;
+}
+
+/* 🌟 Header */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.page-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #0F172A;
+}
+
+/* 🌟 Back Button */
+.btn-back {
+    border: 1px solid #09B850;
+    color: #09B850;
+    border-radius: 25px;
+    padding: 6px 14px;
+    transition: 0.3s;
+}
+
+.btn-back:hover {
+    background: #09B850;
+    color: white;
+}
+
+/* 🌟 Card */
+.payment-card {
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 25px;
+    max-width: 800px;
+    margin: auto;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    animation: fadeUp 0.5s ease;
+}
+
+/* 🌟 Member Info */
+.info-box {
+    background: #F8FAFC;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed #E2E8F0;
+}
+
+.label {
+    color: #475569;
+}
+
+.value {
+    font-weight: 600;
+    color: #0F172A;
+}
+
+/* 🌟 Highlight Amount */
+.amount {
+    color: #09B850;
+    font-size: 16px;
+}
+
+/* 🌟 Inputs */
+.form-control,
+.form-select {
+    border-radius: 10px;
+    border: 1px solid #CBD5E1;
+    padding: 10px;
+    transition: 0.25s;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #09B850;
+    box-shadow: 0 0 0 3px rgba(9,184,80,0.15);
+}
+
+/* 🌟 Button */
+.btn-submit {
+    background: linear-gradient(135deg, #09B850, #22C55E);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 12px;
+    transition: 0.3s;
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(9,184,80,0.25);
+}
+
+/* 🌟 Animation */
+@keyframes fadeUp {
+    from {opacity: 0; transform: translateY(20px);}
+    to {opacity: 1; transform: translateY(0);}
+}
+
+/* 🌟 Responsive */
+@media(max-width:768px){
+    .info-row {
+        flex-direction: column;
+        gap: 4px;
+    }
+}
+
+</style>
+
+<div class="main-body-page">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-title">
+            <i class="fa-solid fa-money-bill-wave" style="color:#09B850;"></i>
+            Add Payment
+        </div>
+
+        <a href="../" class="btn-back">
+            <i class="fa-solid fa-chevron-left"></i> Back
+        </a>
+    </div>
+
+    <!-- Card -->
+    <div class="payment-card">
+
+        <!-- Member Info -->
+        <div class="info-box">
+
+            <div class="info-row">
+                <span class="label">Name</span>
+                <span class="value"><%= member.name %></span>
+            </div>
+
+            <div class="info-row">
+                <span class="label">Father Name</span>
+                <span class="value"><%= member.fatherName %></span>
+            </div>
+
+            <div class="info-row">
+                <span class="label">Mobile</span>
+                <span class="value"><%= member.mobileNo %></span>
+            </div>
+
+            <div class="info-row">
+                <span class="label">Room</span>
+                <span class="value"><%= member.assignedRoom %></span>
+            </div>
+
+            <div class="info-row">
+                <span class="label">Total Due</span>
+                <span class="value amount">₹<%= dueAmount.toLocaleString() %></span>
+            </div>
+
+            <div class="info-row">
+                <span class="label">Joining Date</span>
+                <span class="value"><%= member.joiningDate.toLocaleDateString("en-GB") %></span>
+            </div>
+
+        </div>
+
+        <!-- Form -->
+        <form method="POST" action="/user/addpayment/<%=member._id%>" class="row g-4">
+
+            <div class="col-12">
+                <label class="form-label">Amount Received</label>
+                <input type="number" name="payment[amountPaid]" class="form-control" placeholder="Enter amount (₹)" required>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Payment Mode</label>
+                <select name="payment[paymentMode]" class="form-select" required>
+                    <option value="">Select Mode</option>
+                    <option>Cash</option>
+                    <option>UPI</option>
+                    <option>Bank Transfer</option>
+                    <option>Debit Card</option>
+                    <option>Credit Card</option>
+                    <option>Cheque</option>
+                    <option>Net Banking</option>
+                </select>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Payment Date</label>
+                <input type="date" name="payment[paymentDate]" class="form-control" id="paymentDate" required>
+            </div>
+
+            <div class="col-12 d-flex justify-content-center">
+                <button type="submit" class="btn-submit w-75">
+                    <i class="fa-solid fa-check me-2"></i> Confirm Payment
+                </button>
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById("paymentDate").value = today;
+});
+</script>
