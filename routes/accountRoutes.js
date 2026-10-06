@@ -135,7 +135,18 @@ router.get("/account/billing", jwtAuthMiddleware, attachHostel, async (req, res)
     const history = (user.billingHistory || [])
       .map(b => ({ amount: Number(b.amount) || 0, date: b.date, description: b.description || "", paid: !!b.paid }))
       .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-    res.render("account/billing.ejs", { user, history });
+    // Subscriptions Phase 2: the owner's current plan (null when switched off or on any error).
+    const plan = await require("../utils/planView").loadPlanInfo(user._id);
+    // Subscriptions Phase 3: the owner's online plan payments, for receipt links (empty on any error).
+    let receipts = [];
+    try {
+      if (plan) {
+        const rows = await require("../models/subscriptionPayment")
+          .find({ owner: user._id, status: { $in: ["paid", "refunded"] } }).sort({ paidAt: -1 }).limit(12).maxTimeMS(2000).lean();
+        receipts = rows.map(r => ({ id: String(r._id), date: r.paidAt, name: (r.snapshot && r.snapshot.name) || "Plan", amount: r.amount, refunded: r.status === "refunded", hasReceipt: r.status === "paid" && !!r.subscription }));
+      }
+    } catch (e) { console.error("Billing receipts (non-fatal):", e.message); }
+    res.render("account/billing.ejs", { user, history, plan, receipts });
   } catch (err) {
     console.error("Billing page error:", err.message);
     res.status(500).send("Something went wrong. Please try again.");

@@ -1,0 +1,46 @@
+<%# Subscriptions Phase 4 — shown when a plan does not allow an action. Standalone page (no layout),
+    identical in both repos. Nothing was changed or deleted when this page appears. %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Upgrade your plan | HostelNode</title>
+<link rel="icon" type="image/png" href="/images/hostelnode-logo-cutout.png">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: #f7f8fa; font-family: 'DM Sans', Arial, Helvetica, sans-serif; color: #12151a; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; }
+  .brand { display: flex; align-items: center; gap: 9px; margin-bottom: 22px; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; }
+  .brand img { width: 30px; height: 30px; object-fit: contain; }
+  .brand i { font-style: normal; color: #0EA968; }
+  .card { width: 100%; max-width: 480px; background: #fff; border: 1px solid #eef1f4; border-radius: 18px; box-shadow: 0 1px 2px rgba(15,17,23,0.04); padding: 32px 26px 26px; text-align: center; }
+  .icon { width: 58px; height: 58px; border-radius: 50%; background: #fff8ec; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+  h1 { font-family: 'Syne', sans-serif; font-size: 21px; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.01em; }
+  p { font-size: 14px; color: #475467; line-height: 1.55; margin: 0; }
+  .safe { margin-top: 16px; padding: 11px 13px; border-radius: 11px; background: #f0fdf6; border: 1px solid #c9f0db; color: #0a7d4c; font-size: 12.5px; font-weight: 600; line-height: 1.5; text-align: left; }
+  .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 20px; border-radius: 11px; font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer; border: 0; font-family: inherit; }
+  .btn.go { background: #0EA968; color: #fff; box-shadow: 0 4px 12px rgba(14,169,104,0.25); }
+  .btn.go:hover { background: #0c9a5f; }
+  .btn.back { background: #fff; color: #344054; border: 1px solid #d0d5dd; }
+  .btn.back:hover { background: #f6f8fa; }
+  .btn:focus-visible { outline: 3px solid rgba(14,169,104,0.35); outline-offset: 2px; }
+</style>
+</head>
+<body>
+  <div class="brand"><img src="/images/hostelnode-logo-cutout.png" alt=""><span>Hostel<i>Node</i></span></div>
+  <main class="card">
+    <div class="icon" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#b7791f" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></div>
+    <h1><%= lock.title %></h1>
+    <p><%= lock.message %></p>
+    <div class="safe">Nothing has been removed. Everything you already have (tenants, payments, rooms, records) is safe and still available.</div>
+    <% if (!plansUrl) { %><p style="margin-top:14px">To upgrade, open your HostelNode owner dashboard, then Billing → View plans.</p><% } %>
+    <div class="actions">
+      <% if (plansUrl) { %><a class="btn go" href="<%= plansUrl %>">View plans</a><% } %>
+      <a class="btn back" href="/user">Back to dashboard</a>
+    </div>
+  </main>
+</body>
+</html>

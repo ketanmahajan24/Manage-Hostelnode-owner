@@ -51,6 +51,8 @@
     <%- include("../includes/navbar.ejs") %>
   <% } %>
   <div class="hn-page-body">
+    <%# Subscriptions Phase 4 — plan / trial expiry notice; renders nothing unless there is one. %>
+    <% if (hnNewUI) { %><%- include("../includes/planBanner.ejs") %><% } %>
     <%- body %>
   </div>
   <!-- scripts -->

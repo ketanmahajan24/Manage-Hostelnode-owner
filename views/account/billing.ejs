@@ -3,7 +3,7 @@
 <%- include("_style.ejs") %>
 <%
   const st = user.status || "Pending";
-  const stClass = st === "Active" ? "is-ok" : st === "Inactive" ? "is-bad" : "is-warn";
+  const stClass = st === "Active" ? "is-ok" : (st === "Inactive" || st === "Banned") ? "is-bad" : "is-warn";
   const inr = n => "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(n) || 0);
   const day = d => d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : "—";
 %>
@@ -12,17 +12,80 @@
     <h1 class="hn2a-title">Billing</h1>
     <div class="hn2a-sub">Your HostelNode account status and billing records</div>
 
+    <%# Subscriptions Phase 2 — the owner's plan. Absent when subscriptions are off. %>
+    <% const hnPlan = (typeof plan !== "undefined" && plan && plan.show) ? plan : null; %>
+    <% if (hnPlan) { %>
+    <div class="hn2a-card">
+      <div class="hn2a-row">
+        <div>
+          <div class="hn2a-card-title">Your plan: <%= hnPlan.name %></div>
+          <div class="hn2a-card-sub" style="margin:0"><%= hnPlan.line %></div>
+        </div>
+        <span class="hn2a-pill <%= hnPlan.tone %>"><%= hnPlan.status %></span>
+      </div>
+      <div class="hn2p-usage">
+        <% hnPlan.usageRows.forEach(function (u) { %>
+          <div class="hn2p-use">
+            <div class="hn2p-use-top"><span><%= u.label %></span><b><%= u.used %><%= u.limit === null ? "" : " of " + u.limit %></b></div>
+            <% if (u.limit === null) { %>
+              <div class="hn2p-use-note">Unlimited</div>
+            <% } else { %>
+              <div class="hn2p-bar" role="img" aria-label="<%= u.used %> of <%= u.limit %> used"><i class="<%= u.over ? 'is-over' : '' %>" style="width:<%= u.percent %>%"></i></div>
+              <% if (u.over) { %><div class="hn2p-use-note is-over">Above this plan's limit</div><% } %>
+              <% if (u.full) { %><div class="hn2p-use-note is-over">Limit reached</div><% } %>
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+      <% if (hnPlan.plans.length) { %>
+        <div style="margin-top:16px"><a class="hn2a-btn" href="/user/account/plans">View plans</a></div>
+      <% } %>
+    </div>
+    <style>
+      .hn2p-usage { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+      .hn2p-use-top { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: #667085; font-weight: 600; margin-bottom: 6px; }
+      .hn2p-use-top b { color: #12151a; font-weight: 800; }
+      .hn2p-bar { height: 6px; border-radius: 99px; background: #eef1f4; overflow: hidden; }
+      .hn2p-bar i { display: block; height: 100%; border-radius: 99px; background: #0EA968; }
+      .hn2p-bar i.is-over { background: #d97706; }
+      .hn2p-use-note { font-size: 11.5px; color: #98a2b3; font-weight: 600; margin-top: 5px; }
+      .hn2p-use-note.is-over { color: #92660c; }
+      @media (max-width: 767px) { .hn2p-usage { grid-template-columns: minmax(0, 1fr); } }
+    </style>
+    <% } %>
+
     <div class="hn2a-card">
       <div class="hn2a-row">
         <div>
           <div class="hn2a-card-title">Account status</div>
           <div class="hn2a-card-sub" style="margin:0">
-            <% if (st === "Active") { %>Your account is active.<% } else if (st === "Inactive") { %>Your account is inactive. Contact support to reactivate it.<% } else { %>Your account is pending activation.<% } %>
+            <% if (st === "Active") { %>Your account is active.<% } else if (st === "Inactive" || st === "Banned") { %>Your account is inactive. Contact support to reactivate it.<% } else { %>Your account is pending activation.<% } %>
           </div>
         </div>
         <span class="hn2a-pill <%= stClass %>"><%= String(st).toUpperCase() %></span>
       </div>
     </div>
+
+    <%# Subscriptions Phase 3 — receipts for plans paid online. %>
+    <% const hnReceipts = (typeof receipts !== "undefined" && Array.isArray(receipts)) ? receipts : []; %>
+    <% if (hnReceipts.length) { %>
+    <div class="hn2a-card" style="padding:0;overflow:hidden">
+      <div style="padding:18px 20px 12px"><div class="hn2a-card-title">Plan payments</div></div>
+      <table class="hn2a-table">
+        <thead><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Receipt</th></tr></thead>
+        <tbody>
+          <% hnReceipts.forEach(function (r) { %>
+            <tr>
+              <td><%= day(r.date) %></td>
+              <td><%= r.name %></td>
+              <td><%= inr(r.amount) %></td>
+              <td><% if (r.refunded) { %><span class="hn2a-pill is-warn">REFUNDED</span><% } else if (r.hasReceipt) { %><a href="/user/account/checkout/receipt/<%= r.id %>" target="_blank" rel="noopener" style="color:#0a7d4c;font-weight:700">Receipt</a><% } else { %>—<% } %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
 
     <div class="hn2a-card" style="padding:0;overflow:hidden">
       <div style="padding:18px 20px 12px"><div class="hn2a-card-title">Billing history</div></div>

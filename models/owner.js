@@ -44,7 +44,7 @@ const ownerSchema = new mongoose.Schema({
   billingHistory: [billingSchema], // Array of billing/payment records
   status: {
     type: String,
-    enum: ["Active", "Inactive", "Pending"], // Possible owner statuses
+    enum: ["Active", "Inactive", "Pending", "Banned"], // Possible owner statuses ("Banned" is set from the admin panel)
     default: "Active"
   },
   password: {

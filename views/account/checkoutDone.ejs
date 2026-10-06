@@ -1,0 +1,72 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Subscriptions Phase 3 — what happened with a plan payment. Shows the real state from the database. %>
+<%- include("_style.ejs") %>
+<% const inr = n => "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(n) || 0); %>
+<style>
+  .hn2z .hn2a-inner { max-width: 560px; margin: 0 auto; }
+  .hn2z-card { background: #fff; border: 1px solid #eef1f4; border-radius: 18px; box-shadow: 0 1px 2px rgba(15,17,23,0.03); padding: 32px 26px 26px; text-align: center; }
+  .hn2z-icon { width: 60px; height: 60px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+  .hn2z-icon.is-ok { background: #e8f9f0; } .hn2z-icon.is-wait { background: #fff8ec; } .hn2z-icon.is-bad { background: #fef3f2; }
+  .hn2z .hn2z-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: #12151a; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .hn2z-sub { font-size: 13.5px; color: #667085; font-weight: 500; line-height: 1.5; }
+  .hn2z-kv { text-align: left; margin: 22px 0 0; border-top: 1px solid #f2f4f7; }
+  .hn2z-kv > div { display: flex; justify-content: space-between; gap: 14px; padding: 11px 0; border-bottom: 1px solid #f2f4f7; font-size: 13px; }
+  .hn2z-kv dt { color: #667085; font-weight: 600; }
+  .hn2z-kv dd { margin: 0; color: #12151a; font-weight: 700; text-align: right; overflow-wrap: anywhere; }
+  .hn2z-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
+  .hn2z-help { font-size: 12px; color: #98a2b3; font-weight: 500; margin-top: 16px; text-align: center; }
+</style>
+
+<div class="hn2a hn2z">
+  <div class="hn2a-inner">
+    <div class="hn2z-card">
+      <% if (done.state === "success") { %>
+        <div class="hn2z-icon is-ok" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0a7d4c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></div>
+        <h1 class="hn2z-title">Payment successful</h1>
+        <div class="hn2z-sub">Your <b><%= done.planName %></b> plan is active<% if (done.validUntil) { %> until <b><%= done.validUntil %></b><% } %>.</div>
+      <% } else if (done.state === "pending") { %>
+        <div class="hn2z-icon is-wait" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#b7791f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></div>
+        <h1 class="hn2z-title">Payment received</h1>
+        <div class="hn2z-sub">We are activating your <b><%= done.planName %></b> plan. This page refreshes by itself in a few seconds.</div>
+      <% } else if (done.state === "refunded") { %>
+        <div class="hn2z-icon is-wait" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#b7791f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg></div>
+        <h1 class="hn2z-title">Payment refunded</h1>
+        <div class="hn2z-sub">This payment was refunded to your original payment method.</div>
+      <% } else { %>
+        <div class="hn2z-icon is-bad" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#b42318" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg></div>
+        <h1 class="hn2z-title">Payment not completed</h1>
+        <div class="hn2z-sub"><%= done.failureReason || "We have not received a payment for this order." %> If money left your account, it will either activate your plan automatically within a few minutes or be returned by your bank.</div>
+      <% } %>
+
+      <dl class="hn2z-kv">
+        <div><dt>Plan</dt><dd><%= done.planName %> · <%= done.duration %></dd></div>
+        <div><dt>Amount</dt><dd><%= inr(done.amount) %></dd></div>
+        <% if (done.paidAt) { %><div><dt>Paid on</dt><dd><%= done.paidAt %></dd></div><% } %>
+        <div><dt>Receipt no.</dt><dd><%= done.receipt %></dd></div>
+        <% if (done.paymentId) { %><div><dt>Razorpay payment ID</dt><dd><%= done.paymentId %></dd></div><% } %>
+      </dl>
+
+      <div class="hn2z-actions">
+        <% if (done.state === "success") { %>
+          <a class="hn2a-btn" href="/user">Go to dashboard</a>
+          <a class="hn2a-btn is-ghost" href="/user/account/checkout/receipt/<%= done.id %>" target="_blank" rel="noopener">Download receipt</a>
+        <% } else if (done.state === "notpaid") { %>
+          <a class="hn2a-btn" href="/user/account/checkout/<%= done.planId %>">Try again</a>
+          <a class="hn2a-btn is-ghost" href="/user/account/plans">Back to plans</a>
+        <% } else { %>
+          <a class="hn2a-btn is-ghost" href="/user/account/billing">Go to Billing</a>
+        <% } %>
+      </div>
+    </div>
+    <div class="hn2z-help">Questions about this payment? Email <a href="mailto:<%= done.supportEmail %>" style="color:#0a7d4c;font-weight:700"><%= done.supportEmail %></a> with the receipt number.</div>
+  </div>
+</div>
+<% if (done.state === "pending") { %>
+<script>
+  // Reload a few times while the plan is being activated, then stop.
+  (function () {
+    var q = new URLSearchParams(location.search), n = Number(q.get('t') || 0);
+    if (n < 8) setTimeout(function () { location.replace(location.pathname + '?t=' + (n + 1) + (q.get('w') === '1' ? '&w=1' : '')); }, 4000);
+  })();
+</script>
+<% } %>

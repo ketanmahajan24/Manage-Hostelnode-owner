@@ -1,0 +1,179 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Subscriptions Phase 3 — the pay page. The amount shown here is read from the plan on the server;
+    the browser never decides what is charged. Card / UPI details are typed in Razorpay's own window. %>
+<%- include("_style.ejs") %>
+<% const inr = n => "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(n) || 0); %>
+<style>
+  .hn2k .hn2a-inner { max-width: 980px; }
+  .hn2k-back, .hn2k-back:hover { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: #667085; margin-bottom: 14px; }
+  .hn2k-back:hover { color: #12151a; }
+  .hn2k-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .hn2k-card { background: #fff; border: 1px solid #eef1f4; border-radius: 16px; box-shadow: 0 1px 2px rgba(15,17,23,0.03); }
+  .hn2k-pad { padding: 22px; }
+  .hn2k-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #98a2b3; }
+  .hn2k-plan { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: #12151a; margin: 6px 0 2px; letter-spacing: -0.01em; }
+  .hn2k-desc { font-size: 13px; color: #667085; font-weight: 500; }
+  .hn2k-list { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+  .hn2k-list li { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; color: #344054; font-weight: 600; line-height: 1.4; }
+  .hn2k-tick { flex-shrink: 0; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; background: #e8f9f0; color: #0a7d4c; font-size: 10px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; }
+  .hn2k-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border-top: 1px solid #f2f4f7; }
+  .hn2k-dates > div { padding: 16px 22px; }
+  .hn2k-dates > div + div { border-left: 1px solid #f2f4f7; }
+  .hn2k-dates b { display: block; font-size: 15px; font-weight: 800; color: #12151a; margin-top: 4px; }
+  .hn2k-note { margin: 0 22px 18px; padding: 10px 12px; border-radius: 10px; background: #f0f9ff; border: 1px solid #cfe8fb; color: #0b4a6f; font-size: 12.5px; font-weight: 600; }
+
+  .hn2k-brand { display: flex; align-items: center; gap: 10px; padding: 16px 22px; border-bottom: 1px solid #f2f4f7; }
+  .hn2k-brand img { width: 34px; height: 34px; object-fit: contain; }
+  .hn2k-brand b { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800; color: #12151a; display: block; line-height: 1.2; }
+  .hn2k-brand span { font-size: 11.5px; color: #667085; font-weight: 600; }
+  .hn2k-lines { margin: 0; padding: 0; }
+  .hn2k-line { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; color: #475467; font-weight: 600; padding: 7px 0; }
+  .hn2k-line s { color: #98a2b3; }
+  .hn2k-line.is-save { color: #0a7d4c; }
+  .hn2k-total { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border-top: 1px dashed #e4e7ec; margin-top: 8px; padding-top: 14px; }
+  .hn2k-total span { font-size: 13.5px; font-weight: 800; color: #12151a; }
+  .hn2k-total b { font-family: 'Syne', sans-serif; font-size: 30px; font-weight: 800; color: #12151a; letter-spacing: -0.02em; line-height: 1; }
+  .hn2k-once { font-size: 12px; color: #667085; font-weight: 500; margin-top: 6px; text-align: right; }
+  .hn2k-pay, .hn2k-pay:hover, .hn2k-pay:focus {
+    width: 100%; margin-top: 18px; min-height: 50px; border: 0; border-radius: 12px; cursor: pointer;
+    background: #0EA968; color: #fff; font-size: 15px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    box-shadow: 0 6px 16px rgba(14,169,104,0.28);
+  }
+  .hn2k-pay:hover { background: #0c9a5f; }
+  .hn2k-pay:focus-visible { outline: 3px solid rgba(14,169,104,0.35); outline-offset: 2px; }
+  .hn2k-pay[disabled] { opacity: .65; cursor: wait; box-shadow: none; }
+  .hn2k-secure { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 12px; font-size: 12px; font-weight: 700; color: #475467; }
+  .hn2k-methods { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
+  .hn2k-methods span { font-size: 11px; font-weight: 700; color: #475467; background: #f6f8fa; border: 1px solid #eaecf0; border-radius: 99px; padding: 3px 10px; }
+  .hn2k-msg { display: none; margin-top: 14px; padding: 10px 12px; border-radius: 10px; font-size: 12.5px; font-weight: 600; background: #fef3f2; border: 1px solid #fecdca; color: #b42318; }
+  .hn2k-msg.is-on { display: block; }
+  .hn2k-trust { list-style: none; margin: 0; padding: 16px 22px 20px; border-top: 1px solid #f2f4f7; display: grid; gap: 10px; }
+  .hn2k-trust li { display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; color: #475467; font-weight: 500; line-height: 1.45; }
+  .hn2k-trust svg { flex-shrink: 0; margin-top: 1px; }
+  .hn2k-trust a { color: #0a7d4c; font-weight: 700; }
+  .hn2k-test { margin-bottom: 14px; padding: 9px 12px; border-radius: 10px; background: #fff8ec; border: 1px solid #fbe6b8; color: #92660c; font-size: 12.5px; font-weight: 700; }
+  @media (max-width: 880px) { .hn2k-grid { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 520px) { .hn2k-list { grid-template-columns: minmax(0, 1fr); } }
+</style>
+
+<div class="hn2a hn2k">
+  <div class="hn2a-inner">
+    <a class="hn2k-back" href="/user/account/plans">← Back to plans</a>
+    <h1 class="hn2a-title">Confirm and pay</h1>
+    <div class="hn2a-sub">Check your plan, then pay securely. Your plan is active the moment the payment goes through.</div>
+
+    <% if (pay.testMode) { %><div class="hn2k-test">Test mode: no real money is charged. Use Razorpay's test cards or test UPI.</div><% } %>
+
+    <div class="hn2k-grid">
+      <section class="hn2k-card" aria-label="Your plan">
+        <div class="hn2k-pad">
+          <div class="hn2k-eyebrow">Your plan</div>
+          <h2 class="hn2k-plan"><%= pay.name %></h2>
+          <div class="hn2k-desc"><%= pay.description %></div>
+          <% if (pay.includes.length) { %>
+            <ul class="hn2k-list">
+              <% pay.includes.forEach(function (t) { %><li><span class="hn2k-tick" aria-hidden="true">✓</span><span><%= t %></span></li><% }) %>
+            </ul>
+          <% } %>
+        </div>
+        <div class="hn2k-dates">
+          <div><span class="hn2k-eyebrow"><%= pay.renewing ? "Current plan ends" : "Starts" %></span><b><%= pay.renewing ? pay.currentEndsAt : "Today, " + pay.startsOn %></b></div>
+          <div><span class="hn2k-eyebrow">Valid until</span><b><%= pay.validUntil %></b></div>
+        </div>
+        <% if (pay.renewing) { %>
+          <div class="hn2k-note">You are renewing early. The new <%= pay.duration %> is added after your current plan ends, so you lose no paid days.</div>
+        <% } %>
+      </section>
+
+      <section class="hn2k-card" aria-label="Payment">
+        <div class="hn2k-brand">
+          <img src="/images/hostelnode-logo-cutout.png" alt="">
+          <div><b>HostelNode</b><span>You are paying HostelNode</span></div>
+        </div>
+        <div class="hn2k-pad">
+          <div class="hn2k-lines">
+            <div class="hn2k-line"><span><%= pay.name %> · <%= pay.duration %></span><span><% if (pay.strikePrice) { %><s><%= inr(pay.strikePrice) %></s><% } else { %><%= inr(pay.price) %><% } %></span></div>
+            <% if (pay.strikePrice) { %><div class="hn2k-line is-save"><span>Offer discount</span><span>− <%= inr(pay.strikePrice - pay.price) %></span></div><% } %>
+          </div>
+          <div class="hn2k-total"><span>Total to pay</span><b><%= inr(pay.price) %></b></div>
+          <div class="hn2k-once">One-time payment for <%= pay.duration %>. It does not renew by itself.</div>
+
+          <button type="button" class="hn2k-pay" id="hn2kPay">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            <span id="hn2kPayText">Pay <%= inr(pay.price) %> securely</span>
+          </button>
+          <div class="hn2k-secure">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0a7d4c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 8.3-8 9-4.8-.7-8-4.5-8-9V6l8-3z"></path><path d="M9 12l2 2 4-4"></path></svg>
+            Payments secured by Razorpay
+          </div>
+          <div class="hn2k-methods" aria-label="Accepted payment methods"><span>UPI</span><span>Debit & credit cards</span><span>Netbanking</span><span>Wallets</span></div>
+          <div class="hn2k-msg" id="hn2kMsg" role="alert"></div>
+        </div>
+        <ul class="hn2k-trust">
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0a7d4c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg><span>Your card and UPI details are entered in Razorpay's secure window. HostelNode never sees or stores them.</span></li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0a7d4c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg><span>You get a receipt by email and under Billing straight after paying.</span></li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0a7d4c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg><span>Your tenants are never charged for using HostelNode.</span></li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#667085" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>
+            <span>Need help? <a href="mailto:<%= pay.supportEmail %>"><%= pay.supportEmail %></a><% if (pay.supportPhone) { %> · <a href="https://wa.me/91<%= pay.supportPhone %>" target="_blank" rel="noopener">WhatsApp us</a><% } %><% if (pay.policyUrl) { %> · <a href="<%= pay.policyUrl %>" target="_blank" rel="noopener">Refund &amp; cancellation policy</a><% } %></span></li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" id="hn2kData"><%- JSON.stringify({ planId: pay.planId, keyId: pay.keyId, name: pay.name, duration: pay.duration, prefill: pay.prefill }).replace(/</g, "\\u003c") %></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
+<script>
+(function () {
+  var data = JSON.parse(document.getElementById('hn2kData').textContent);
+  var btn = document.getElementById('hn2kPay'), txt = document.getElementById('hn2kPayText'), msg = document.getElementById('hn2kMsg');
+  var label = txt.textContent, busy = false;
+
+  function say(text) { msg.textContent = text; msg.classList.add('is-on'); }
+  function clear() { msg.textContent = ''; msg.classList.remove('is-on'); }
+  function setBusy(on, text) { busy = on; btn.disabled = on; txt.textContent = on ? (text || 'Please wait…') : label; }
+  function post(url, body) {
+    return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body || {}) })
+      .then(function (r) { return r.json().then(function (j) { return j; }, function () { return { ok: false }; }); });
+  }
+
+  btn.addEventListener('click', function () {
+    if (busy) return;
+    clear();
+    if (typeof window.Razorpay !== 'function') { say('The secure payment window could not load. Check your internet connection (or turn off any ad blocker) and try again.'); return; }
+    setBusy(true, 'Opening secure payment…');
+
+    post('/user/account/checkout/' + encodeURIComponent(data.planId) + '/order').then(function (order) {
+      if (!order || !order.ok) { setBusy(false); say((order && order.error) || 'We could not start the payment. Nothing was charged. Please try again.'); return; }
+      var doneUrl = '/user/account/checkout/done/' + encodeURIComponent(order.recordId);
+
+      var rzp = new window.Razorpay({
+        key: data.keyId,
+        order_id: order.orderId,
+        amount: order.amount,
+        currency: 'INR',
+        name: 'HostelNode',
+        description: data.name + ' plan · ' + data.duration,
+        image: window.location.origin + '/images/hostelnode-logo-cutout.png',
+        prefill: data.prefill,
+        theme: { color: '#0EA968' },
+        handler: function (resp) {
+          setBusy(true, 'Confirming your payment…');
+          post('/user/account/checkout/verify', {
+            razorpay_order_id: resp.razorpay_order_id,
+            razorpay_payment_id: resp.razorpay_payment_id,
+            razorpay_signature: resp.razorpay_signature
+          }).then(function (v) { window.location.href = (v && v.redirect) || doneUrl; },
+                  function ()  { window.location.href = doneUrl; });   // the result page shows the true state
+        },
+        modal: { ondismiss: function () { setBusy(false); say('Payment was not completed. Nothing was charged. You can try again whenever you are ready.'); } }
+      });
+      rzp.on('payment.failed', function (resp) {
+        var why = resp && resp.error && resp.error.description ? resp.error.description : 'The payment did not go through.';
+        say(why + ' You can try again in the same window or choose another method.');
+      });
+      rzp.open();
+    }, function () { setBusy(false); say('We could not reach the server. Nothing was charged. Please try again.'); });
+  });
+})();
+</script>

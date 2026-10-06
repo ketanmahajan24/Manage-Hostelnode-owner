@@ -1,0 +1,84 @@
+<%# Subscriptions Phase 3 — printable receipt (standalone page: "Print" → "Save as PDF"). %>
+<% const inr = n => "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(n) || 0); %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Receipt <%= r.receipt %> | HostelNode</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f2f4f7; font-family: 'DM Sans', Arial, Helvetica, sans-serif; color: #12151a; }
+  .sheet { max-width: 720px; margin: 28px auto; background: #fff; border: 1px solid #e4e7ec; border-radius: 14px; padding: 36px 40px; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; border-bottom: 2px solid #12151a; padding-bottom: 20px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand img { width: 40px; height: 40px; object-fit: contain; }
+  .brand b { font-size: 20px; font-weight: 800; }
+  .brand span { display: block; font-size: 12px; color: #667085; }
+  .tag { text-align: right; }
+  .tag h1 { margin: 0; font-size: 22px; letter-spacing: .02em; }
+  .paid { display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 800; letter-spacing: .06em; color: #0a7d4c; background: #e8f9f0; border: 1px solid #bfeed3; border-radius: 99px; padding: 3px 10px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 24px 0; font-size: 13px; }
+  .cols h2 { margin: 0 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #98a2b3; }
+  .cols p { margin: 2px 0; line-height: 1.5; overflow-wrap: anywhere; }
+  .cols .r { text-align: right; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #667085; background: #f9fafb; padding: 10px 12px; border-bottom: 1px solid #e4e7ec; }
+  td { padding: 14px 12px; border-bottom: 1px solid #f2f4f7; vertical-align: top; }
+  td small { display: block; color: #667085; margin-top: 3px; }
+  .num { text-align: right; white-space: nowrap; }
+  .total td { border-bottom: 0; font-weight: 800; font-size: 16px; padding-top: 16px; }
+  .foot { margin-top: 26px; padding-top: 16px; border-top: 1px solid #e4e7ec; font-size: 12px; color: #667085; line-height: 1.6; }
+  .bar { max-width: 720px; margin: 20px auto 0; display: flex; justify-content: flex-end; gap: 10px; padding: 0 4px; }
+  .bar button, .bar a { font: inherit; font-size: 13px; font-weight: 700; border-radius: 10px; padding: 9px 16px; cursor: pointer; text-decoration: none; }
+  .bar button { background: #0EA968; color: #fff; border: 0; }
+  .bar a { background: #fff; color: #344054; border: 1px solid #d0d5dd; }
+  @media print { body { background: #fff; } .bar { display: none; } .sheet { margin: 0; border: 0; border-radius: 0; max-width: none; padding: 0; } }
+  @media (max-width: 560px) { .sheet { padding: 22px 18px; margin: 14px 10px; } .cols { grid-template-columns: 1fr; } .cols .r { text-align: left; } }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <a href="/user/account/billing">Back to Billing</a>
+    <button type="button" onclick="window.print()">Print or save as PDF</button>
+  </div>
+  <div class="sheet">
+    <div class="top">
+      <div class="brand"><img src="/images/hostelnode-logo-cutout.png" alt=""><div><b>HostelNode</b><span>hostelnode.com</span></div></div>
+      <div class="tag"><h1>RECEIPT</h1><span class="paid">PAID</span></div>
+    </div>
+    <div class="cols">
+      <div>
+        <h2>Billed to</h2>
+        <p><b><%= r.owner.name %></b></p>
+        <% if (r.owner.business) { %><p><%= r.owner.business %></p><% } %>
+        <% if (r.owner.place) { %><p><%= r.owner.place %></p><% } %>
+        <p><%= r.owner.email %></p>
+        <p><%= r.owner.phone %></p>
+      </div>
+      <div class="r">
+        <h2>Receipt</h2>
+        <p>No. <b><%= r.receipt %></b></p>
+        <p>Paid on <%= r.paidAt %></p>
+        <p>Razorpay payment ID: <%= r.paymentId %></p>
+        <% if (r.method) { %><p>Method: <%= r.method.toUpperCase() %></p><% } %>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Description</th><th class="num">Amount</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>HostelNode <%= r.planName %> plan</b> · <%= r.duration %><small>Valid from <%= r.from %> to <%= r.until %></small></td>
+          <td class="num"><%= inr(r.amount) %></td>
+        </tr>
+        <tr class="total"><td class="num">Total paid</td><td class="num"><%= inr(r.amount) %></td></tr>
+      </tbody>
+    </table>
+    <div class="foot">
+      This is a computer-generated receipt for a payment made online through Razorpay. No signature is needed.<br>
+      Questions? Write to <%= r.supportEmail %> with the receipt number.
+    </div>
+  </div>
+</body>
+</html>

@@ -54,6 +54,9 @@ app.use(cors({
 }));
 
 app.use(cookieParser());                          // 1. cookies parse
+// Subscriptions Phase 3: Razorpay's webhook must be read as raw bytes (its
+// signature is checked against them), so it is parsed here, before JSON.
+app.use("/payments/razorpay/webhook", express.raw({ type: "*/*", limit: "1mb" }));
 app.use(express.json());                          // 2. JSON body
 app.use(express.urlencoded({ extended: true }));  // 3. form body
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -104,12 +107,18 @@ app.engine("ejs", ejsMate);
 // Phase 1 — counts for the new navbar (messages / enquiries badges,
 // setup chip). Read-only; never blocks or redirects a request.
 app.use(require("./Middlewares/navData"));
+app.use(require("./Middlewares/startTrial"));   // Subscriptions Phase 2: starts the free trial (once per login session)
+app.use(require("./Middlewares/planBanner"));   // Subscriptions Phase 4: "plan ends soon" notice (only when reminders are on)
+app.use(require("./Middlewares/planGate"));     // Subscriptions Phase 4: plan limits (only when switched on in admin)
 
 app.use("/webhook",     waBot);
 app.use("/user",        userRouter);
 app.use("/user",        ownerMessagesRouter); // Phase 4 — /user/messages, /user/messages/:conversationId
 app.use("/user",        require("./routes/leadsRoutes")); // Phase 3 (redesign) — /user/leads, /user/enquiries/:id/status
 app.use("/user",        require("./routes/accountRoutes")); // Phase 4 (redesign) — /user/account/*, /user/notifications
+app.use("/user",        require("./routes/planRoutes"));    // Subscriptions Phase 2 — /user/account/plans
+app.use("/user",        require("./routes/checkoutRoutes"));   // Subscriptions Phase 3 — pay page, verify, receipt
+app.use("/payments/razorpay", require("./routes/checkoutRoutes").webhook);   // Subscriptions Phase 3 — POST /payments/razorpay/webhook
 // Phase 4 (redesign) — the previous navbar linked here; send those to the real pages.
 app.get("/account/settings", (req, res) => res.redirect("/user/account/settings"));
 app.get("/billing",          (req, res) => res.redirect("/user/account/billing"));
@@ -135,6 +144,17 @@ app.get("/terms", (req, res) => {
 // ════════════════════════════════════════════════════════════
 //   CRON — Monthly Fee Check (midnight daily)
 // ════════════════════════════════════════════════════════════
+// Subscriptions Phase 4 — plan expiry reminder emails, every day at 10:00 am India time.
+// Does nothing unless "Remind owners before a plan ends" is on in admin.
+cron.schedule("0 10 * * *", async () => {
+  try {
+    const r = await require("./utils/planReminders").runReminders();
+    if (r.sent) console.log(`Plan reminders: ${r.sent} sent`);
+  } catch (err) {
+    console.error("Plan reminders (non-fatal):", err.message);
+  }
+}, { timezone: "Asia/Kolkata" });
+
 cron.schedule("0 0 * * *", async () => {
   console.log("🔄 Running Monthly Fee Check...");
   try {
