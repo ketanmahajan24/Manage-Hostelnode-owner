@@ -22,17 +22,21 @@ const { billingOn, resolveOwnerPlan, ensureTrial } = require("./subscription");
 
 // method + path (as mounted in app.js) → what the plan must allow.
 const ID = "[^/]+";
+// kind / form: for the three "add" actions — what is being added and the
+//   page its form lives on (used to keep the owner's typed form as a draft).
+// back: for locked features — the page the owner is returned to, where the
+//   upgrade popup opens.
 const RULES = [
-  { method: "GET",  re: /^\/user\/addnewhostel\/?$/i,                       limit: "maxProperties" },
-  { method: "POST", re: /^\/user\/create-hostel\/?$/i,                      limit: "maxProperties" },
-  { method: "GET",  re: /^\/user\/newmember\/?$/i,                          limit: "maxTenants", featureIfQuery: { enquiry: "convertLead" } },
-  { method: "POST", re: /^\/user\/newmember\/?$/i,                          limit: "maxTenants" },
-  { method: "GET",  re: /^\/user\/list-property\/?$/i,                      limit: "maxListings" },
-  { method: "POST", re: /^\/user\/new-list-property\/?$/i,                  limit: "maxListings" },
-  { method: "GET",  re: /^\/user\/revenue\/?$/i,                            feature: "reports" },
-  { method: "GET",  re: /^\/user\/(deureports|upcomingPayments)\/?$/i,      feature: "duesReport" },
-  { method: "POST", re: new RegExp(`^/user/enquiries/${ID}/status/?$`, "i"), feature: "leadStatus" },
-  { method: "POST", re: new RegExp(`^/user/enquiries/${ID}/chat/?$`, "i"),   feature: "chatReply" },
+  { method: "GET",  re: /^\/user\/addnewhostel\/?$/i,                       limit: "maxProperties", kind: "property", form: "/user/addnewhostel" },
+  { method: "POST", re: /^\/user\/create-hostel\/?$/i,                      limit: "maxProperties", kind: "property", form: "/user/addnewhostel" },
+  { method: "GET",  re: /^\/user\/newmember\/?$/i,                          limit: "maxTenants", kind: "tenant", form: "/user/newmember", featureIfQuery: { enquiry: "convertLead" }, back: "/user/leads" },
+  { method: "POST", re: /^\/user\/newmember\/?$/i,                          limit: "maxTenants", kind: "tenant", form: "/user/newmember" },
+  { method: "GET",  re: /^\/user\/list-property\/?$/i,                      limit: "maxListings", kind: "listing", form: "/user/list-property" },
+  { method: "POST", re: /^\/user\/new-list-property\/?$/i,                  limit: "maxListings", kind: "listing", form: "/user/list-property" },
+  { method: "GET",  re: /^\/user\/revenue\/?$/i,                            feature: "reports", back: "/user" },
+  { method: "GET",  re: /^\/user\/(deureports|upcomingPayments)\/?$/i,      feature: "duesReport", back: "/user" },
+  { method: "POST", re: new RegExp(`^/user/enquiries/${ID}/status/?$`, "i"), feature: "leadStatus", back: "/user/leads" },
+  { method: "POST", re: new RegExp(`^/user/enquiries/${ID}/chat/?$`, "i"),   feature: "chatReply", back: "/user/leads" },
 ];
 
 // The path is tidied the way Express itself reads it (repeated slashes,
@@ -51,7 +55,9 @@ const LIMIT_ACTION = { maxProperties: "add another property", maxTenants: "add a
 async function countUsed(limitKey, ownerId) {
   if (limitKey === "maxProperties") return require("../models/hostel").countDocuments({ owner: ownerId }).maxTimeMS(1500);
   if (limitKey === "maxTenants")    return require("../models/member").countDocuments({ user: ownerId, status: "Active" }).maxTimeMS(1500);
-  if (limitKey === "maxListings")   return require("../models/listingProperty").countDocuments({ owner: ownerId }).maxTimeMS(1500);
+  // Listings saved as hidden drafts (planHold) do not use up the limit.
+  // (A held listing that is public anyway is counted, so the limit cannot be dodged.)
+  if (limitKey === "maxListings")   return require("../models/listingProperty").countDocuments({ owner: ownerId, $or: [{ planHold: { $ne: true } }, { status: "Approved" }] }).maxTimeMS(1500);
   return 0;
 }
 
@@ -68,8 +74,9 @@ async function enforcementOn() {
 }
 
 /* Returns null when the action is allowed, or a description of why not:
-   { kind:"limit"|"feature", title, message, planName } */
-async function checkGate(ownerId, rule, query) {
+   { kind:"limit"|"feature", key, title, message, planName, used?, limit? }
+   opts.skipLimit: only check the feature part of the rule. */
+async function checkGate(ownerId, rule, query, opts) {
   // An owner who has never had a plan gets their free trial first (when trials
   // are on), so nobody is judged on the Default plan before their trial started.
   try { await ensureTrial(ownerId); } catch (err) { console.error("planGate trial (non-fatal):", err.message); }
@@ -88,13 +95,13 @@ async function checkGate(ownerId, rule, query) {
   if (wantFeature && !(plan.features && plan.features[wantFeature] === true)) {
     const f = FEATURES.find(x => x.key === wantFeature);
     return {
-      kind: "feature", planName: plan.name,
+      kind: "feature", key: wantFeature, planName: plan.name,
       title: `${f ? f.label : "This feature"} is not part of your plan`,
       message: `You are on the ${plan.name} plan. Upgrade to a plan that includes ${f ? f.label.toLowerCase() : "this feature"}.`,
     };
   }
 
-  if (rule.limit) {
+  if (rule.limit && !(opts && opts.skipLimit)) {
     const raw = plan.limits ? plan.limits[rule.limit] : null;
     if (raw === null || raw === undefined) return null;             // unlimited
     const limit = Number(raw);
@@ -104,7 +111,7 @@ async function checkGate(ownerId, rule, query) {
     const noun = LIMIT_NOUN[rule.limit] || ["item", "items"];
     const l = LIMITS.find(x => x.key === rule.limit);
     return {
-      kind: "limit", planName: plan.name,
+      kind: "limit", key: rule.limit, planName: plan.name, used, limit,
       title: `You have reached your plan's limit`,
       message: `Your ${plan.name} plan allows ${limit} ${limit === 1 ? noun[0] : noun[1]} and you have ${used}. Upgrade to ${LIMIT_ACTION[rule.limit] || "add more"}.`,
       limitLabel: l ? l.label : "",

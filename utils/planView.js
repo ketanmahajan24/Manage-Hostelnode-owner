@@ -47,6 +47,9 @@ function planCard(p, currentPlanId) {
     features: FEATURES.map(f => ({ label: f.label, on: !!(p.features && p.features[f.key]) })),
     points: (p.displayPoints || []).slice(0, 10),
     isCurrent: !!currentPlanId && String(p._id) === String(currentPlanId),
+    // for the upgrade popup: which plans lift a given limit / include a given feature
+    limits: Object.fromEntries(LIMITS.map(l => [l.key, p.limits && p.limits[l.key] !== undefined ? p.limits[l.key] : null])),
+    featureKeys: FEATURES.filter(f => p.features && p.features[f.key]).map(f => f.key),
   };
 }
 

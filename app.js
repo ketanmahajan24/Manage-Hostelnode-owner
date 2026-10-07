@@ -110,6 +110,7 @@ app.use(require("./Middlewares/navData"));
 app.use(require("./Middlewares/startTrial"));   // Subscriptions Phase 2: starts the free trial (once per login session)
 app.use(require("./Middlewares/planBanner"));   // Subscriptions Phase 4: "plan ends soon" notice (only when reminders are on)
 app.use(require("./Middlewares/planGate"));     // Subscriptions Phase 4: plan limits (only when switched on in admin)
+app.use(require("./Middlewares/planPopup"));    // Subscriptions: upgrade popup, limit notice and saved drafts (only on the pages that need them)
 
 app.use("/webhook",     waBot);
 app.use("/user",        userRouter);
@@ -118,6 +119,7 @@ app.use("/user",        require("./routes/leadsRoutes")); // Phase 3 (redesign) 
 app.use("/user",        require("./routes/accountRoutes")); // Phase 4 (redesign) — /user/account/*, /user/notifications
 app.use("/user",        require("./routes/planRoutes"));    // Subscriptions Phase 2 — /user/account/plans
 app.use("/user",        require("./routes/checkoutRoutes"));   // Subscriptions Phase 3 — pay page, verify, receipt
+app.use("/user",        require("./routes/planDraftRoutes"));  // Subscriptions — discard a draft, publish a hidden-draft listing
 app.use("/payments/razorpay", require("./routes/checkoutRoutes").webhook);   // Subscriptions Phase 3 — POST /payments/razorpay/webhook
 // Phase 4 (redesign) — the previous navbar linked here; send those to the real pages.
 app.get("/account/settings", (req, res) => res.redirect("/user/account/settings"));

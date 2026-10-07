@@ -174,6 +174,14 @@ const listingSchema = new mongoose.Schema({
   isVerified: {
     type: Boolean,
     default: false
+  },
+
+  // Subscriptions: true while a listing is a hidden draft because the owner
+  // was at their plan's listing limit when they submitted it. A held listing
+  // stays "Pending" (not shown on hostelnode.com) until the owner publishes it.
+  planHold: {
+    type: Boolean,
+    default: false
   }
 
 }, { timestamps: true });

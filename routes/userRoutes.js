@@ -1577,9 +1577,19 @@ router.post("/new-list-property", jwtAuthMiddleware, attachHostel, listingUpload
       owner: userId, title, description, propertyType, gender,
       startingPrice, deposit, capacity, location, rooms,
       images: req.files.map(f => f.filename),
-      amenities, rules, contact, status: "Approved"
+      amenities, rules, contact,
+      // Subscriptions: at the plan's listing limit the listing is saved as a
+      // hidden draft (Middlewares/planGate.js sets req.hnPlanHold).
+      status: req.hnPlanHold ? "Pending" : "Approved",
+      planHold: !!req.hnPlanHold
     });
     await newListing.save();
+
+    if (req.hnPlanHold) {
+      // The form is sent by script and then opens My Listings, where the upgrade popup shows once.
+      if (req.session) req.session.hnUpgradeOnce = "maxListings";
+      return res.status(201).json({ ok: true, held: true });
+    }
 
     const user = await Owner.findById(userId).lean();
 
@@ -1763,7 +1773,7 @@ router.post('/listing/:id/edit', jwtAuthMiddleware, listingUploadMiddleware, asy
       });const uploadDir = '/secure_uploads/profiles';
     }
 
-    listing.status = "Approved";
+    listing.status = listing.planHold ? "Pending" : "Approved";   // a hidden draft stays hidden when edited
     await listing.save();
     res.redirect("/user/my-listings");
 

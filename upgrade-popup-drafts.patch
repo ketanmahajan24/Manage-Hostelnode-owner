@@ -1,0 +1,773 @@
+diff --git a/Middlewares/planGate.js b/Middlewares/planGate.js
+index 756e27e..84c425e 100644
+--- a/Middlewares/planGate.js
++++ b/Middlewares/planGate.js
+@@ -1,13 +1,26 @@
+ /* ============================================================
+-   Middlewares/planGate.js  —  Subscriptions Phase 4
++   Middlewares/planGate.js  —  Subscriptions Phase 4 (+ upgrade popup & drafts)
+ 
+    Applies plan limits and feature locks, but only:
+      • when "Enforce plan limits" is switched on in admin, and
+      • on the handful of actions listed in utils/planGate.js.
+    Every other request passes straight through untouched.
+ 
+-   A blocked owner sees a clear page with a "View plans" button.
+-   Nothing is ever deleted or hidden: above a limit an owner keeps
++   What a blocked owner sees depends on the app:
++
++   OWNER DASHBOARD (has the Plans page)
++     • Add Property / Add Tenant at the limit: the form they filled is
++       saved as a draft and they are returned to the form, where the
++       upgrade popup opens. Nothing they typed is lost.
++     • List New Property at the limit: the listing is saved as a hidden
++       draft (not shown on hostelnode.com) until they upgrade and publish it.
++     • A feature not in their plan: they are returned to the page they
++       came from, where the upgrade popup opens.
++
++   HOSTELNODE.COM (owner pages inside the main site)
++     • A plain "upgrade your plan" page.
++
++   Nothing is ever deleted or hidden: at a limit an owner keeps
+    everything they have and simply cannot add more.
+ 
+    Fails open: if the plan cannot be checked (database slow, any
+@@ -22,16 +35,58 @@ const mongoose = require("mongoose");
+ const { matchRule, enforcementOn, checkGate } = require("../utils/planGate");
+ 
+ const TIME_LIMIT_MS = 2000;
++const DRAFT_DAYS = 30;
++const DRAFTS_KEPT = 5;          // per owner, per kind
++const HELD_LISTINGS_MAX = 5;    // hidden draft listings one owner may keep
+ 
+-// Where "View plans" goes. In the owner dashboard this is a local page.
+-// On hostelnode.com set HN_OWNER_DASHBOARD_URL to the dashboard's address.
+-// Returns "" when this app has no Plans page and no address is configured;
+-// the locked page then explains where to go instead of showing a dead button.
+-const HAS_PLANS_PAGE = require("fs").existsSync(require("path").join(__dirname, "..", "routes", "planRoutes.js"));
++// Is this the owner dashboard (it has the Plans page and the popup)?
++const HAS_PLANS = require("fs").existsSync(require("path").join(__dirname, "..", "routes", "planRoutes.js"));
++// The popup lives in the new layout; with the old layout (HN_NEW_UI=0) the plain page is used.
++const popupMode = () => HAS_PLANS && process.env.HN_NEW_UI !== "0";
++
++// Where "View plans" goes on the plain page. In the owner dashboard this is a
++// local page; on hostelnode.com set HN_OWNER_DASHBOARD_URL to the dashboard.
+ function plansUrl() {
+   const base = String(process.env.HN_OWNER_DASHBOARD_URL || "").trim().replace(/\/$/, "");
+   if (/^https:\/\/[^\s"'<>]+$/.test(base)) return base + "/user/account/plans";
+-  return HAS_PLANS_PAGE ? "/user/account/plans" : "";
++  return HAS_PLANS ? "/user/account/plans" : "";
++}
++
++// The submitted form as a flat list of { n: field name, v: value }.
++// Only plain text is kept: no files, nothing nested deeper than name[sub].
++function formFields(body) {
++  const out = [];
++  const add = (n, v) => {
++    if (out.length >= 60 || typeof v !== "string") return;
++    if (n.length > 80 || /[$.\0]/.test(n)) return;
++    if (/aadha?r/i.test(n)) return;                    // ID numbers are not kept in a draft; the owner types it again
++    out.push({ n, v: v.slice(0, 500) });
++  };
++  if (!body || typeof body !== "object") return out;
++  for (const k of Object.keys(body)) {
++    const v = body[k];
++    if (typeof v === "string") add(k, v);
++    else if (v && typeof v === "object" && !Array.isArray(v)) {
++      for (const k2 of Object.keys(v)) add(`${k}[${k2}]`, v[k2]);
++    }
++  }
++  return out;
++}
++
++async function saveDraft(req, ownerId, rule) {
++  const PlanDraft = require("../models/planDraft");
++  const fields = formFields(req.body);
++  if (!fields.length) return null;
++  const hostel = req.session && req.session.selectedHostel && mongoose.isValidObjectId(String(req.session.selectedHostel._id || req.session.selectedHostel))
++    ? String(req.session.selectedHostel._id || req.session.selectedHostel) : null;
++  const draft = await PlanDraft.create({
++    owner: ownerId, kind: rule.kind, fields, hostel,
++    expireAt: new Date(Date.now() + DRAFT_DAYS * 24 * 60 * 60 * 1000),
++  });
++  // Keep only the newest few.
++  const old = await PlanDraft.find({ owner: ownerId, kind: rule.kind }).sort({ createdAt: -1 }).skip(DRAFTS_KEPT).select("_id").lean();
++  if (old.length) await PlanDraft.deleteMany({ _id: { $in: old.map(d => d._id) } });
++  return draft;
+ }
+ 
+ module.exports = async function planGate(req, res, next) {
+@@ -49,21 +104,67 @@ module.exports = async function planGate(req, res, next) {
+       ownerId = new mongoose.Types.ObjectId(String(decoded.id));
+     } catch { return next(); }
+ 
++    const OWNER_APP = popupMode();
++    const isGet = req.method === "GET" || req.method === "HEAD";
++    // In the owner dashboard the three "add" forms always open: the limit is
++    // applied when the form is submitted, so the typed form can be kept.
++    const skipLimit = OWNER_APP && isGet && !!rule.limit;
++    if (skipLimit && !rule.featureIfQuery) return next();
++
++    // A form refilled from a draft carries that draft's id. The draft is
++    // removed only after the property / tenant was really created.
++    const usedDraft = OWNER_APP && !isGet && (rule.kind === "property" || rule.kind === "tenant")
++      && typeof req.query.hnDraft === "string" && mongoose.isValidObjectId(req.query.hnDraft) ? req.query.hnDraft : null;
++    const forgetDraftOnSuccess = () => {
++      if (!usedDraft) return;
++      res.once("finish", () => {
++        if (res.statusCode >= 400) return;           // the create failed: keep the draft
++        require("../models/planDraft").deleteOne({ _id: usedDraft, owner: ownerId, kind: rule.kind }).catch(() => {});
++      });
++    };
++
+     const TIMEOUT = Symbol("timeout");
++    let enforced = false;
+     const blocked = await Promise.race([
+-      enforcementOn().then(on => (on ? checkGate(ownerId, rule, req.query) : null)),
++      enforcementOn().then(on => { enforced = on; return on ? checkGate(ownerId, rule, req.query, { skipLimit }) : null; }),
+       new Promise(resolve => { timer = setTimeout(() => resolve(TIMEOUT), TIME_LIMIT_MS); }),
+     ]);
+     clearTimeout(timer);
+-    if (!blocked || blocked === TIMEOUT) return next();
++
++    if (!blocked || blocked === TIMEOUT) { forgetDraftOnSuccess(); return next(); }
++
++    const accept = req.get("accept") || "";
++    const isUpload = req.method === "POST" && /multipart\/form-data/i.test(req.get("content-type") || "");
++    const wantsJson = req.xhr || (/application\/json/.test(accept) && !/text\/html/.test(accept));
++
++    if (OWNER_APP && !wantsJson) {
++      if (blocked.kind === "limit" && rule.kind === "listing" && !isGet) {
++        // Let the listing be saved, but as a hidden draft (routes/userRoutes.js reads
++        // this flag) — up to a few; beyond that it is refused like before.
++        const held = await require("../models/listingProperty").countDocuments({ owner: ownerId, planHold: true }).maxTimeMS(1500);
++        if (held < HELD_LISTINGS_MAX) { req.hnPlanHold = true; return next(); }
++        const text = `You already have ${held} draft listings waiting. Upgrade your plan and publish them from My Listings.`;
++        return res.status(403).json({ success: false, ok: false, planLocked: true, error: text, message: text });
++      }
++      if (blocked.kind === "limit" && !isGet && !isUpload) {
++        let draft = null, t2;
++        try {
++          // Saving the draft must not hold the owner up: after 2 seconds they go back without one.
++          draft = await Promise.race([saveDraft(req, ownerId, rule), new Promise(resolve => { t2 = setTimeout(() => resolve(null), TIME_LIMIT_MS); })]);
++        } catch (err) { console.error("planGate draft (non-fatal):", err.message); }
++        clearTimeout(t2);
++        // Converting a lead: keep the link to the enquiry.
++        const enq = req.body && typeof req.body.enquiryId === "string" && mongoose.isValidObjectId(req.body.enquiryId) ? `&enquiry=${req.body.enquiryId}` : "";
++        return res.redirect(303, `${rule.form}?upgrade=${encodeURIComponent(blocked.key)}${draft ? "&draft=" + draft._id : ""}${enq}`);
++      }
++      if (blocked.kind === "feature" && rule.back) {
++        return res.redirect(303, `${rule.back}?upgrade=${encodeURIComponent(blocked.key)}`);
++      }
++    }
+ 
+     res.status(403);
+     // Calls made by scripts (not page loads / form posts) get a short JSON answer.
+-    // The "List a property" form is sent by script too (a file upload), so it gets JSON as well.
+-    const accept = req.get("accept") || "";
+-    const wantsJson = req.xhr || (/application\/json/.test(accept) && !/text\/html/.test(accept))
+-      || (req.method === "POST" && /multipart\/form-data/i.test(req.get("content-type") || "") && !/text\/html/.test(accept));
+-    if (wantsJson) {
++    if (wantsJson || (isUpload && !/text\/html/.test(accept))) {
+       const text = blocked.title + ". " + blocked.message;
+       return res.json({ success: false, ok: false, planLocked: true, error: text, message: text });
+     }
+diff --git a/Middlewares/planPopup.js b/Middlewares/planPopup.js
+new file mode 100644
+index 0000000..a2a3e77
+--- /dev/null
++++ b/Middlewares/planPopup.js
+@@ -0,0 +1,127 @@
++/* ============================================================
++   Middlewares/planPopup.js  —  Subscriptions: upgrade popup & drafts
++   (owner dashboard only)
++
++   Prepares, for the page about to be shown:
++     • the upgrade popup (your plans with Choose buttons) when the
++       owner has just been stopped at a limit or a locked feature;
++     • a notice on the Add Property / Add Tenant / List Property
++       forms when the owner is already at that limit;
++     • the owner's saved draft, so the form can be filled back in;
++     • on My Listings, any listings saved as hidden drafts.
++
++   It only does any work on those few pages. Read-only. Fails open:
++   on any error or delay the page shows as normal, with no popup.
++============================================================ */
++
++const jwt = require("jsonwebtoken");
++const mongoose = require("mongoose");
++const { LIMITS, FEATURES } = require("../config/planFeatures");
++const { billingOn } = require("../utils/subscription");
++const { enforcementOn, checkGate } = require("../utils/planGate");
++
++const TIME_LIMIT_MS = 1500;
++const LIMIT_KEYS = new Set(LIMITS.map(l => l.key));
++const FEATURE_KEYS = new Set(FEATURES.map(f => f.key));
++
++// The three "add" forms: which limit applies, and where the form posts to.
++const FORMS = {
++  "/user/addnewhostel":  { limit: "maxProperties", kind: "property", action: "/user/create-hostel", what: "property" },
++  "/user/newmember":     { limit: "maxTenants",    kind: "tenant",   action: "/user/newMember",     what: "tenant" },
++  "/user/list-property": { limit: "maxListings",   kind: "listing",  action: "/user/new-list-property", what: "listing" },
++};
++const day = d => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
++
++async function build(req, ownerId, key, form, isListings) {
++  const out = { open: false, lock: null, plans: [], notice: "", draft: null, offer: null, held: [], form: form || null };
++  const on = await enforcementOn();
++
++  // Is the owner really stopped right now? (After upgrading, the same link shows no popup.)
++  const rule = key ? (LIMIT_KEYS.has(key) ? { limit: key } : { feature: key }) : form ? { limit: form.limit } : null;
++  const lock = on && rule ? await checkGate(ownerId, rule, {}) : null;
++
++  if (lock) {
++    out.lock = { title: lock.title, message: lock.message, kind: lock.kind };
++    out.open = !!key;
++    const info = await require("../utils/planView").loadPlanInfo(ownerId);
++    const payOnline = require("../utils/razorpay").configured();
++    const all = info ? info.plans.filter(p => !p.isCurrent) : [];
++    // Prefer the plans that actually lift this limit or include this feature.
++    const solves = p => lock.kind === "feature"
++      ? p.featureKeys.includes(lock.key)
++      : (p.limits[lock.key] === null || p.limits[lock.key] === undefined || Number(p.limits[lock.key]) > Number(lock.used));
++    const good = all.filter(solves);
++    out.plans = (good.length ? good : all).slice(0, 3).map(p => ({
++      name: p.name, description: p.description, badge: p.badge, price: p.price, strikePrice: p.strikePrice, per: p.per,
++      lines: p.limitLines.concat(p.features.filter(f => f.on).map(f => f.label)).slice(0, 5),
++      href: payOnline && p.price > 0 ? `/user/account/checkout/${p.id}` : "/user/account/plans",
++    }));
++    if (form) {   // stays on the form after the popup is closed, with a button to open it again
++      out.notice = form.kind === "listing"
++        ? `${lock.message.split(". ")[0]}. You can still submit this listing: it will be saved as a draft, hidden from hostelnode.com until you upgrade.`
++        : `${lock.message.split(". ")[0]}. You can still fill this in: it will be saved as a draft until you upgrade.`;
++    }
++  }
++
++  // Saved drafts for this form (Add Property / Add Tenant).
++  if (form && form.kind !== "listing") {
++    const PlanDraft = require("../models/planDraft");
++    const want = typeof req.query.draft === "string" && mongoose.isValidObjectId(req.query.draft) ? req.query.draft : null;
++    if (want) {
++      const d = await PlanDraft.findOne({ _id: want, owner: ownerId, kind: form.kind }).lean();
++      if (d) out.draft = { id: String(d._id), action: form.action, fields: (d.fields || []).map(f => ({ n: f.n, v: f.v })), savedOn: day(d.createdAt) };
++    }
++    if (!out.draft) {
++      const latest = await PlanDraft.findOne({ owner: ownerId, kind: form.kind }).sort({ createdAt: -1 }).select("_id createdAt").lean();
++      if (latest) out.offer = { id: String(latest._id), savedOn: day(latest.createdAt), href: `${req.path}?draft=${latest._id}` };
++    }
++  }
++
++  // Listings saved as hidden drafts.
++  if (isListings) {
++    const Listing = require("../models/listingProperty");
++    const held = await Listing.find({ owner: ownerId, planHold: true }).select("title").sort({ createdAt: -1 }).limit(20).lean();
++    out.held = held.map(l => ({ id: String(l._id), title: l.title || "Listing" }));
++  }
++
++  return (out.lock || out.draft || out.offer || out.held.length) ? out : null;
++}
++
++module.exports = async function planPopup(req, res, next) {
++  res.locals.hnUpgrade = null;
++  let timer;
++  try {
++    if (!billingOn() || process.env.HN_NEW_UI === "0" || req.method !== "GET" || !req.path.startsWith("/user")) return next();
++
++    const path = req.path.replace(/\/+$/, "").toLowerCase();
++    const form = FORMS[path] || null;
++    const isListings = path === "/user/my-listings";
++    let key = typeof req.query.upgrade === "string" ? req.query.upgrade : "";
++    // Set by the listing form (it is sent by script, so it cannot carry ?upgrade= itself).
++    // It is used up only by My Listings, the page that form goes to next.
++    if (!key && isListings && req.session && req.session.hnUpgradeOnce) { key = String(req.session.hnUpgradeOnce); delete req.session.hnUpgradeOnce; }
++    if (!LIMIT_KEYS.has(key) && !FEATURE_KEYS.has(key)) key = "";
++    if (!key && !form && !isListings) return next();          // every other page: nothing to do
++
++    const token = req.cookies && req.cookies.token;
++    if (!token) return next();
++    let ownerId;
++    try {
++      const decoded = jwt.verify(token, process.env.JWT_SECRET);
++      if (!decoded || !decoded.id || !mongoose.isValidObjectId(decoded.id)) return next();
++      ownerId = new mongoose.Types.ObjectId(String(decoded.id));
++    } catch { return next(); }
++
++    const NONE = Symbol("none");
++    const data = await Promise.race([
++      build(req, ownerId, key, form, isListings),
++      new Promise(resolve => { timer = setTimeout(() => resolve(NONE), TIME_LIMIT_MS); }),
++    ]);
++    if (data !== NONE) res.locals.hnUpgrade = data;
++  } catch (err) {
++    console.error("planPopup (non-fatal):", err.message);
++    res.locals.hnUpgrade = null;
++  }
++  clearTimeout(timer);
++  next();
++};
+diff --git a/app.js b/app.js
+index c3d0f84..8407bac 100644
+--- a/app.js
++++ b/app.js
+@@ -110,6 +110,7 @@ app.use(require("./Middlewares/navData"));
+ app.use(require("./Middlewares/startTrial"));   // Subscriptions Phase 2: starts the free trial (once per login session)
+ app.use(require("./Middlewares/planBanner"));   // Subscriptions Phase 4: "plan ends soon" notice (only when reminders are on)
+ app.use(require("./Middlewares/planGate"));     // Subscriptions Phase 4: plan limits (only when switched on in admin)
++app.use(require("./Middlewares/planPopup"));    // Subscriptions: upgrade popup, limit notice and saved drafts (only on the pages that need them)
+ 
+ app.use("/webhook",     waBot);
+ app.use("/user",        userRouter);
+@@ -118,6 +119,7 @@ app.use("/user",        require("./routes/leadsRoutes")); // Phase 3 (redesign)
+ app.use("/user",        require("./routes/accountRoutes")); // Phase 4 (redesign) — /user/account/*, /user/notifications
+ app.use("/user",        require("./routes/planRoutes"));    // Subscriptions Phase 2 — /user/account/plans
+ app.use("/user",        require("./routes/checkoutRoutes"));   // Subscriptions Phase 3 — pay page, verify, receipt
++app.use("/user",        require("./routes/planDraftRoutes"));  // Subscriptions — discard a draft, publish a hidden-draft listing
+ app.use("/payments/razorpay", require("./routes/checkoutRoutes").webhook);   // Subscriptions Phase 3 — POST /payments/razorpay/webhook
+ // Phase 4 (redesign) — the previous navbar linked here; send those to the real pages.
+ app.get("/account/settings", (req, res) => res.redirect("/user/account/settings"));
+diff --git a/models/listingProperty.js b/models/listingProperty.js
+index 844d634..646cf9b 100644
+--- a/models/listingProperty.js
++++ b/models/listingProperty.js
+@@ -174,6 +174,14 @@ const listingSchema = new mongoose.Schema({
+   isVerified: {
+     type: Boolean,
+     default: false
++  },
++
++  // Subscriptions: true while a listing is a hidden draft because the owner
++  // was at their plan's listing limit when they submitted it. A held listing
++  // stays "Pending" (not shown on hostelnode.com) until the owner publishes it.
++  planHold: {
++    type: Boolean,
++    default: false
+   }
+ 
+ }, { timestamps: true });
+diff --git a/models/planDraft.js b/models/planDraft.js
+new file mode 100644
+index 0000000..832d8f5
+--- /dev/null
++++ b/models/planDraft.js
+@@ -0,0 +1,34 @@
++/* ============================================================
++   models/planDraft.js  —  Subscriptions: saved form drafts
++
++   When an owner fills the Add Property or Add Tenant form but is
++   at their plan's limit, what they typed is kept here so it is not
++   lost. It comes back in the form after they upgrade.
++
++   New collection ("plandrafts"). A draft deletes itself after 30
++   days. Nothing here is a real property or tenant until the owner
++   submits the form again.
++============================================================ */
++
++const mongoose = require("mongoose");
++
++const planDraftSchema = new mongoose.Schema({
++  owner: { type: mongoose.Schema.Types.ObjectId, ref: "Owner", required: true, index: true },
++  kind:  { type: String, enum: ["property", "tenant"], required: true },
++  // The form exactly as typed: field name → value.
++  fields: { type: [{ _id: false, n: { type: String, maxlength: 80 }, v: { type: String, maxlength: 500 } }], default: [] },
++  // Tenant drafts: which property was selected when it was typed.
++  hostel: { type: mongoose.Schema.Types.ObjectId, ref: "Hostel", default: null },
++  // The database removes the draft by itself at this moment.
++  expireAt: { type: Date, required: true },
++}, { timestamps: true });
++
++planDraftSchema.index({ expireAt: 1 }, { expireAfterSeconds: 0 });
++planDraftSchema.index({ owner: 1, kind: 1, createdAt: -1 });
++
++const PlanDraft = mongoose.models.PlanDraft || mongoose.model("PlanDraft", planDraftSchema);
++
++// If the "delete after 30 days" rule could not be set up in the database, say so in the log.
++PlanDraft.on("index", err => { if (err) console.error("PlanDraft index (drafts will not expire by themselves):", err.message); });
++
++module.exports = PlanDraft;
+diff --git a/routes/planDraftRoutes.js b/routes/planDraftRoutes.js
+new file mode 100644
+index 0000000..2605024
+--- /dev/null
++++ b/routes/planDraftRoutes.js
+@@ -0,0 +1,71 @@
++/* ============================================================
++   routes/planDraftRoutes.js  —  Subscriptions: drafts
++   Mounted at /user in app.js:
++     POST /user/account/drafts/:id/delete   throw away a saved form draft
++     POST /user/listing/:id/publish         publish a listing that was saved
++                                            as a hidden draft at the plan limit
++   Every route acts only on the logged-in owner's own records.
++============================================================ */
++
++const express  = require("express");
++const mongoose = require("mongoose");
++const router   = express.Router();
++
++const { jwtAuthMiddleware } = require("../jwt.js");
++const PlanDraft = require("../models/planDraft");
++const Listing   = require("../models/listingProperty");
++const { enforcementOn, checkGate } = require("../utils/planGate");
++
++const validId = id => typeof id === "string" && mongoose.isValidObjectId(id);
++const FORM_OF = { property: "/user/addnewhostel", tenant: "/user/newmember" };
++
++router.post("/account/drafts/:id/delete", jwtAuthMiddleware, async (req, res) => {
++  try {
++    if (!validId(req.params.id) || !validId(String(req.user.id))) return res.redirect("/user");
++    const d = await PlanDraft.findOneAndDelete({ _id: req.params.id, owner: req.user.id }).lean();
++    res.redirect((d && FORM_OF[d.kind]) || "/user");
++  } catch (err) {
++    console.error("Draft delete error:", err.message);
++    res.redirect("/user");
++  }
++});
++
++router.post("/listing/:id/publish", jwtAuthMiddleware, async (req, res) => {
++  try {
++    if (!validId(req.params.id) || !validId(String(req.user.id))) return res.redirect("/user/my-listings");
++    const listing = await Listing.findOne({ _id: req.params.id, owner: req.user.id, planHold: true }).select("_id").lean();
++    if (!listing) return res.redirect("/user/my-listings");
++
++    // Still at the limit? Then it stays a draft and the upgrade popup opens.
++    // (If the plan cannot be checked, publishing is allowed.)
++    let lock = null;
++    try { if (await enforcementOn()) lock = await checkGate(new mongoose.Types.ObjectId(String(req.user.id)), { limit: "maxListings" }, {}); }
++    catch (e) { console.error("Publish check (non-fatal):", e.message); }
++    if (lock) return res.redirect("/user/my-listings?upgrade=maxListings");
++
++    await Listing.updateOne({ _id: listing._id, owner: req.user.id, planHold: true }, { $set: { planHold: false, status: "Approved" } });
++
++    // Two Publish clicks at the same moment could both get through: check
++    // again now that it is live, and take this one back if the plan is exceeded.
++    try {
++      if (await enforcementOn()) {
++        const ownerId = new mongoose.Types.ObjectId(String(req.user.id));
++        const plan = await require("../utils/subscription").resolveOwnerPlan(ownerId);
++        const cap = plan.state === "none" || !plan.limits ? null : plan.limits.maxListings;
++        if (cap !== null && cap !== undefined) {
++          const live = await Listing.countDocuments({ owner: ownerId, $or: [{ planHold: { $ne: true } }, { status: "Approved" }] });
++          if (live > Number(cap)) {
++            await Listing.updateOne({ _id: listing._id, owner: req.user.id }, { $set: { planHold: true, status: "Pending" } });
++            return res.redirect("/user/my-listings?upgrade=maxListings");
++          }
++        }
++      }
++    } catch (e) { console.error("Publish re-check (non-fatal):", e.message); }
++    res.redirect("/user/my-listings");
++  } catch (err) {
++    console.error("Listing publish error:", err.message);
++    res.redirect("/user/my-listings");
++  }
++});
++
++module.exports = router;
+diff --git a/routes/userRoutes.js b/routes/userRoutes.js
+index 66ca3af..95520f4 100644
+--- a/routes/userRoutes.js
++++ b/routes/userRoutes.js
+@@ -1577,10 +1577,20 @@ router.post("/new-list-property", jwtAuthMiddleware, attachHostel, listingUpload
+       owner: userId, title, description, propertyType, gender,
+       startingPrice, deposit, capacity, location, rooms,
+       images: req.files.map(f => f.filename),
+-      amenities, rules, contact, status: "Approved"
++      amenities, rules, contact,
++      // Subscriptions: at the plan's listing limit the listing is saved as a
++      // hidden draft (Middlewares/planGate.js sets req.hnPlanHold).
++      status: req.hnPlanHold ? "Pending" : "Approved",
++      planHold: !!req.hnPlanHold
+     });
+     await newListing.save();
+ 
++    if (req.hnPlanHold) {
++      // The form is sent by script and then opens My Listings, where the upgrade popup shows once.
++      if (req.session) req.session.hnUpgradeOnce = "maxListings";
++      return res.status(201).json({ ok: true, held: true });
++    }
++
+     const user = await Owner.findById(userId).lean();
+ 
+     // Email (non-blocking)
+@@ -1763,7 +1773,7 @@ router.post('/listing/:id/edit', jwtAuthMiddleware, listingUploadMiddleware, asy
+       });const uploadDir = '/secure_uploads/profiles';
+     }
+ 
+-    listing.status = "Approved";
++    listing.status = listing.planHold ? "Pending" : "Approved";   // a hidden draft stays hidden when edited
+     await listing.save();
+     res.redirect("/user/my-listings");
+ 
+diff --git a/utils/planGate.js b/utils/planGate.js
+index 4ef3535..0a93c0a 100644
+--- a/utils/planGate.js
++++ b/utils/planGate.js
+@@ -22,17 +22,21 @@ const { billingOn, resolveOwnerPlan, ensureTrial } = require("./subscription");
+ 
+ // method + path (as mounted in app.js) → what the plan must allow.
+ const ID = "[^/]+";
++// kind / form: for the three "add" actions — what is being added and the
++//   page its form lives on (used to keep the owner's typed form as a draft).
++// back: for locked features — the page the owner is returned to, where the
++//   upgrade popup opens.
+ const RULES = [
+-  { method: "GET",  re: /^\/user\/addnewhostel\/?$/i,                       limit: "maxProperties" },
+-  { method: "POST", re: /^\/user\/create-hostel\/?$/i,                      limit: "maxProperties" },
+-  { method: "GET",  re: /^\/user\/newmember\/?$/i,                          limit: "maxTenants", featureIfQuery: { enquiry: "convertLead" } },
+-  { method: "POST", re: /^\/user\/newmember\/?$/i,                          limit: "maxTenants" },
+-  { method: "GET",  re: /^\/user\/list-property\/?$/i,                      limit: "maxListings" },
+-  { method: "POST", re: /^\/user\/new-list-property\/?$/i,                  limit: "maxListings" },
+-  { method: "GET",  re: /^\/user\/revenue\/?$/i,                            feature: "reports" },
+-  { method: "GET",  re: /^\/user\/(deureports|upcomingPayments)\/?$/i,      feature: "duesReport" },
+-  { method: "POST", re: new RegExp(`^/user/enquiries/${ID}/status/?$`, "i"), feature: "leadStatus" },
+-  { method: "POST", re: new RegExp(`^/user/enquiries/${ID}/chat/?$`, "i"),   feature: "chatReply" },
++  { method: "GET",  re: /^\/user\/addnewhostel\/?$/i,                       limit: "maxProperties", kind: "property", form: "/user/addnewhostel" },
++  { method: "POST", re: /^\/user\/create-hostel\/?$/i,                      limit: "maxProperties", kind: "property", form: "/user/addnewhostel" },
++  { method: "GET",  re: /^\/user\/newmember\/?$/i,                          limit: "maxTenants", kind: "tenant", form: "/user/newmember", featureIfQuery: { enquiry: "convertLead" }, back: "/user/leads" },
++  { method: "POST", re: /^\/user\/newmember\/?$/i,                          limit: "maxTenants", kind: "tenant", form: "/user/newmember" },
++  { method: "GET",  re: /^\/user\/list-property\/?$/i,                      limit: "maxListings", kind: "listing", form: "/user/list-property" },
++  { method: "POST", re: /^\/user\/new-list-property\/?$/i,                  limit: "maxListings", kind: "listing", form: "/user/list-property" },
++  { method: "GET",  re: /^\/user\/revenue\/?$/i,                            feature: "reports", back: "/user" },
++  { method: "GET",  re: /^\/user\/(deureports|upcomingPayments)\/?$/i,      feature: "duesReport", back: "/user" },
++  { method: "POST", re: new RegExp(`^/user/enquiries/${ID}/status/?$`, "i"), feature: "leadStatus", back: "/user/leads" },
++  { method: "POST", re: new RegExp(`^/user/enquiries/${ID}/chat/?$`, "i"),   feature: "chatReply", back: "/user/leads" },
+ ];
+ 
+ // The path is tidied the way Express itself reads it (repeated slashes,
+@@ -51,7 +55,9 @@ const LIMIT_ACTION = { maxProperties: "add another property", maxTenants: "add a
+ async function countUsed(limitKey, ownerId) {
+   if (limitKey === "maxProperties") return require("../models/hostel").countDocuments({ owner: ownerId }).maxTimeMS(1500);
+   if (limitKey === "maxTenants")    return require("../models/member").countDocuments({ user: ownerId, status: "Active" }).maxTimeMS(1500);
+-  if (limitKey === "maxListings")   return require("../models/listingProperty").countDocuments({ owner: ownerId }).maxTimeMS(1500);
++  // Listings saved as hidden drafts (planHold) do not use up the limit.
++  // (A held listing that is public anyway is counted, so the limit cannot be dodged.)
++  if (limitKey === "maxListings")   return require("../models/listingProperty").countDocuments({ owner: ownerId, $or: [{ planHold: { $ne: true } }, { status: "Approved" }] }).maxTimeMS(1500);
+   return 0;
+ }
+ 
+@@ -68,8 +74,9 @@ async function enforcementOn() {
+ }
+ 
+ /* Returns null when the action is allowed, or a description of why not:
+-   { kind:"limit"|"feature", title, message, planName } */
+-async function checkGate(ownerId, rule, query) {
++   { kind:"limit"|"feature", key, title, message, planName, used?, limit? }
++   opts.skipLimit: only check the feature part of the rule. */
++async function checkGate(ownerId, rule, query, opts) {
+   // An owner who has never had a plan gets their free trial first (when trials
+   // are on), so nobody is judged on the Default plan before their trial started.
+   try { await ensureTrial(ownerId); } catch (err) { console.error("planGate trial (non-fatal):", err.message); }
+@@ -88,13 +95,13 @@ async function checkGate(ownerId, rule, query) {
+   if (wantFeature && !(plan.features && plan.features[wantFeature] === true)) {
+     const f = FEATURES.find(x => x.key === wantFeature);
+     return {
+-      kind: "feature", planName: plan.name,
++      kind: "feature", key: wantFeature, planName: plan.name,
+       title: `${f ? f.label : "This feature"} is not part of your plan`,
+       message: `You are on the ${plan.name} plan. Upgrade to a plan that includes ${f ? f.label.toLowerCase() : "this feature"}.`,
+     };
+   }
+ 
+-  if (rule.limit) {
++  if (rule.limit && !(opts && opts.skipLimit)) {
+     const raw = plan.limits ? plan.limits[rule.limit] : null;
+     if (raw === null || raw === undefined) return null;             // unlimited
+     const limit = Number(raw);
+@@ -104,7 +111,7 @@ async function checkGate(ownerId, rule, query) {
+     const noun = LIMIT_NOUN[rule.limit] || ["item", "items"];
+     const l = LIMITS.find(x => x.key === rule.limit);
+     return {
+-      kind: "limit", planName: plan.name,
++      kind: "limit", key: rule.limit, planName: plan.name, used, limit,
+       title: `You have reached your plan's limit`,
+       message: `Your ${plan.name} plan allows ${limit} ${limit === 1 ? noun[0] : noun[1]} and you have ${used}. Upgrade to ${LIMIT_ACTION[rule.limit] || "add more"}.`,
+       limitLabel: l ? l.label : "",
+diff --git a/utils/planView.js b/utils/planView.js
+index ced876b..c6e5722 100644
+--- a/utils/planView.js
++++ b/utils/planView.js
+@@ -47,6 +47,9 @@ function planCard(p, currentPlanId) {
+     features: FEATURES.map(f => ({ label: f.label, on: !!(p.features && p.features[f.key]) })),
+     points: (p.displayPoints || []).slice(0, 10),
+     isCurrent: !!currentPlanId && String(p._id) === String(currentPlanId),
++    // for the upgrade popup: which plans lift a given limit / include a given feature
++    limits: Object.fromEntries(LIMITS.map(l => [l.key, p.limits && p.limits[l.key] !== undefined ? p.limits[l.key] : null])),
++    featureKeys: FEATURES.filter(f => p.features && p.features[f.key]).map(f => f.key),
+   };
+ }
+ 
+diff --git a/utils/subscription.js b/utils/subscription.js
+index 25f4bf3..8527625 100644
+--- a/utils/subscription.js
++++ b/utils/subscription.js
+@@ -138,7 +138,7 @@ async function ownerUsage(ownerId) {
+   const [properties, tenants, listings] = await Promise.all([
+     Hostel.countDocuments({ owner: ownerId }),
+     Member.countDocuments({ user: ownerId, status: "Active" }),
+-    Listing.countDocuments({ owner: ownerId }),
++    Listing.countDocuments({ owner: ownerId, $or: [{ planHold: { $ne: true } }, { status: "Approved" }] }),   // hidden draft listings are not counted
+   ]);
+   return { maxProperties: properties, maxTenants: tenants, maxListings: listings };
+ }
+diff --git a/views/includes/planPopup.ejs b/views/includes/planPopup.ejs
+new file mode 100644
+index 0000000..1c55bb9
+--- /dev/null
++++ b/views/includes/planPopup.ejs
+@@ -0,0 +1,145 @@
++<%# Subscriptions — upgrade popup, limit notice, draft restore, hidden-draft listings
++    (Middlewares/planPopup.js). Renders nothing unless there is something to show. %>
++<% const hnU = (typeof hnUpgrade !== "undefined" && hnUpgrade) ? hnUpgrade : null; %>
++<% if (hnU) { const inrU = n => "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(n) || 0); %>
++<style>
++  .hn2u, .hn2u * { box-sizing: border-box; font-family: 'DM Sans', sans-serif; }
++  .hn2u-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 32px; font-size: 13px; font-weight: 600; border-bottom: 1px solid; }
++  .hn2u-strip.is-limit { background: #fff8ec; border-color: #fbe6b8; color: #7a5510; }
++  .hn2u-strip.is-draft { background: #f0f9ff; border-color: #cfe8fb; color: #0b4a6f; }
++  .hn2u-strip.is-ok    { background: #e8f9f0; border-color: #bfeed3; color: #0a7d4c; }
++  .hn2u-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
++  .hn2u-acts form { margin: 0; }
++  .hn2u-sbtn, .hn2u-sbtn:hover { display: inline-flex; align-items: center; min-height: 32px; padding: 5px 14px; border-radius: 9px; background: #12151a; color: #fff; font-size: 12.5px; font-weight: 700; text-decoration: none; border: 0; cursor: pointer; }
++  .hn2u-sbtn.is-ghost, .hn2u-sbtn.is-ghost:hover { background: transparent; color: inherit; border: 1px solid currentColor; }
++  .hn2u-held { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; width: 100%; }
++  .hn2u-held li { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
++
++  .hn2u-back { position: fixed; inset: 0; z-index: 2000; background: rgba(15,17,23,0.55); display: none; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
++  .hn2u-back.is-open { display: flex; }
++  .hn2u-box { position: relative; width: 100%; max-width: 860px; background: #fff; border-radius: 20px; box-shadow: 0 24px 60px rgba(15,17,23,0.28); padding: 28px 26px 22px; margin: auto; }
++  .hn2u-x { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; border: 0; background: #f2f4f7; color: #475467; font-size: 18px; line-height: 1; cursor: pointer; }
++  .hn2u-x:hover { background: #e4e7ec; }
++  .hn2u-eyebrow { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #92660c; background: #fff8ec; border: 1px solid #fbe6b8; border-radius: 99px; padding: 3px 10px; }
++  .hn2u .hn2u-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: #12151a; margin: 10px 40px 6px 0; letter-spacing: -0.01em; }
++  .hn2u-msg { font-size: 14px; color: #475467; font-weight: 500; line-height: 1.5; margin: 0; }
++  .hn2u-saved { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #f0fdf6; border: 1px solid #c9f0db; color: #0a7d4c; font-size: 12.5px; font-weight: 600; }
++  .hn2u-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 18px; }
++  .hn2u-plan { position: relative; display: flex; flex-direction: column; border: 1px solid #e4e7ec; border-radius: 14px; padding: 18px 16px 16px; background: #fff; }
++  .hn2u-plan.is-first { border-color: #0EA968; box-shadow: 0 0 0 3px rgba(14,169,104,0.12); }
++  .hn2u-pbadge { position: absolute; top: -9px; left: 14px; background: #12151a; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 2px 9px; border-radius: 99px; }
++  .hn2u-pname { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; color: #12151a; }
++  .hn2u-pprice { display: flex; align-items: baseline; gap: 6px; margin-top: 8px; }
++  .hn2u-pprice b { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: #12151a; line-height: 1; }
++  .hn2u-pprice s { font-size: 12.5px; color: #98a2b3; }
++  .hn2u-pper { font-size: 12px; color: #667085; font-weight: 600; margin-top: 2px; }
++  .hn2u-plines { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; flex: 1; align-content: start; }
++  .hn2u-plines li { font-size: 12.5px; color: #344054; font-weight: 600; display: flex; gap: 7px; }
++  .hn2u-plines li::before { content: "✓"; color: #0a7d4c; font-weight: 900; }
++  .hn2u-choose, .hn2u-choose:hover { margin-top: 14px; display: inline-flex; align-items: center; justify-content: center; min-height: 42px; border-radius: 10px; background: #0EA968; color: #fff; font-size: 13.5px; font-weight: 800; text-decoration: none; }
++  .hn2u-choose:hover { background: #0c9a5f; }
++  .hn2u-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 18px; font-size: 12.5px; color: #667085; font-weight: 500; }
++  .hn2u-foot a { color: #0a7d4c; font-weight: 700; text-decoration: none; }
++  .hn2u-later { background: transparent; border: 0; color: #667085; font-size: 13px; font-weight: 700; cursor: pointer; padding: 6px 4px; }
++  @media (max-width: 767px) { .hn2u-strip { padding: 10px 14px; } .hn2u-box { padding: 22px 16px 18px; border-radius: 16px; } .hn2u .hn2u-title { font-size: 19px; } }
++</style>
++<div class="hn2u">
++  <% if (hnU.notice) { %>
++    <div class="hn2u-strip is-limit" role="status"><span><%= hnU.notice %></span>
++      <div class="hn2u-acts"><button type="button" class="hn2u-sbtn" data-hn2u-open>See plans</button></div></div>
++  <% } %>
++  <% if (hnU.draft) { %>
++    <div class="hn2u-strip is-ok" role="status"><span>Your draft from <%= hnU.draft.savedOn %> is filled in below. Check it and submit.</span>
++      <div class="hn2u-acts"><form method="POST" action="/user/account/drafts/<%= hnU.draft.id %>/delete"><button type="submit" class="hn2u-sbtn is-ghost">Discard draft</button></form></div></div>
++  <% } else if (hnU.offer) { %>
++    <div class="hn2u-strip is-draft" role="status"><span>You have a saved draft from <%= hnU.offer.savedOn %>.</span>
++      <div class="hn2u-acts"><a class="hn2u-sbtn" href="<%= hnU.offer.href %>">Restore draft</a>
++        <form method="POST" action="/user/account/drafts/<%= hnU.offer.id %>/delete"><button type="submit" class="hn2u-sbtn is-ghost">Discard</button></form></div></div>
++  <% } %>
++  <% if (hnU.held && hnU.held.length) { %>
++    <div class="hn2u-strip is-draft" role="status">
++      <span><%= hnU.held.length === 1 ? "1 listing is saved as a draft" : hnU.held.length + " listings are saved as drafts" %> and not shown on hostelnode.com yet.</span>
++      <ul class="hn2u-held">
++        <% hnU.held.forEach(function (l) { %>
++          <li><span><%= l.title %></span><form method="POST" action="/user/listing/<%= l.id %>/publish" style="margin:0"><button type="submit" class="hn2u-sbtn">Publish</button></form></li>
++        <% }) %>
++      </ul>
++    </div>
++  <% } %>
++
++  <% if (hnU.lock) { %>
++  <div class="hn2u-back <%= hnU.open ? 'is-open' : '' %>" id="hn2uBack">
++    <div class="hn2u-box" role="dialog" aria-modal="true" aria-labelledby="hn2uTitle" tabindex="-1" id="hn2uBox">
++      <button type="button" class="hn2u-x" data-hn2u-close aria-label="Close">×</button>
++      <span class="hn2u-eyebrow"><%= hnU.lock.kind === "feature" ? "Not in your plan" : "Plan limit reached" %></span>
++      <h2 class="hn2u-title" id="hn2uTitle"><%= hnU.lock.kind === "feature" ? hnU.lock.title : "Upgrade to add more" %></h2>
++      <p class="hn2u-msg"><%= hnU.lock.message %></p>
++      <% if (hnU.draft) { %><div class="hn2u-saved">What you just typed is saved as a draft. It will be waiting in the form after you upgrade.</div><% } %>
++      <% if (hnU.form && hnU.form.kind === "listing" && hnU.open) { %><div class="hn2u-saved">Your listing is saved as a draft. It is not shown on hostelnode.com yet; publish it from My Listings after you upgrade.</div><% } %>
++
++      <% if (hnU.plans.length) { %>
++        <div class="hn2u-plans">
++          <% hnU.plans.forEach(function (p, i) { %>
++            <div class="hn2u-plan <%= i === 0 ? 'is-first' : '' %>">
++              <% if (p.badge) { %><span class="hn2u-pbadge"><%= p.badge %></span><% } %>
++              <div class="hn2u-pname"><%= p.name %></div>
++              <div class="hn2u-pprice"><b><%= p.price ? inrU(p.price) : "Free" %></b><% if (p.strikePrice) { %><s><%= inrU(p.strikePrice) %></s><% } %></div>
++              <div class="hn2u-pper"><%= p.per %></div>
++              <ul class="hn2u-plines"><% p.lines.forEach(function (t) { %><li><span><%= t %></span></li><% }) %></ul>
++              <a class="hn2u-choose" href="<%= p.href %>">Choose <%= p.name %></a>
++            </div>
++          <% }) %>
++        </div>
++      <% } %>
++      <div class="hn2u-foot">
++        <span>Everything you already have stays safe and usable. <a href="/user/account/plans">Compare all plans</a></span>
++        <button type="button" class="hn2u-later" data-hn2u-close>Not now</button>
++      </div>
++    </div>
++  </div>
++  <% } %>
++</div>
++<% if (hnU.draft) { %><script type="application/json" id="hn2uDraft"><%- JSON.stringify({ id: hnU.draft.id, action: hnU.draft.action, fields: hnU.draft.fields }).replace(/</g, "\\u003c") %></script><% } %>
++<script>
++(function () {
++  var back = document.getElementById('hn2uBack'), box = document.getElementById('hn2uBox'), last = null;
++  function lock(on) { try { document.body.style.overflow = on ? 'hidden' : ''; } catch (e) {} }
++  function open() { if (!back) return; last = document.activeElement; back.classList.add('is-open'); lock(true); if (box) box.focus(); }
++  function close() { if (!back) return; back.classList.remove('is-open'); lock(false); if (last && last.focus) last.focus();
++    // tidy the address bar so a reload does not reopen the popup
++    try { var u = new URL(location.href); if (u.searchParams.has('upgrade')) { u.searchParams.delete('upgrade'); history.replaceState(null, '', u.pathname + (u.search || '') + u.hash); } } catch (e) {} }
++  document.querySelectorAll('[data-hn2u-open]').forEach(function (b) { b.addEventListener('click', open); });
++  document.querySelectorAll('[data-hn2u-close]').forEach(function (b) { b.addEventListener('click', close); });
++  if (back) {
++    back.addEventListener('click', function (e) { if (e.target === back) close(); });
++    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && back.classList.contains('is-open')) close(); });
++    if (back.classList.contains('is-open')) { lock(true); if (box) box.focus(); }
++  }
++
++  // Put a saved draft back into its form.
++  var holder = document.getElementById('hn2uDraft');
++  if (!holder) return;
++  var draft; try { draft = JSON.parse(holder.textContent); } catch (e) { return; }
++  function fill() {
++    var form = null;
++    document.querySelectorAll('form').forEach(function (f) { if (!form && (f.getAttribute('action') || '').toLowerCase() === String(draft.action).toLowerCase()) form = f; });
++    if (!form) return;
++    // Tell the server which draft this form came from, so it is removed once the form is saved.
++    form.setAttribute('action', draft.action + '?hnDraft=' + encodeURIComponent(draft.id));
++    (draft.fields || []).forEach(function (f) {
++      for (var i = 0; i < form.elements.length; i++) {
++        var el = form.elements[i];
++        if (el.name !== f.n || el.type === 'file' || el.type === 'hidden' || el.type === 'submit' || el.type === 'button') continue;
++        if (el.type === 'checkbox' || el.type === 'radio') { el.checked = (el.value === f.v); }
++        else {
++          if (el.tagName === 'SELECT') { var ok = false; for (var j = 0; j < el.options.length; j++) if (el.options[j].value === f.v) ok = true; if (!ok) continue; }
++          el.value = f.v;
++        }
++        try { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
++      }
++    });
++  }
++  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fill); else fill();
++})();
++</script>
++<% } %>
+diff --git a/views/layouts/boilerplate.ejs b/views/layouts/boilerplate.ejs
+index ba00b47..2a26459 100644
+--- a/views/layouts/boilerplate.ejs
++++ b/views/layouts/boilerplate.ejs
+@@ -53,6 +53,8 @@
+   <div class="hn-page-body">
+     <%# Subscriptions Phase 4 — plan / trial expiry notice; renders nothing unless there is one. %>
+     <% if (hnNewUI) { %><%- include("../includes/planBanner.ejs") %><% } %>
++    <%# Subscriptions — upgrade popup, limit notice, saved drafts; renders nothing unless needed. %>
++    <% if (hnNewUI) { %><%- include("../includes/planPopup.ejs") %><% } %>
+     <%- body %>
+   </div>
+   <!-- scripts -->

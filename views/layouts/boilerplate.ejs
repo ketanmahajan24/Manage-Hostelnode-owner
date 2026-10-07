@@ -53,6 +53,8 @@
   <div class="hn-page-body">
     <%# Subscriptions Phase 4 — plan / trial expiry notice; renders nothing unless there is one. %>
     <% if (hnNewUI) { %><%- include("../includes/planBanner.ejs") %><% } %>
+    <%# Subscriptions — upgrade popup, limit notice, saved drafts; renders nothing unless needed. %>
+    <% if (hnNewUI) { %><%- include("../includes/planPopup.ejs") %><% } %>
     <%- body %>
   </div>
   <!-- scripts -->

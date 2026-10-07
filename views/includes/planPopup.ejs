@@ -1,0 +1,145 @@
+<%# Subscriptions — upgrade popup, limit notice, draft restore, hidden-draft listings
+    (Middlewares/planPopup.js). Renders nothing unless there is something to show. %>
+<% const hnU = (typeof hnUpgrade !== "undefined" && hnUpgrade) ? hnUpgrade : null; %>
+<% if (hnU) { const inrU = n => "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(n) || 0); %>
+<style>
+  .hn2u, .hn2u * { box-sizing: border-box; font-family: 'DM Sans', sans-serif; }
+  .hn2u-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 32px; font-size: 13px; font-weight: 600; border-bottom: 1px solid; }
+  .hn2u-strip.is-limit { background: #fff8ec; border-color: #fbe6b8; color: #7a5510; }
+  .hn2u-strip.is-draft { background: #f0f9ff; border-color: #cfe8fb; color: #0b4a6f; }
+  .hn2u-strip.is-ok    { background: #e8f9f0; border-color: #bfeed3; color: #0a7d4c; }
+  .hn2u-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hn2u-acts form { margin: 0; }
+  .hn2u-sbtn, .hn2u-sbtn:hover { display: inline-flex; align-items: center; min-height: 32px; padding: 5px 14px; border-radius: 9px; background: #12151a; color: #fff; font-size: 12.5px; font-weight: 700; text-decoration: none; border: 0; cursor: pointer; }
+  .hn2u-sbtn.is-ghost, .hn2u-sbtn.is-ghost:hover { background: transparent; color: inherit; border: 1px solid currentColor; }
+  .hn2u-held { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; width: 100%; }
+  .hn2u-held li { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+
+  .hn2u-back { position: fixed; inset: 0; z-index: 2000; background: rgba(15,17,23,0.55); display: none; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
+  .hn2u-back.is-open { display: flex; }
+  .hn2u-box { position: relative; width: 100%; max-width: 860px; background: #fff; border-radius: 20px; box-shadow: 0 24px 60px rgba(15,17,23,0.28); padding: 28px 26px 22px; margin: auto; }
+  .hn2u-x { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; border: 0; background: #f2f4f7; color: #475467; font-size: 18px; line-height: 1; cursor: pointer; }
+  .hn2u-x:hover { background: #e4e7ec; }
+  .hn2u-eyebrow { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #92660c; background: #fff8ec; border: 1px solid #fbe6b8; border-radius: 99px; padding: 3px 10px; }
+  .hn2u .hn2u-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: #12151a; margin: 10px 40px 6px 0; letter-spacing: -0.01em; }
+  .hn2u-msg { font-size: 14px; color: #475467; font-weight: 500; line-height: 1.5; margin: 0; }
+  .hn2u-saved { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #f0fdf6; border: 1px solid #c9f0db; color: #0a7d4c; font-size: 12.5px; font-weight: 600; }
+  .hn2u-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 18px; }
+  .hn2u-plan { position: relative; display: flex; flex-direction: column; border: 1px solid #e4e7ec; border-radius: 14px; padding: 18px 16px 16px; background: #fff; }
+  .hn2u-plan.is-first { border-color: #0EA968; box-shadow: 0 0 0 3px rgba(14,169,104,0.12); }
+  .hn2u-pbadge { position: absolute; top: -9px; left: 14px; background: #12151a; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 2px 9px; border-radius: 99px; }
+  .hn2u-pname { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; color: #12151a; }
+  .hn2u-pprice { display: flex; align-items: baseline; gap: 6px; margin-top: 8px; }
+  .hn2u-pprice b { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: #12151a; line-height: 1; }
+  .hn2u-pprice s { font-size: 12.5px; color: #98a2b3; }
+  .hn2u-pper { font-size: 12px; color: #667085; font-weight: 600; margin-top: 2px; }
+  .hn2u-plines { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; flex: 1; align-content: start; }
+  .hn2u-plines li { font-size: 12.5px; color: #344054; font-weight: 600; display: flex; gap: 7px; }
+  .hn2u-plines li::before { content: "✓"; color: #0a7d4c; font-weight: 900; }
+  .hn2u-choose, .hn2u-choose:hover { margin-top: 14px; display: inline-flex; align-items: center; justify-content: center; min-height: 42px; border-radius: 10px; background: #0EA968; color: #fff; font-size: 13.5px; font-weight: 800; text-decoration: none; }
+  .hn2u-choose:hover { background: #0c9a5f; }
+  .hn2u-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 18px; font-size: 12.5px; color: #667085; font-weight: 500; }
+  .hn2u-foot a { color: #0a7d4c; font-weight: 700; text-decoration: none; }
+  .hn2u-later { background: transparent; border: 0; color: #667085; font-size: 13px; font-weight: 700; cursor: pointer; padding: 6px 4px; }
+  @media (max-width: 767px) { .hn2u-strip { padding: 10px 14px; } .hn2u-box { padding: 22px 16px 18px; border-radius: 16px; } .hn2u .hn2u-title { font-size: 19px; } }
+</style>
+<div class="hn2u">
+  <% if (hnU.notice) { %>
+    <div class="hn2u-strip is-limit" role="status"><span><%= hnU.notice %></span>
+      <div class="hn2u-acts"><button type="button" class="hn2u-sbtn" data-hn2u-open>See plans</button></div></div>
+  <% } %>
+  <% if (hnU.draft) { %>
+    <div class="hn2u-strip is-ok" role="status"><span>Your draft from <%= hnU.draft.savedOn %> is filled in below. Check it and submit.</span>
+      <div class="hn2u-acts"><form method="POST" action="/user/account/drafts/<%= hnU.draft.id %>/delete"><button type="submit" class="hn2u-sbtn is-ghost">Discard draft</button></form></div></div>
+  <% } else if (hnU.offer) { %>
+    <div class="hn2u-strip is-draft" role="status"><span>You have a saved draft from <%= hnU.offer.savedOn %>.</span>
+      <div class="hn2u-acts"><a class="hn2u-sbtn" href="<%= hnU.offer.href %>">Restore draft</a>
+        <form method="POST" action="/user/account/drafts/<%= hnU.offer.id %>/delete"><button type="submit" class="hn2u-sbtn is-ghost">Discard</button></form></div></div>
+  <% } %>
+  <% if (hnU.held && hnU.held.length) { %>
+    <div class="hn2u-strip is-draft" role="status">
+      <span><%= hnU.held.length === 1 ? "1 listing is saved as a draft" : hnU.held.length + " listings are saved as drafts" %> and not shown on hostelnode.com yet.</span>
+      <ul class="hn2u-held">
+        <% hnU.held.forEach(function (l) { %>
+          <li><span><%= l.title %></span><form method="POST" action="/user/listing/<%= l.id %>/publish" style="margin:0"><button type="submit" class="hn2u-sbtn">Publish</button></form></li>
+        <% }) %>
+      </ul>
+    </div>
+  <% } %>
+
+  <% if (hnU.lock) { %>
+  <div class="hn2u-back <%= hnU.open ? 'is-open' : '' %>" id="hn2uBack">
+    <div class="hn2u-box" role="dialog" aria-modal="true" aria-labelledby="hn2uTitle" tabindex="-1" id="hn2uBox">
+      <button type="button" class="hn2u-x" data-hn2u-close aria-label="Close">×</button>
+      <span class="hn2u-eyebrow"><%= hnU.lock.kind === "feature" ? "Not in your plan" : "Plan limit reached" %></span>
+      <h2 class="hn2u-title" id="hn2uTitle"><%= hnU.lock.kind === "feature" ? hnU.lock.title : "Upgrade to add more" %></h2>
+      <p class="hn2u-msg"><%= hnU.lock.message %></p>
+      <% if (hnU.draft) { %><div class="hn2u-saved">What you just typed is saved as a draft. It will be waiting in the form after you upgrade.</div><% } %>
+      <% if (hnU.form && hnU.form.kind === "listing" && hnU.open) { %><div class="hn2u-saved">Your listing is saved as a draft. It is not shown on hostelnode.com yet; publish it from My Listings after you upgrade.</div><% } %>
+
+      <% if (hnU.plans.length) { %>
+        <div class="hn2u-plans">
+          <% hnU.plans.forEach(function (p, i) { %>
+            <div class="hn2u-plan <%= i === 0 ? 'is-first' : '' %>">
+              <% if (p.badge) { %><span class="hn2u-pbadge"><%= p.badge %></span><% } %>
+              <div class="hn2u-pname"><%= p.name %></div>
+              <div class="hn2u-pprice"><b><%= p.price ? inrU(p.price) : "Free" %></b><% if (p.strikePrice) { %><s><%= inrU(p.strikePrice) %></s><% } %></div>
+              <div class="hn2u-pper"><%= p.per %></div>
+              <ul class="hn2u-plines"><% p.lines.forEach(function (t) { %><li><span><%= t %></span></li><% }) %></ul>
+              <a class="hn2u-choose" href="<%= p.href %>">Choose <%= p.name %></a>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+      <div class="hn2u-foot">
+        <span>Everything you already have stays safe and usable. <a href="/user/account/plans">Compare all plans</a></span>
+        <button type="button" class="hn2u-later" data-hn2u-close>Not now</button>
+      </div>
+    </div>
+  </div>
+  <% } %>
+</div>
+<% if (hnU.draft) { %><script type="application/json" id="hn2uDraft"><%- JSON.stringify({ id: hnU.draft.id, action: hnU.draft.action, fields: hnU.draft.fields }).replace(/</g, "\\u003c") %></script><% } %>
+<script>
+(function () {
+  var back = document.getElementById('hn2uBack'), box = document.getElementById('hn2uBox'), last = null;
+  function lock(on) { try { document.body.style.overflow = on ? 'hidden' : ''; } catch (e) {} }
+  function open() { if (!back) return; last = document.activeElement; back.classList.add('is-open'); lock(true); if (box) box.focus(); }
+  function close() { if (!back) return; back.classList.remove('is-open'); lock(false); if (last && last.focus) last.focus();
+    // tidy the address bar so a reload does not reopen the popup
+    try { var u = new URL(location.href); if (u.searchParams.has('upgrade')) { u.searchParams.delete('upgrade'); history.replaceState(null, '', u.pathname + (u.search || '') + u.hash); } } catch (e) {} }
+  document.querySelectorAll('[data-hn2u-open]').forEach(function (b) { b.addEventListener('click', open); });
+  document.querySelectorAll('[data-hn2u-close]').forEach(function (b) { b.addEventListener('click', close); });
+  if (back) {
+    back.addEventListener('click', function (e) { if (e.target === back) close(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && back.classList.contains('is-open')) close(); });
+    if (back.classList.contains('is-open')) { lock(true); if (box) box.focus(); }
+  }
+
+  // Put a saved draft back into its form.
+  var holder = document.getElementById('hn2uDraft');
+  if (!holder) return;
+  var draft; try { draft = JSON.parse(holder.textContent); } catch (e) { return; }
+  function fill() {
+    var form = null;
+    document.querySelectorAll('form').forEach(function (f) { if (!form && (f.getAttribute('action') || '').toLowerCase() === String(draft.action).toLowerCase()) form = f; });
+    if (!form) return;
+    // Tell the server which draft this form came from, so it is removed once the form is saved.
+    form.setAttribute('action', draft.action + '?hnDraft=' + encodeURIComponent(draft.id));
+    (draft.fields || []).forEach(function (f) {
+      for (var i = 0; i < form.elements.length; i++) {
+        var el = form.elements[i];
+        if (el.name !== f.n || el.type === 'file' || el.type === 'hidden' || el.type === 'submit' || el.type === 'button') continue;
+        if (el.type === 'checkbox' || el.type === 'radio') { el.checked = (el.value === f.v); }
+        else {
+          if (el.tagName === 'SELECT') { var ok = false; for (var j = 0; j < el.options.length; j++) if (el.options[j].value === f.v) ok = true; if (!ok) continue; }
+          el.value = f.v;
+        }
+        try { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+      }
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fill); else fill();
+})();
+</script>
+<% } %>

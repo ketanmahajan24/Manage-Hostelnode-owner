@@ -138,7 +138,7 @@ async function ownerUsage(ownerId) {
   const [properties, tenants, listings] = await Promise.all([
     Hostel.countDocuments({ owner: ownerId }),
     Member.countDocuments({ user: ownerId, status: "Active" }),
-    Listing.countDocuments({ owner: ownerId }),
+    Listing.countDocuments({ owner: ownerId, $or: [{ planHold: { $ne: true } }, { status: "Approved" }] }),   // hidden draft listings are not counted
   ]);
   return { maxProperties: properties, maxTenants: tenants, maxListings: listings };
 }
