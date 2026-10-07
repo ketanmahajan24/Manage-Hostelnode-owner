@@ -67,13 +67,26 @@ function includes(snapshot) {
   return out;
 }
 
-async function mail(to, subject, html) {
+// What the receipt shows, used by the receipt page and the PDF alike.
+function receiptData(rec, sub, owner) {
+  const snap = rec.snapshot || {};
+  return {
+    receipt: rec.receipt, paidAt: dayTime(rec.paidAt || rec.updatedAt), amount: rec.amount,
+    planName: snap.name || "Plan", duration: durationText(snap.duration),
+    from: sub && sub.startsAt ? day(sub.startsAt) : "—", until: sub && sub.expiresAt ? day(sub.expiresAt) : "—",
+    paymentId: rec.razorpayPaymentId || "—", orderId: rec.razorpayOrderId, method: rec.method || "",
+    owner: { name: owner.name || "", business: owner.businessName || "", email: owner.email || "", phone: owner.phone || "", place: [owner.city, owner.state].filter(Boolean).join(", ") },
+    supportEmail: SUPPORT_EMAIL,
+  };
+}
+
+async function mail(to, subject, html, attachments) {
   try {
     if (!to) return;
     if (process.env.MAIL_USER && process.env.MAIL_PASS) {
       const nodemailer = require("nodemailer");
       const t = nodemailer.createTransport({ service: "gmail", auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS } });
-      await t.sendMail({ from: `"HostelNode" <${process.env.MAIL_USER}>`, to, subject, html });
+      await t.sendMail({ from: `"HostelNode" <${process.env.MAIL_USER}>`, to, subject, html, ...(attachments && attachments.length ? { attachments } : {}) });
     } else {
       await require("../utils/sendMail").sendMail(to, subject, html);
     }
@@ -87,15 +100,23 @@ async function sendReceipt(result) {
   try {
     if (!result || !result.ok || !result.fresh || !result.record) return;
     const rec = result.record, sub = result.subscription || {};
-    const owner = await Owner.findById(rec.owner).select("name email phone").lean();
+    const owner = await Owner.findById(rec.owner).select("name email phone businessName city state").lean();
     if (!owner) return;
     const snap = rec.snapshot || {};
-    // WhatsApp: same details, from HostelNode's WhatsApp number. Not awaited; never stops the email.
-    require("../utils/planReceiptWhatsapp").sendPlanReceiptWhatsApp({
-      phone: owner.phone, ownerName: owner.name, planName: snap.name,
-      amountText: inr(rec.amount), validUntil: sub.expiresAt ? day(sub.expiresAt) : "-", receiptNo: rec.receipt,
-    }).catch(() => {});
+    // The receipt as a PDF (if it cannot be built, the email still goes, without the file).
+    let pdf = null;
+    try { pdf = require("../utils/receiptPdf").buildReceiptPdf(receiptData(rec, sub, owner)); }
+    catch (e) { console.error("Receipt PDF (non-fatal):", e.message); }
+    // WhatsApp: the PDF, from HostelNode's WhatsApp number. Not awaited; never stops the email.
+    try {
+      if (pdf) require("../utils/planReceiptWhatsapp").sendPlanReceiptWhatsApp({
+        phone: owner.phone, ownerName: owner.name, planName: snap.name,
+        amountText: inr(rec.amount), validUntil: sub.expiresAt ? day(sub.expiresAt) : "-", receiptNo: rec.receipt, pdf,
+      }).catch(() => {});
+    } catch (e) { console.error("Receipt WhatsApp (non-fatal):", e.message); }
     if (!owner.email) return;
+    const canAttach = !!(process.env.MAIL_USER && process.env.MAIL_PASS);   // the fallback mailer sends no files
+    const files = pdf && canAttach ? [{ filename: `HostelNode-Receipt-${String(rec.receipt || "").replace(/[^A-Za-z0-9-]/g, "")}.pdf`, content: pdf, contentType: "application/pdf" }] : [];
     await mail(owner.email, `Payment received — ${snap.name} plan is active`,
       `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:auto;padding:24px;color:#12151a">
         <h2 style="color:#0a7d4c;margin:0 0 6px">Payment received</h2>
@@ -107,8 +128,8 @@ async function sendReceipt(result) {
           <tr><td style="padding:8px 0;color:#667085">Receipt no.</td><td style="padding:8px 0;text-align:right">${esc(rec.receipt)}</td></tr>
           <tr><td style="padding:8px 0;color:#667085">Razorpay payment ID</td><td style="padding:8px 0;text-align:right">${esc(rec.razorpayPaymentId || "—")}</td></tr>
         </table>
-        <p style="margin:18px 0 0;color:#667085;font-size:13px">You can see this payment any time under Billing in your HostelNode dashboard. Questions? Reply to this email or write to ${SUPPORT_EMAIL}.</p>
-      </div>`);
+        <p style="margin:18px 0 0;color:#667085;font-size:13px">${files.length ? "Your receipt is attached as a PDF. " : ""}You can see this payment any time under Billing in your HostelNode dashboard. Questions? Reply to this email or write to ${SUPPORT_EMAIL}.</p>
+      </div>`, files);
   } catch (err) {
     console.error("Receipt mail (non-fatal):", err.message);
   }
@@ -298,14 +319,7 @@ router.get("/account/checkout/receipt/:id", jwtAuthMiddleware, async (req, res) 
     if (!owner) return res.redirect("/login");
     const snap = rec.snapshot || {};
     res.render("account/receipt.ejs", {
-      r: {
-        receipt: rec.receipt, paidAt: dayTime(rec.paidAt || rec.updatedAt), amount: rec.amount,
-        planName: snap.name || "Plan", duration: durationText(snap.duration),
-        from: day(rec.subscription.startsAt), until: rec.subscription.expiresAt ? day(rec.subscription.expiresAt) : "—",
-        paymentId: rec.razorpayPaymentId || "—", orderId: rec.razorpayOrderId, method: rec.method || "",
-        owner: { name: owner.name || "", business: owner.businessName || "", email: owner.email || "", phone: owner.phone || "", place: [owner.city, owner.state].filter(Boolean).join(", ") },
-        supportEmail: SUPPORT_EMAIL,
-      },
+      r: receiptData(rec, rec.subscription, owner),
     });
   } catch (err) {
     console.error("Receipt error:", err.message);
