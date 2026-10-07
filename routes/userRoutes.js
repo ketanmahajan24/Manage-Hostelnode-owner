@@ -1099,7 +1099,7 @@ router.post("/newMember", jwtAuthMiddleware, attachHostel, async (req, res) => {
 
     // Phase 3 — tenant added from an enquiry ("Convert"): close that enquiry.
     // Only runs when the form carried an enquiry id; never throws.
-    if (req.body.enquiryId) await closeEnquiryAfterConvert(req.body.enquiryId, userId);
+    if (req.body.enquiryId) await closeEnquiryAfterConvert(req.body.enquiryId, userId, newMember._id);
 
     res.redirect("/user/newAdded/successfully");
   } catch (err) {

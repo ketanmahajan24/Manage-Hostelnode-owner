@@ -110,13 +110,59 @@ async function openEnquiryChat(enquiryId, ownerId) {
   return String(conv._id);
 }
 
-/** After "Convert to tenant" saves a tenant: close the enquiry. Never throws. */
-async function closeEnquiryAfterConvert(enquiryId, ownerId) {
+/**
+ * After "Convert to tenant" saves a tenant: close the enquiry and note that it
+ * became a tenant (first time only), so it can be counted. Never throws.
+ */
+async function closeEnquiryAfterConvert(enquiryId, ownerId, memberId) {
   try {
     if (!enquiryId) return;
-    await setEnquiryStatus(String(enquiryId), ownerId, "Closed");
+    const ok = await setEnquiryStatus(String(enquiryId), ownerId, "Closed");   // also checks the enquiry is this owner's
+    if (!ok) return;
+    const set = { convertedAt: new Date() };
+    if (memberId && mongoose.isValidObjectId(String(memberId))) set.convertedMember = memberId;
+    await Enquiry.updateOne({ _id: String(enquiryId), convertedAt: null }, { $set: set });
   } catch (err) {
     console.error("closeEnquiryAfterConvert (non-fatal):", err.message);
+  }
+}
+
+/**
+ * Lead numbers for one owner: this calendar month (India time) and all time,
+ * and how many became tenants. Optionally also since a given date (`since`).
+ * Read-only. Returns null if it cannot be worked out in time.
+ */
+async function leadStats(ownerId, opts = {}) {
+  // Never hold a page or an email: after 2 seconds the numbers are simply left out.
+  let timer;
+  const result = await Promise.race([
+    countLeads(ownerId, opts),
+    new Promise(resolve => { timer = setTimeout(() => resolve(null), 2000); }),
+  ]);
+  clearTimeout(timer);
+  return result;
+}
+async function countLeads(ownerId, { now = new Date(), since = null, until = null } = {}) {
+  try {
+    if (!ownerId) return null;
+    const STATS_MS = 2000;
+    const listingIds = (await Listing.find({ owner: ownerId }, { _id: 1 }).maxTimeMS(STATS_MS).lean()).map(l => l._id);
+    const monthStart = moment(now).tz(TZ).startOf("month").toDate();
+    const out = { month: moment(now).tz(TZ).format("MMMM"), monthLeads: 0, monthTenants: 0, allLeads: 0, allTenants: 0, sinceLeads: null, hasListings: listingIds.length > 0 };
+    if (!listingIds.length) return out;
+    const mine = { listing: { $in: listingIds } };
+    const count = q => Enquiry.countDocuments({ ...mine, ...q }).maxTimeMS(STATS_MS);
+    const [monthLeads, monthTenants, allLeads, allTenants, sinceLeads] = await Promise.all([
+      count({ createdAt: { $gte: monthStart } }),
+      count({ convertedAt: { $gte: monthStart } }),
+      count({}),
+      count({ convertedAt: { $gt: new Date(0) } }),
+      since ? count({ createdAt: until ? { $gte: new Date(since), $lte: new Date(until) } : { $gte: new Date(since) } }) : Promise.resolve(null),
+    ]);
+    return { ...out, monthLeads, monthTenants, allLeads, allTenants, sinceLeads };
+  } catch (err) {
+    console.error("leadStats (non-fatal):", err.message);
+    return null;
   }
 }
 
@@ -187,6 +233,7 @@ async function buildLeadsPage(ownerId, q = {}, now = new Date()) {
     return {
       id: String(e._id),
       name,
+      mobile,                                  // the enquirer's 10-digit mobile number, or "" if they gave none
       initials: initials(name),
       contactType: CONTACT_TYPE[e.actionType] || CONTACT_TYPE[METHOD_TO_TYPE[e.contactMethod]] || CONTACT_TYPE.default,
       when: timeAgo(e.createdAt, now),
@@ -198,6 +245,7 @@ async function buildLeadsPage(ownerId, q = {}, now = new Date()) {
       replyChat,
       replyWhatsApp,
       canConvert: e.status !== "Closed",
+      becameTenant: !!e.convertedAt,
       roomType: e.roomType || "",
     };
   });
@@ -217,5 +265,5 @@ async function buildLeadsPage(ownerId, q = {}, now = new Date()) {
 
 module.exports = {
   STATUSES, LEADS,
-  loadOwnedEnquiry, setEnquiryStatus, closeEnquiryAfterConvert, buildLeadsPage, indianMobile, openEnquiryChat,
+  loadOwnedEnquiry, setEnquiryStatus, closeEnquiryAfterConvert, buildLeadsPage, indianMobile, openEnquiryChat, leadStats,
 };

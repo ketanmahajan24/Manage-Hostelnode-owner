@@ -1,6 +1,6 @@
 <% layout("/layouts/boilerplate") -%>
 <%# Billing — the owner's plan, usage, what the plan includes, payments and receipts.
-    Read-only page. With subscriptions switched off only Account status and Billing history show, as before. %>
+    Read-only page. With subscriptions switched off only Account status, the Leads card and Billing history show. %>
 <%- include("_style.ejs") %>
 <%
   const st = user.status || "Pending";
@@ -9,6 +9,7 @@
   const day = d => d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : "—";
   const hnPlan = (typeof plan !== "undefined" && plan && plan.show) ? plan : null;
   const hnReceipts = (typeof receipts !== "undefined" && Array.isArray(receipts)) ? receipts : [];
+  const hnLeads = (typeof leads !== "undefined" && leads) ? leads : null;
   const hnLook = hnPlan ? (hnPlan.look || "slate") : "slate";
   const hnTiles = ["blue", "green", "violet"];
   // One clear main button, worded for where the owner is now.
@@ -60,6 +61,26 @@
   .hn2p-use-note { font-size: 12.5px; color: var(--hn-body); font-weight: 500; margin-top: 8px; }
   .hn2p-use-note.is-over { color: var(--hn-coral); font-weight: 700; }
   .hn2p-use-up, .hn2p-use-up:hover { display: inline-block; margin-top: 8px; font-size: 12.5px; font-weight: 700; color: var(--hn-coral); text-decoration: underline; }
+
+  /* leads */
+  .hn2g-leads { background: #fff; border: 1px solid #d5c7f8; border-radius: 18px; overflow: hidden; }
+  .hn2g-leads-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 18px 20px; background: var(--hn-violet-tint); }
+  .hn2a .hn2g-leads-title { font-size: 16px; font-weight: 700; color: var(--hn-ink); margin: 0 0 4px; letter-spacing: -0.01em; }
+  .hn2g-leads-line { margin: 0; font-size: 14px; font-weight: 500; color: var(--hn-body); line-height: 1.5; }
+  .hn2g-leads-line b { color: var(--hn-violet); font-weight: 700; }
+  .hn2g-leads-btn, .hn2g-leads-btn:hover, .hn2g-leads-btn:focus { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 18px; border-radius: 11px; background: var(--hn-violet); color: #fff; font-size: 13.5px; font-weight: 700; }
+  .hn2g-leads-btn:hover { filter: brightness(0.92); }
+  .hn2g-leads-btn:focus-visible { outline: 3px solid rgba(106,63,216,0.35); outline-offset: 2px; }
+  .hn2g-leads-nums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .hn2g-leads-nums > div { padding: 16px 20px; border-left: 1px solid #eef4f1; }
+  .hn2g-leads-nums > div:first-child { border-left: 0; }
+  .hn2g-leads-nums b { display: block; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: var(--hn-ink); font-variant-numeric: tabular-nums; }
+  .hn2g-leads-nums span { display: block; font-size: 12.5px; font-weight: 500; color: var(--hn-soft); margin-top: 7px; line-height: 1.35; }
+  @media (max-width: 767px) {
+    .hn2g-leads-nums { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hn2g-leads-nums > div:nth-child(odd) { border-left: 0; }
+    .hn2g-leads-nums > div:nth-child(n+3) { border-top: 1px solid #eef4f1; }
+  }
 
   /* tables */
   .hn2g-tablecard { padding: 0; overflow: hidden; }
@@ -148,6 +169,29 @@
             </div>
           <% }) %>
         </div>
+        <% } %>
+
+        <%# Leads from hostelnode.com: what the owner received and how many became tenants. %>
+        <% if (hnLeads) { %>
+        <section class="hn2g-leads" aria-label="Leads">
+          <div class="hn2g-leads-head">
+            <div>
+              <h2 class="hn2g-leads-title">Leads from hostelnode.com</h2>
+              <p class="hn2g-leads-line">
+                <% if (!hnLeads.hasListings) { %>List your property on hostelnode.com to start receiving leads.
+                <% } else if (!hnLeads.monthLeads && !hnLeads.monthTenants) { %>No leads yet in <%= hnLeads.month %>.
+                <% } else { %>This month: <b><%= hnLeads.monthLeads %> <%= hnLeads.monthLeads === 1 ? "lead" : "leads" %> received</b>, <b><%= hnLeads.monthTenants %> <%= hnLeads.monthTenants === 1 ? "tenant" : "tenants" %> added from leads</b>.<% } %>
+              </p>
+            </div>
+            <a class="hn2g-leads-btn" href="<%= hnLeads.hasListings ? '/user/leads' : '/user/list-property' %>"><%= hnLeads.hasListings ? "Open leads" : "List a property" %></a>
+          </div>
+          <div class="hn2g-leads-nums">
+            <div><b><%= hnLeads.monthLeads %></b><span>Leads in <%= hnLeads.month %></span></div>
+            <div><b><%= hnLeads.monthTenants %></b><span>Became tenants in <%= hnLeads.month %></span></div>
+            <div><b><%= hnLeads.allLeads %></b><span>Leads so far</span></div>
+            <div><b><%= hnLeads.allTenants %></b><span>Tenants from leads so far</span></div>
+          </div>
+        </section>
         <% } %>
 
         <% if (!hnPlan) { %>

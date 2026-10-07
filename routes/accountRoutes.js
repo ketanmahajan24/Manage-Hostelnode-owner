@@ -146,7 +146,9 @@ router.get("/account/billing", jwtAuthMiddleware, attachHostel, async (req, res)
         receipts = rows.map(r => ({ id: String(r._id), date: r.paidAt, name: (r.snapshot && r.snapshot.name) || "Plan", amount: r.amount, refunded: r.status === "refunded", hasReceipt: r.status === "paid" && !!r.subscription }));
       }
     } catch (e) { console.error("Billing receipts (non-fatal):", e.message); }
-    res.render("account/billing.ejs", { user, history, plan, receipts });
+    // Leads received and how many became tenants (null on any problem: the card is then left out).
+    const leads = await require("../utils/leads").leadStats(user._id);
+    res.render("account/billing.ejs", { user, history, plan, receipts, leads });
   } catch (err) {
     console.error("Billing page error:", err.message);
     res.status(500).send("Something went wrong. Please try again.");

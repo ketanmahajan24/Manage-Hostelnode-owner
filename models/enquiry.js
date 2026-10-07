@@ -54,7 +54,12 @@ const enquirySchema = new mongoose.Schema({
   leadScore: {
     type: Number,
     default: 0
-  }
+  },
+
+  // ── Set when the owner turns this enquiry into a tenant ("Convert to tenant").
+  //    Empty for every other enquiry. Used only for counting.
+  convertedAt: Date,
+  convertedMember: { type: mongoose.Schema.Types.ObjectId, ref: "Member" }
 
 }, { timestamps: true });
 

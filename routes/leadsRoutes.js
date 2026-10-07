@@ -14,7 +14,7 @@ const router  = express.Router();
 const { jwtAuthMiddleware } = require("../jwt.js");
 const attachHostel = require("../Middlewares/attachHostel");
 const Owner = require("../models/owner");
-const { buildLeadsPage, setEnquiryStatus, openEnquiryChat } = require("../utils/leads");
+const { buildLeadsPage, setEnquiryStatus, openEnquiryChat, leadStats } = require("../utils/leads");
 
 // Where to go back to after a status change: only the Leads page itself.
 function safeReturn(p) {
@@ -35,9 +35,11 @@ router.get("/leads", jwtAuthMiddleware, attachHostel, async (req, res) => {
     const user = await Owner.findById(req.user.id);
     if (!user) return res.redirect("/login");
     const leads = await buildLeadsPage(user._id, req.query);
+    const stats = await leadStats(user._id);   // numbers at the top of the page; null on any problem
     res.render("leads/index.ejs", {
       user,
       leads,
+      stats,
       notice: req.query.updated === "1" ? "Status updated."
             : req.query.updated === "0" ? "That status change could not be saved."
             : req.query.chat === "0" ? "Couldn't open a HostelNode chat for that enquiry."

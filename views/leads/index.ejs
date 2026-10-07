@@ -56,6 +56,16 @@
   .hn2l-listing .hn2l-caret { position: absolute; right: 11px; pointer-events: none; }
   .hn2l-listing:focus-within { box-shadow: 0 0 0 3px rgba(14,169,104,0.18); }
   .hn2l-count { font-size: 12px; color: #98a2b3; font-weight: 600; }
+  .hn2l-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .hn2l-stat { background: #fff; border: 1px solid #eef1f4; border-radius: 14px; padding: 14px 16px; }
+  .hn2l-stat b { display: block; font-size: 24px; font-weight: 800; color: #12151a; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .hn2l-stat span { display: block; font-size: 12px; color: #667085; font-weight: 600; margin-top: 7px; line-height: 1.35; }
+  .hn2l-stat.is-tenant { background: #e8f9f0; border-color: #bfeed3; }
+  .hn2l-stat.is-tenant b { color: #0a7d4c; }
+  .hn2l-phone, .hn2l-phone:hover { display: inline-block; font-size: 12.5px; font-weight: 700; color: #0a7d4c; text-decoration: none; margin: 1px 0 3px; font-variant-numeric: tabular-nums; }
+  .hn2l-phone:hover { text-decoration: underline; }
+  .hn2l-became { font-size: 11px; font-weight: 700; color: #0a7d4c; background: #e8f9f0; border-radius: 99px; padding: 2px 8px; white-space: nowrap; }
+  @media (max-width: 767px) { .hn2l-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
   .hn2l-chip, .hn2l-chip:hover, .hn2l-chip:focus {
     display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; padding: 7px 13px; border-radius: 99px;
@@ -152,6 +162,17 @@
     <div class="hn2l-sub">Every enquiry across all your listings, in one place</div>
   </div>
 
+  <%# Numbers for this owner's leads (left out if they could not be counted). %>
+  <% const hnStats = (typeof stats !== "undefined" && stats) ? stats : null; %>
+  <% if (hnStats && hnStats.hasListings) { %>
+    <div class="hn2l-stats" aria-label="Lead numbers">
+      <div class="hn2l-stat"><b><%= hnStats.monthLeads %></b><span>Leads in <%= hnStats.month %></span></div>
+      <div class="hn2l-stat is-tenant"><b><%= hnStats.monthTenants %></b><span>Became tenants in <%= hnStats.month %></span></div>
+      <div class="hn2l-stat"><b><%= hnStats.allLeads %></b><span>Leads so far</span></div>
+      <div class="hn2l-stat is-tenant"><b><%= hnStats.allTenants %></b><span>Tenants from leads so far</span></div>
+    </div>
+  <% } %>
+
   <% if (notice) { %>
     <div class="hn2l-notice <%= notice === 'Status updated.' ? 'is-ok' : 'is-bad' %>" role="status"><%= notice %></div>
   <% } %>
@@ -224,9 +245,11 @@
           <div class="hn2l-avatar"><%= e.initials %></div>
           <div style="min-width:0">
             <div class="hn2l-name" title="<%= e.name %>"><%= e.name %></div>
+            <% if (e.mobile) { %><a class="hn2l-phone" href="tel:+91<%= e.mobile %>" aria-label="Call <%= e.name %> on <%= e.mobile %>"><%= e.mobile.slice(0, 5) %> <%= e.mobile.slice(5) %></a><% } %>
             <div class="hn2l-type-row">
               <span class="hn2l-type is-<%= e.contactType.key %>"><%- svg(TYPE_ICON[e.contactType.key] || TYPE_ICON.general, 12, 'currentColor', 2.2) %><%= e.contactType.label %></span>
               <span class="hn2l-meta"><%= e.when %></span>
+              <% if (e.becameTenant) { %><span class="hn2l-became">Became tenant</span><% } %>
             </div>
           </div>
         </div>
