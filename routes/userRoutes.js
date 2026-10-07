@@ -339,6 +339,21 @@ router.post("/signup", handleMulterError(upload.single("profileImage")), async (
       </div>`
     );
 
+    // Log the new owner straight in (same cookie as the login form sets) and take
+    // them to their dashboard, where a welcome popup shows the plan they are on.
+    // If anything here fails they see the old "account created" page and log in as before.
+    try {
+      const token = generateToken({ id: newOwner._id, email: newOwner.email, role: newOwner.role });
+      res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+      if (req.session) req.session.hnWelcome = String(newOwner._id);
+      // The signup form submits in the background and then opens the address we send back,
+      // so the dashboard (and its welcome popup) is loaded once, by the browser itself.
+      if (/text\/html/.test(req.get("accept") || "")) return res.redirect(303, '/user');
+      return res.status(201).json({ ok: true, redirect: '/user' });
+    } catch (loginErr) {
+      console.error("Signup auto-login (non-fatal):", loginErr.message);
+    }
+
     return safeRender(res.status(201), "authPrivate/signupSuccess.ejs", {
       message: "Signup successful",
       user: { name: newOwner.name, email: newOwner.email, status: newOwner.status }

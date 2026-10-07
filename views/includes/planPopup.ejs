@@ -2,45 +2,50 @@
     (Middlewares/planPopup.js). Renders nothing unless there is something to show. %>
 <% const hnU = (typeof hnUpgrade !== "undefined" && hnUpgrade) ? hnUpgrade : null; %>
 <% if (hnU) { const inrU = n => "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(n) || 0); %>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  .hn2u, .hn2u * { box-sizing: border-box; font-family: 'DM Sans', sans-serif; }
-  .hn2u-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 32px; font-size: 13px; font-weight: 600; border-bottom: 1px solid; }
-  .hn2u-strip.is-limit { background: #fff8ec; border-color: #fbe6b8; color: #7a5510; }
-  .hn2u-strip.is-draft { background: #f0f9ff; border-color: #cfe8fb; color: #0b4a6f; }
-  .hn2u-strip.is-ok    { background: #e8f9f0; border-color: #bfeed3; color: #0a7d4c; }
+  .hn2u, .hn2u * { box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; }
+  .hn2u .t-green { --c: #0a7d4c; --c-tint: #e3f6ec; --c-soft: #bfe8d2; } .hn2u .t-blue { --c: #1d5fd1; --c-tint: #e6effc; --c-soft: #c3d6f7; }
+  .hn2u .t-violet { --c: #6a3fd8; --c-tint: #efe9fd; --c-soft: #d5c7f8; } .hn2u .t-amber { --c: #b45309; --c-tint: #fdf0d9; --c-soft: #f6d9a8; }
+  .hn2u-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 11px 32px; font-size: 13.5px; font-weight: 600; border-bottom: 1px solid; }
+  .hn2u-strip.is-limit { background: #fdf0d9; border-color: #f6d9a8; color: #7c3a06; --b: #b45309; }
+  .hn2u-strip.is-draft { background: #e6effc; border-color: #c3d6f7; color: #17479c; --b: #1d5fd1; }
+  .hn2u-strip.is-ok    { background: #e3f6ec; border-color: #bfe8d2; color: #07603a; --b: #0a7d4c; }
   .hn2u-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .hn2u-acts form { margin: 0; }
-  .hn2u-sbtn, .hn2u-sbtn:hover { display: inline-flex; align-items: center; min-height: 32px; padding: 5px 14px; border-radius: 9px; background: #12151a; color: #fff; font-size: 12.5px; font-weight: 700; text-decoration: none; border: 0; cursor: pointer; }
+  .hn2u-sbtn, .hn2u-sbtn:hover { display: inline-flex; align-items: center; min-height: 32px; padding: 5px 14px; border-radius: 10px; background: var(--b, #0a7d4c); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; border: 0; cursor: pointer; }
   .hn2u-sbtn.is-ghost, .hn2u-sbtn.is-ghost:hover { background: transparent; color: inherit; border: 1px solid currentColor; }
   .hn2u-held { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; width: 100%; }
   .hn2u-held li { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 
-  .hn2u-back { position: fixed; inset: 0; z-index: 2000; background: rgba(15,17,23,0.55); display: none; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
+  .hn2u-back { position: fixed; inset: 0; z-index: 2000; background: rgba(8,40,26,0.6); display: none; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
   .hn2u-back.is-open { display: flex; }
-  .hn2u-box { position: relative; width: 100%; max-width: 860px; background: #fff; border-radius: 20px; box-shadow: 0 24px 60px rgba(15,17,23,0.28); padding: 28px 26px 22px; margin: auto; }
+  .hn2u-box { position: relative; width: 100%; max-width: 860px; background: #fff; border-radius: 24px; box-shadow: 0 30px 70px -20px rgba(8,40,26,0.55); padding: 28px 26px 22px; margin: auto; outline: none; }
   .hn2u-x { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; border: 0; background: #f2f4f7; color: #475467; font-size: 18px; line-height: 1; cursor: pointer; }
   .hn2u-x:hover { background: #e4e7ec; }
-  .hn2u-eyebrow { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #92660c; background: #fff8ec; border: 1px solid #fbe6b8; border-radius: 99px; padding: 3px 10px; }
-  .hn2u .hn2u-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: #12151a; margin: 10px 40px 6px 0; letter-spacing: -0.01em; }
-  .hn2u-msg { font-size: 14px; color: #475467; font-weight: 500; line-height: 1.5; margin: 0; }
-  .hn2u-saved { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #f0fdf6; border: 1px solid #c9f0db; color: #0a7d4c; font-size: 12.5px; font-weight: 600; }
+  .hn2u-eyebrow { display: inline-block; font-size: 12px; font-weight: 700; color: #b45309; background: #fdf0d9; border-radius: 99px; padding: 4px 12px; }
+  .hn2u .hn2u-title { font-size: 24px; font-weight: 800; color: #10231b; margin: 12px 40px 6px 0; letter-spacing: -0.02em; line-height: 1.2; }
+  .hn2u-msg { font-size: 14px; color: #3d4f47; font-weight: 500; line-height: 1.5; margin: 0; }
+  .hn2u-saved { margin-top: 12px; padding: 11px 13px; border-radius: 12px; background: #e3f6ec; border: 1px solid #bfe8d2; color: #07603a; font-size: 13px; font-weight: 600; }
   .hn2u-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 18px; }
-  .hn2u-plan { position: relative; display: flex; flex-direction: column; border: 1px solid #e4e7ec; border-radius: 14px; padding: 18px 16px 16px; background: #fff; }
-  .hn2u-plan.is-first { border-color: #0EA968; box-shadow: 0 0 0 3px rgba(14,169,104,0.12); }
-  .hn2u-pbadge { position: absolute; top: -9px; left: 14px; background: #12151a; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 2px 9px; border-radius: 99px; }
-  .hn2u-pname { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; color: #12151a; }
+  .hn2u-plan { position: relative; display: flex; flex-direction: column; border: 1px solid var(--c-soft); border-top: 6px solid var(--c); border-radius: 16px; padding: 16px 16px 16px; background: var(--c-tint); }
+  .hn2u-plan.is-first { box-shadow: 0 14px 26px -20px var(--c); }
+  .hn2u-pbadge { align-self: flex-start; background: var(--c); color: #fff; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 99px; margin-bottom: 8px; }
+  .hn2u-pname { font-size: 16px; font-weight: 700; color: #10231b; }
   .hn2u-pprice { display: flex; align-items: baseline; gap: 6px; margin-top: 8px; }
-  .hn2u-pprice b { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: #12151a; line-height: 1; }
-  .hn2u-pprice s { font-size: 12.5px; color: #98a2b3; }
-  .hn2u-pper { font-size: 12px; color: #667085; font-weight: 600; margin-top: 2px; }
+  .hn2u-pprice b { font-size: 28px; font-weight: 800; color: var(--c); line-height: 1; letter-spacing: -0.03em; }
+  .hn2u-pprice s { font-size: 13px; color: #5c6d66; }
+  .hn2u-pper { font-size: 12.5px; color: #3d4f47; font-weight: 500; margin-top: 3px; }
   .hn2u-plines { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; flex: 1; align-content: start; }
-  .hn2u-plines li { font-size: 12.5px; color: #344054; font-weight: 600; display: flex; gap: 7px; }
-  .hn2u-plines li::before { content: "✓"; color: #0a7d4c; font-weight: 900; }
-  .hn2u-choose, .hn2u-choose:hover { margin-top: 14px; display: inline-flex; align-items: center; justify-content: center; min-height: 42px; border-radius: 10px; background: #0EA968; color: #fff; font-size: 13.5px; font-weight: 800; text-decoration: none; }
-  .hn2u-choose:hover { background: #0c9a5f; }
-  .hn2u-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 18px; font-size: 12.5px; color: #667085; font-weight: 500; }
+  .hn2u-plines li { font-size: 13px; color: #10231b; font-weight: 500; display: flex; gap: 7px; }
+  .hn2u-plines li::before { content: "✓"; color: var(--c); font-weight: 800; }
+  .hn2u-choose, .hn2u-choose:hover { margin-top: 14px; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; border-radius: 12px; background: var(--c); color: #fff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 8px 12px; text-align: center; }
+  .hn2u-choose:hover { filter: brightness(0.92); }
+  .hn2u-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 18px; font-size: 13px; color: #5c6d66; font-weight: 500; }
   .hn2u-foot a { color: #0a7d4c; font-weight: 700; text-decoration: none; }
-  .hn2u-later { background: transparent; border: 0; color: #667085; font-size: 13px; font-weight: 700; cursor: pointer; padding: 6px 4px; }
+  .hn2u-later { background: transparent; border: 0; color: #3d4f47; font-size: 13px; font-weight: 700; cursor: pointer; padding: 6px 4px; }
   @media (max-width: 767px) { .hn2u-strip { padding: 10px 14px; } .hn2u-box { padding: 22px 16px 18px; border-radius: 16px; } .hn2u .hn2u-title { font-size: 19px; } }
 </style>
 <div class="hn2u">
@@ -80,7 +85,7 @@
       <% if (hnU.plans.length) { %>
         <div class="hn2u-plans">
           <% hnU.plans.forEach(function (p, i) { %>
-            <div class="hn2u-plan <%= i === 0 ? 'is-first' : '' %>">
+            <div class="hn2u-plan t-<%= ["green", "blue", "violet", "amber"][i % 4] %> <%= i === 0 ? 'is-first' : '' %>">
               <% if (p.badge) { %><span class="hn2u-pbadge"><%= p.badge %></span><% } %>
               <div class="hn2u-pname"><%= p.name %></div>
               <div class="hn2u-pprice"><b><%= p.price ? inrU(p.price) : "Free" %></b><% if (p.strikePrice) { %><s><%= inrU(p.strikePrice) %></s><% } %></div>

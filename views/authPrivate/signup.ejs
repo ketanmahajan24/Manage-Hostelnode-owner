@@ -736,6 +736,14 @@ document.getElementById('ownerForm').addEventListener('submit', async function (
   try {
     const res = await fetch(this.action, { method:'POST', body: new FormData(this) });
 
+    if (res.ok && /application\/json/.test(res.headers.get('content-type') || '')) {
+      // Account created and logged in: go to the dashboard
+      let to = '/user';
+      try { const data = await res.json(); if (data && data.redirect === '/user') to = data.redirect; } catch {}
+      window.location.href = to;
+      return;
+    }
+
     if (res.redirected || res.ok) {
       // Success — server rendered success page, follow it
       const html = await res.text();

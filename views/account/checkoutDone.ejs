@@ -4,26 +4,40 @@
 <% const inr = n => "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(n) || 0); %>
 <style>
   .hn2z .hn2a-inner { max-width: 560px; margin: 0 auto; }
-  .hn2z-card { background: #fff; border: 1px solid #eef1f4; border-radius: 18px; box-shadow: 0 1px 2px rgba(15,17,23,0.03); padding: 32px 26px 26px; text-align: center; }
-  .hn2z-icon { width: 60px; height: 60px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px; }
-  .hn2z-icon.is-ok { background: #e8f9f0; } .hn2z-icon.is-wait { background: #fff8ec; } .hn2z-icon.is-bad { background: #fef3f2; }
-  .hn2z .hn2z-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: #12151a; margin: 0 0 6px; letter-spacing: -0.01em; }
-  .hn2z-sub { font-size: 13.5px; color: #667085; font-weight: 500; line-height: 1.5; }
+  .hn2z-card { background: #fff; border: 1px solid var(--hn-line); border-radius: 22px; box-shadow: 0 16px 30px -26px rgba(10,125,76,0.7); padding: 32px 26px 26px; text-align: center; }
+  .hn2z-icon { width: 68px; height: 68px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+  .hn2z-icon.is-ok { background: var(--hn-green-tint); box-shadow: 0 0 0 8px rgba(227,246,236,0.55); } .hn2z-icon.is-wait { background: #fff8ec; } .hn2z-icon.is-bad { background: #fef3f2; }
+  .hn2z .hn2z-title { font-size: 24px; font-weight: 800; color: var(--hn-ink); margin: 0 0 6px; letter-spacing: -0.02em; }
+  .hn2z-sub { font-size: 14px; color: var(--hn-body); font-weight: 500; line-height: 1.5; }
   .hn2z-kv { text-align: left; margin: 22px 0 0; border-top: 1px solid #f2f4f7; }
   .hn2z-kv > div { display: flex; justify-content: space-between; gap: 14px; padding: 11px 0; border-bottom: 1px solid #f2f4f7; font-size: 13px; }
-  .hn2z-kv dt { color: #667085; font-weight: 600; }
-  .hn2z-kv dd { margin: 0; color: #12151a; font-weight: 700; text-align: right; overflow-wrap: anywhere; }
+  .hn2z-kv dt { color: var(--hn-soft); font-weight: 500; }
+  .hn2z-kv dd { margin: 0; color: var(--hn-ink); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
   .hn2z-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
-  .hn2z-help { font-size: 12px; color: #98a2b3; font-weight: 500; margin-top: 16px; text-align: center; }
+  .hn2z-card.is-success { padding: 0 0 26px; overflow: hidden; }
+  .hn2z-card.is-success .hn2z-kv, .hn2z-card.is-success .hn2z-actions { margin-left: 26px; margin-right: 26px; }
+  .hn2z-win { position: relative; overflow: hidden; padding: 32px 26px 26px; color: #fff; background: linear-gradient(135deg, #064e31 0%, #0a7d4c 55%, #0EA968 100%); }
+  .hn2z-win::before, .hn2z-win::after { content: ""; position: absolute; border-radius: 50%; background: rgba(255,255,255,0.08); pointer-events: none; }
+  .hn2z-win::before { width: 220px; height: 220px; right: -70px; top: -90px; }
+  .hn2z-win::after { width: 160px; height: 160px; left: -50px; bottom: -80px; }
+  .hn2z-win > * { position: relative; z-index: 1; }
+  .hn2z-win .hn2z-icon.is-ok { background: #fff; box-shadow: 0 0 0 8px rgba(255,255,255,0.18); }
+  .hn2z .hn2z-win .hn2z-title { color: #fff; font-size: 26px; }
+  .hn2z-win .hn2z-sub { color: rgba(255,255,255,0.95); }
+  .hn2z-member { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; background: #ffd66b; color: #4a3200; font-size: 12.5px; font-weight: 700; padding: 5px 14px; border-radius: 99px; }
+  .hn2z-help { font-size: 12.5px; color: var(--hn-soft); font-weight: 500; margin-top: 16px; text-align: center; }
 </style>
 
 <div class="hn2a hn2z">
   <div class="hn2a-inner">
-    <div class="hn2z-card">
+    <div class="hn2z-card <%= done.state === "success" ? "is-success" : "" %>">
       <% if (done.state === "success") { %>
-        <div class="hn2z-icon is-ok" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0a7d4c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></div>
-        <h1 class="hn2z-title">Payment successful</h1>
-        <div class="hn2z-sub">Your <b><%= done.planName %></b> plan is active<% if (done.validUntil) { %> until <b><%= done.validUntil %></b><% } %>.</div>
+        <div class="hn2z-win">
+          <div class="hn2z-icon is-ok" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#0a7d4c" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></div>
+          <h1 class="hn2z-title">Payment successful</h1>
+          <div class="hn2z-sub">Your <b><%= done.planName %></b> plan is active<% if (done.validUntil) { %> until <b><%= done.validUntil %></b><% } %>.</div>
+          <span class="hn2z-member"><span aria-hidden="true">★</span> You are now a paid member</span>
+        </div>
       <% } else if (done.state === "pending") { %>
         <div class="hn2z-icon is-wait" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#b7791f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></div>
         <h1 class="hn2z-title">Payment received</h1>
@@ -50,6 +64,7 @@
         <% if (done.state === "success") { %>
           <a class="hn2a-btn" href="/user">Go to dashboard</a>
           <a class="hn2a-btn is-ghost" href="/user/account/checkout/receipt/<%= done.id %>" target="_blank" rel="noopener">Download receipt</a>
+          <a class="hn2a-btn is-ghost" href="/user/account/billing">View billing</a>
         <% } else if (done.state === "notpaid") { %>
           <a class="hn2a-btn" href="/user/account/checkout/<%= done.planId %>">Try again</a>
           <a class="hn2a-btn is-ghost" href="/user/account/plans">Back to plans</a>
@@ -58,7 +73,7 @@
         <% } %>
       </div>
     </div>
-    <div class="hn2z-help">Questions about this payment? Email <a href="mailto:<%= done.supportEmail %>" style="color:#0a7d4c;font-weight:700"><%= done.supportEmail %></a> with the receipt number.</div>
+    <div class="hn2z-help">Questions about this payment? Email <a href="mailto:<%= done.supportEmail %>" style="color:var(--hn-green);font-weight:700"><%= done.supportEmail %></a> with the receipt number.</div>
   </div>
 </div>
 <% if (done.state === "pending") { %>

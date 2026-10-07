@@ -55,6 +55,8 @@
     <% if (hnNewUI) { %><%- include("../includes/planBanner.ejs") %><% } %>
     <%# Subscriptions — upgrade popup, limit notice, saved drafts; renders nothing unless needed. %>
     <% if (hnNewUI) { %><%- include("../includes/planPopup.ejs") %><% } %>
+    <%# Welcome popup, shown once straight after signup; renders nothing otherwise. %>
+    <% if (hnNewUI) { %><%- include("../includes/welcomePopup.ejs") %><% } %>
     <%- body %>
   </div>
   <!-- scripts -->

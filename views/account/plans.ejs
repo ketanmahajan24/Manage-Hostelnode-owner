@@ -3,28 +3,47 @@
 <%- include("_style.ejs") %>
 <% const inr = n => "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(n) || 0); %>
 <style>
-  .hn2p .hn2a-inner { max-width: 1040px; }
-  .hn2p-now { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .hn2p-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; align-items: stretch; }
-  .hn2p-card { position: relative; display: flex; flex-direction: column; background: #fff; border: 1px solid #eef1f4; border-radius: 16px; padding: 22px 20px 20px; box-shadow: 0 1px 2px rgba(15,17,23,0.03); }
-  .hn2p-card.is-current { border-color: #0EA968; box-shadow: 0 0 0 3px rgba(14,169,104,0.12); }
-  .hn2p-badge { position: absolute; top: -10px; left: 18px; background: #12151a; color: #fff; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 3px 10px; border-radius: 99px; }
-  .hn2p-name { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800; color: #12151a; margin: 0; }
-  .hn2p-desc { font-size: 12.5px; color: #667085; font-weight: 500; margin-top: 3px; min-height: 18px; }
-  .hn2p-price { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 16px 0 2px; }
-  .hn2p-price b { font-family: 'Syne', sans-serif; font-size: 30px; font-weight: 800; color: #12151a; letter-spacing: -0.02em; line-height: 1; }
-  .hn2p-price s { font-size: 14px; color: #98a2b3; font-weight: 600; }
-  .hn2p-per { font-size: 12.5px; color: #667085; font-weight: 600; }
-  .hn2p-offer { font-size: 11.5px; color: #92660c; font-weight: 700; margin-top: 6px; }
-  .hn2p-list { list-style: none; margin: 16px 0 0; padding: 16px 0 0; border-top: 1px solid #f2f4f7; display: grid; gap: 9px; flex: 1; align-content: start; }
-  .hn2p-list li { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; color: #344054; font-weight: 600; line-height: 1.4; }
-  .hn2p-list li.is-off { color: #98a2b3; font-weight: 500; }
-  .hn2p-tick { flex-shrink: 0; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; background: #e8f9f0; color: #0a7d4c; font-size: 10px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; }
-  .hn2p-list li.is-off .hn2p-tick { background: #f2f4f7; color: #98a2b3; }
-  .hn2p-cta { margin-top: 18px; }
-  .hn2p-cta .hn2a-btn { width: 100%; }
-  .hn2p-current { display: block; text-align: center; font-size: 12.5px; font-weight: 800; color: #0a7d4c; background: #e8f9f0; border: 1px solid #bfeed3; border-radius: 10px; padding: 10px; }
+  .hn2p .hn2a-inner { max-width: 1120px; }
+  .hn2p-now { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: #fff; border: 1px solid var(--c-soft); border-left: 6px solid var(--c); border-radius: 16px; padding: 16px 20px; margin-bottom: 22px; }
+  .hn2p-now-title { font-size: 16px; font-weight: 700; color: var(--hn-ink); letter-spacing: -0.01em; }
+  .hn2p-now-line { font-size: 13.5px; font-weight: 500; color: var(--hn-body); margin-top: 3px; }
+  .hn2p-now-side { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .hn2p-now-pill::first-letter { text-transform: uppercase; }
+      .hn2p-now-pill { display: inline-block; text-transform: lowercase; background: var(--c-tint); color: var(--c); font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 99px; }
+
+  .hn2p-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; align-items: stretch; }
+  .hn2p-card { position: relative; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--c-soft); border-radius: 22px; overflow: hidden; box-shadow: 0 16px 30px -26px var(--c); }
+  .hn2p-card.is-current { box-shadow: 0 0 0 3px var(--c-tint), 0 0 0 4px var(--c), 0 16px 30px -26px var(--c); }
+  .hn2p-head { position: relative; overflow: hidden; background: var(--c); color: #fff; padding: 20px 20px 22px; }
+  .hn2p-head::after { content: ""; position: absolute; right: -50px; bottom: -80px; width: 170px; height: 170px; border-radius: 50%; background: rgba(255,255,255,0.1); pointer-events: none; }
+  .hn2p-head > * { position: relative; z-index: 1; }
+  .hn2p-badge { display: inline-block; background: #fff; color: var(--c); font-size: 11.5px; font-weight: 700; padding: 4px 11px; border-radius: 99px; }
+  .hn2p-badge-row { min-height: 26px; margin-bottom: 10px; }
+  .hn2a .hn2p-name { font-size: 18px; font-weight: 700; color: #fff; margin: 0; letter-spacing: -0.01em; line-height: 1.25; overflow-wrap: anywhere; }
+  .hn2p-desc { font-size: 13px; color: rgba(255,255,255,0.92); font-weight: 500; margin-top: 4px; min-height: 19px; line-height: 1.45; }
+  .hn2p-price { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin: 18px 0 4px; }
+  .hn2p-price b { font-size: 38px; font-weight: 800; color: #fff; letter-spacing: -0.035em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .hn2p-price s { font-size: 15px; color: rgba(255,255,255,0.85); font-weight: 600; }
+  .hn2p-per { font-size: 13px; color: rgba(255,255,255,0.92); font-weight: 600; }
+  .hn2p-month { display: inline-block; margin-top: 10px; background: rgba(255,255,255,0.18); color: #fff; font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 8px; }
+  .hn2p-offer { font-size: 12.5px; color: #fff; font-weight: 600; margin-top: 8px; }
+  .hn2p-body { display: flex; flex-direction: column; flex: 1; padding: 18px 20px 20px; }
+  .hn2p-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; flex: 1; align-content: start; }
+  .hn2p-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--hn-body); font-weight: 500; line-height: 1.4; }
+  .hn2p-list li.is-limit { color: var(--hn-ink); font-weight: 700; }
+  .hn2p-list li.is-off { color: #7b8a84; }
+  .hn2p-tick { flex-shrink: 0; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; background: var(--c-tint); color: var(--c); font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+  .hn2p-list li.is-off .hn2p-tick { background: #eef2f0; color: #7b8a84; }
+  .hn2p-cta { margin-top: 20px; }
+  .hn2p-cta .hn2a-btn, .hn2p-cta .hn2a-btn:hover, .hn2p-cta .hn2a-btn:focus { width: 100%; background: var(--c); box-shadow: 0 8px 16px -10px var(--c); min-height: 46px; text-align: center; }
+  .hn2p-cta .hn2a-btn:hover { filter: brightness(0.93); }
+  .hn2p-cta .hn2a-btn.is-ghost, .hn2p-cta .hn2a-btn.is-ghost:hover { background: #fff; color: var(--c); border: 1px solid var(--c-soft); box-shadow: none; filter: none; }
+  .hn2p-current { display: block; text-align: center; font-size: 13px; font-weight: 700; color: var(--c); background: var(--c-tint); border-radius: 12px; padding: 11px; }
   .hn2p-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .hn2p-foot { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+  .hn2p-foot span { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--hn-line); border-radius: 99px; padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--hn-body); }
+  .hn2p-foot i { width: 8px; height: 8px; border-radius: 50%; background: var(--hn-green-bright); }
+  @media (max-width: 767px) { .hn2p-price b { font-size: 34px; } }
 </style>
 
 <div class="hn2a hn2p">
@@ -32,16 +51,14 @@
     <h1 class="hn2a-title">Plans</h1>
     <div class="hn2a-sub">Choose the plan that fits your PG. Your tenants never pay to use HostelNode.</div>
 
-    <div class="hn2a-card">
-      <div class="hn2p-now">
-        <div>
-          <div class="hn2a-card-title">Your plan: <%= plan.name %></div>
-          <div class="hn2a-card-sub" style="margin:0"><%= plan.line %></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span class="hn2a-pill <%= plan.tone %>"><%= plan.status %></span>
-          <a class="hn2a-btn is-ghost" href="/user/account/billing">Billing</a>
-        </div>
+    <div class="hn2p-now t-<%= plan.look || 'slate' %>">
+      <div>
+        <div class="hn2p-now-title">Your plan: <%= plan.name %></div>
+        <div class="hn2p-now-line"><%= plan.line %></div>
+      </div>
+      <div class="hn2p-now-side">
+        <span class="hn2p-now-pill"><%= plan.status %></span>
+        <a class="hn2a-btn is-ghost" href="/user/account/billing">Billing</a>
       </div>
     </div>
 
@@ -52,19 +69,22 @@
     <% } else { %>
       <div class="hn2p-grid">
         <% plan.plans.forEach(function (p) { %>
-          <div class="hn2p-card <%= p.isCurrent ? 'is-current' : '' %>">
-            <% if (p.badge) { %><span class="hn2p-badge"><%= p.badge %></span><% } %>
-            <h2 class="hn2p-name"><%= p.name %></h2>
-            <div class="hn2p-desc"><%= p.description %></div>
-            <div class="hn2p-price">
-              <b><%= p.price ? inr(p.price) : "Free" %></b>
-              <% if (p.strikePrice) { %><s><span class="hn2p-sr">was </span><%= inr(p.strikePrice) %></s><% } %>
+          <div class="hn2p-card t-<%= p.theme || 'green' %> <%= p.isCurrent ? 'is-current' : '' %>">
+            <div class="hn2p-head">
+              <div class="hn2p-badge-row"><% if (p.badge) { %><span class="hn2p-badge"><%= p.badge %></span><% } %></div>
+              <h2 class="hn2p-name"><%= p.name %></h2>
+              <div class="hn2p-desc"><%= p.description %></div>
+              <div class="hn2p-price">
+                <b><%= p.price ? inr(p.price) : "Free" %></b>
+                <% if (p.strikePrice) { %><s><span class="hn2p-sr">was </span><%= inr(p.strikePrice) %></s><% } %>
+              </div>
+              <div class="hn2p-per"><%= p.per %></div>
+              <% if (p.perMonth) { %><div class="hn2p-month">About <%= inr(p.perMonth) %> a month</div><% } %>
+              <% if (p.offerEnds) { %><div class="hn2p-offer">Offer ends <%= p.offerEnds %></div><% } %>
             </div>
-            <div class="hn2p-per"><%= p.per %></div>
-            <% if (p.offerEnds) { %><div class="hn2p-offer">Offer ends <%= p.offerEnds %></div><% } %>
-
+            <div class="hn2p-body">
             <ul class="hn2p-list">
-              <% p.limitLines.forEach(function (t) { %><li><span class="hn2p-tick" aria-hidden="true">✓</span><span><%= t %></span></li><% }) %>
+              <% p.limitLines.forEach(function (t) { %><li class="is-limit"><span class="hn2p-tick" aria-hidden="true">✓</span><span><%= t %></span></li><% }) %>
               <% p.features.forEach(function (f) { %>
                 <li class="<%= f.on ? '' : 'is-off' %>"><span class="hn2p-tick" aria-hidden="true"><%= f.on ? "✓" : "–" %></span><span><%= f.label %><% if (!f.on) { %><span class="hn2p-sr"> (not included)</span><% } %></span></li>
               <% }) %>
@@ -84,11 +104,13 @@
                 <a class="hn2a-btn" href="<%= p.request.href %>" <% if (p.request.external) { %>target="_blank" rel="noopener"<% } %>><%= p.request.label %></a>
               <% } %>
             </div>
+            </div>
           </div>
         <% }) %>
       </div>
+      <div class="hn2p-foot"><span><i></i>Tenants never pay</span><span><i></i>One-time payment, no auto-renew</span><span><i></i>Your data stays safe on every plan</span></div>
       <% const hnPayOnline = typeof payOnline !== "undefined" && payOnline; %>
-      <div class="hn2a-help" style="margin-top:16px"><%= hnPayOnline ? "Pay securely with UPI, cards or netbanking through Razorpay. Plans are one-time payments and do not renew by themselves." : "Online payment is coming soon. For now, request a plan and we will activate it for you." %> Questions? Email <a href="mailto:<%= supportEmail %>" style="color:#0a7d4c;font-weight:700"><%= supportEmail %></a>.</div>
+      <div class="hn2a-help" style="margin-top:16px"><%= hnPayOnline ? "Pay securely with UPI, cards or netbanking through Razorpay. Plans are one-time payments and do not renew by themselves." : "Online payment is coming soon. For now, request a plan and we will activate it for you." %> Questions? Email <a href="mailto:<%= supportEmail %>" style="color:var(--hn-green);font-weight:700"><%= supportEmail %></a>.</div>
     <% } %>
   </div>
 </div>

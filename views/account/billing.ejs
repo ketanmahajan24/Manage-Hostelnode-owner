@@ -1,113 +1,243 @@
 <% layout("/layouts/boilerplate") -%>
-<%# Redesign Phase 4 — Billing (read-only view of the owner's account status and billing records). %>
+<%# Billing — the owner's plan, usage, what the plan includes, payments and receipts.
+    Read-only page. With subscriptions switched off only Account status and Billing history show, as before. %>
 <%- include("_style.ejs") %>
 <%
   const st = user.status || "Pending";
   const stClass = st === "Active" ? "is-ok" : (st === "Inactive" || st === "Banned") ? "is-bad" : "is-warn";
   const inr = n => "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(n) || 0);
   const day = d => d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : "—";
+  const hnPlan = (typeof plan !== "undefined" && plan && plan.show) ? plan : null;
+  const hnReceipts = (typeof receipts !== "undefined" && Array.isArray(receipts)) ? receipts : [];
+  const hnLook = hnPlan ? (hnPlan.look || "slate") : "slate";
+  const hnTiles = ["blue", "green", "violet"];
+  // One clear main button, worded for where the owner is now.
+  const hnMain = !hnPlan ? "" : hnPlan.state === "active" ? (hnPlan.isPaid ? "Renew or change plan" : "Upgrade plan")
+    : hnPlan.state === "grace" ? "Renew plan" : hnPlan.state === "none" ? "Choose a plan" : "Upgrade plan";
 %>
-<div class="hn2a">
+<style>
+  .hn2g .hn2a-inner { max-width: 1120px; }
+  .hn2g-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
+  .hn2g-main, .hn2g-rail { display: grid; gap: 16px; min-width: 0; }
+  .hn2g .hn2a-card { margin-bottom: 0; }
+  .hn2g-h { font-size: 15px; font-weight: 700; color: var(--hn-ink); margin: 6px 0 -4px; letter-spacing: -0.01em; }
+
+  /* your plan */
+  .hn2p-pass { position: relative; overflow: hidden; border-radius: 22px; padding: 24px 26px; color: #fff; background: var(--c); box-shadow: 0 18px 34px -22px var(--c); }
+  .hn2p-pass::after { content: ""; position: absolute; right: -70px; top: -90px; width: 260px; height: 260px; border-radius: 50%; background: rgba(255,255,255,0.09); pointer-events: none; }
+  .hn2p-pass.is-paid { background: linear-gradient(135deg, #064e31 0%, #0a7d4c 55%, #0EA968 100%); }
+  .hn2p-pass.is-paid::before { content: ""; position: absolute; left: -40px; bottom: -120px; width: 240px; height: 240px; border-radius: 50%; background: rgba(255,255,255,0.07); pointer-events: none; }
+  .hn2p-pass-top { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+  .hn2p-pass-main { min-width: 0; }
+  .hn2p-pass-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hn2p-pass-pill::first-letter { text-transform: uppercase; }
+  .hn2p-pass-pill { display: inline-block; text-transform: lowercase; background: #fff; color: var(--c); font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 99px; }
+  .hn2p-pass-paid { display: inline-flex; align-items: center; gap: 6px; background: #ffd66b; color: #4a3200; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 99px; }
+  .hn2a .hn2p-pass-name { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; margin: 12px 0 6px; color: #fff; overflow-wrap: anywhere; }
+  .hn2p-pass-line { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.94); line-height: 1.5; }
+  .hn2p-pass-days { flex-shrink: 0; text-align: right; line-height: 1; }
+  .hn2p-pass-days b { display: block; font-size: 52px; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+  .hn2p-pass-days span { display: block; font-size: 13px; font-weight: 600; margin-top: 6px; color: rgba(255,255,255,0.94); }
+  .hn2p-pass-time { position: relative; z-index: 1; height: 8px; border-radius: 99px; background: rgba(255,255,255,0.25); overflow: hidden; margin-top: 20px; }
+  .hn2p-pass-time i { display: block; height: 100%; border-radius: 99px; background: #fff; }
+  .hn2p-pass-ends { position: relative; z-index: 1; display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,0.94); margin-top: 8px; }
+  .hn2p-pass-cta { position: relative; z-index: 1; display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+  .hn2p-pass-btn, .hn2p-pass-btn:hover, .hn2p-pass-btn:focus { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 22px; border-radius: 12px; background: #fff; color: var(--c); font-size: 14px; font-weight: 700; }
+  .hn2p-pass-btn:hover { background: rgba(255,255,255,0.9); }
+  .hn2p-pass-btn.is-line, .hn2p-pass-btn.is-line:hover, .hn2p-pass-btn.is-line:focus { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.6); }
+  .hn2p-pass-btn.is-line:hover { background: rgba(255,255,255,0.12); }
+  .hn2p-pass-btn:focus-visible { outline: 3px solid rgba(255,255,255,0.75); outline-offset: 2px; }
+
+  /* usage */
+  .hn2p-usage { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .hn2p-use { background: var(--c-tint); border: 1px solid var(--c-soft); border-radius: 18px; padding: 16px 16px 14px; }
+  .hn2p-use.is-stop { --c: var(--hn-coral); --c-tint: var(--hn-coral-tint); --c-soft: #f6c3be; }
+  .hn2p-use-top { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .hn2p-use-top span { font-size: 13px; font-weight: 600; color: var(--c); }
+  .hn2p-use-top b { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--hn-ink); line-height: 1; font-variant-numeric: tabular-nums; }
+  .hn2p-bar { height: 8px; border-radius: 99px; background: #fff; overflow: hidden; }
+  .hn2p-bar i { display: block; height: 100%; border-radius: 99px; background: var(--c); }
+  .hn2p-use-note { font-size: 12.5px; color: var(--hn-body); font-weight: 500; margin-top: 8px; }
+  .hn2p-use-note.is-over { color: var(--hn-coral); font-weight: 700; }
+  .hn2p-use-up, .hn2p-use-up:hover { display: inline-block; margin-top: 8px; font-size: 12.5px; font-weight: 700; color: var(--hn-coral); text-decoration: underline; }
+
+  /* tables */
+  .hn2g-tablecard { padding: 0; overflow: hidden; }
+  .hn2g-tablehead { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 18px 20px 12px; }
+  .hn2g-count { font-size: 12.5px; font-weight: 500; color: var(--hn-soft); }
+  .hn2g-receipt, .hn2g-receipt:hover { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 5px 12px; border-radius: 9px; background: var(--hn-green-tint); color: var(--hn-green); font-size: 12.5px; font-weight: 700; }
+  .hn2g-receipt:hover { background: #d3efdf; }
+
+  /* side rail */
+  .hn2g-kv { display: grid; gap: 0; margin: 0; }
+  .hn2g-kv > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #eef4f1; font-size: 13.5px; }
+  .hn2g-kv > div:last-child { border-bottom: 0; padding-bottom: 0; }
+  .hn2g-kv dt { color: var(--hn-soft); font-weight: 500; }
+  .hn2g-kv dd { margin: 0; color: var(--hn-ink); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+  .hn2g-inc { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+  .hn2g-inc li { display: flex; gap: 10px; font-size: 13.5px; font-weight: 500; color: var(--hn-body); line-height: 1.4; }
+  .hn2g-inc i { flex-shrink: 0; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; background: var(--hn-green-tint); color: var(--hn-green); font-size: 11px; font-weight: 800; font-style: normal; display: inline-flex; align-items: center; justify-content: center; }
+  .hn2g-inc li.is-off { color: #7b8a84; }
+  .hn2g-inc li.is-off i { background: #eef2f0; color: #7b8a84; }
+  .hn2g-unlock, .hn2g-unlock:hover { display: inline-block; margin-top: 14px; font-size: 13px; font-weight: 700; color: var(--hn-green); }
+  .hn2g-help { background: var(--hn-green-tint); border-color: #bfe8d2; }
+  .hn2g-help p { margin: 0 0 10px; font-size: 13.5px; font-weight: 500; color: var(--hn-body); line-height: 1.5; }
+  .hn2g-help a { color: var(--hn-green); font-weight: 700; overflow-wrap: anywhere; }
+
+  @media (max-width: 1100px) { .hn2g-grid { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 767px) {
+    .hn2p-pass { padding: 20px 18px; border-radius: 18px; }
+    .hn2a .hn2p-pass-name { font-size: 20px; }
+    .hn2p-pass-days b { font-size: 40px; }
+    .hn2p-pass-btn { flex: 1 1 100%; }
+    .hn2p-usage { grid-template-columns: minmax(0, 1fr); }
+    .hn2p-use-top { flex-direction: row; justify-content: space-between; align-items: baseline; }
+    .hn2p-use-top b { font-size: 20px; }
+  }
+</style>
+
+<div class="hn2a hn2g">
   <div class="hn2a-inner">
     <h1 class="hn2a-title">Billing</h1>
-    <div class="hn2a-sub">Your HostelNode account status and billing records</div>
+    <div class="hn2a-sub">Your plan, what you are using, and every payment in one place</div>
 
-    <%# Subscriptions Phase 2 — the owner's plan. Absent when subscriptions are off. %>
-    <% const hnPlan = (typeof plan !== "undefined" && plan && plan.show) ? plan : null; %>
-    <% if (hnPlan) { %>
-    <div class="hn2a-card">
-      <div class="hn2a-row">
-        <div>
-          <div class="hn2a-card-title">Your plan: <%= hnPlan.name %></div>
-          <div class="hn2a-card-sub" style="margin:0"><%= hnPlan.line %></div>
-        </div>
-        <span class="hn2a-pill <%= hnPlan.tone %>"><%= hnPlan.status %></span>
-      </div>
-      <div class="hn2p-usage">
-        <% hnPlan.usageRows.forEach(function (u) { %>
-          <div class="hn2p-use">
-            <div class="hn2p-use-top"><span><%= u.label %></span><b><%= u.used %><%= u.limit === null ? "" : " of " + u.limit %></b></div>
-            <% if (u.limit === null) { %>
-              <div class="hn2p-use-note">Unlimited</div>
-            <% } else { %>
-              <div class="hn2p-bar" role="img" aria-label="<%= u.used %> of <%= u.limit %> used"><i class="<%= u.over ? 'is-over' : '' %>" style="width:<%= u.percent %>%"></i></div>
-              <% if (u.over) { %><div class="hn2p-use-note is-over">Above this plan's limit</div><% } %>
-              <% if (u.full) { %><div class="hn2p-use-note is-over">Limit reached</div><% } %>
+    <div class="hn2g-grid">
+      <div class="hn2g-main">
+
+        <% if (hnPlan) { %>
+        <section class="hn2p-pass t-<%= hnLook %> <%= hnPlan.isPaid ? 'is-paid' : '' %>" aria-label="Your plan">
+          <div class="hn2p-pass-top">
+            <div class="hn2p-pass-main">
+              <div class="hn2p-pass-pills">
+                <span class="hn2p-pass-pill"><%= hnPlan.status %></span>
+                <% if (hnPlan.isPaid) { %><span class="hn2p-pass-paid"><span aria-hidden="true">★</span> Paid member</span><% } %>
+              </div>
+              <h2 class="hn2p-pass-name">Your plan: <%= hnPlan.name %></h2>
+              <div class="hn2p-pass-line"><%= hnPlan.line %></div>
+            </div>
+            <% if (hnPlan.daysLeft !== null && hnPlan.daysLeft !== undefined && hnPlan.state !== "grace") { %>
+              <div class="hn2p-pass-days" aria-hidden="true"><b><%= hnPlan.daysLeft %></b><span><%= hnPlan.daysLeft === 1 ? "day left" : "days left" %></span></div>
             <% } %>
           </div>
-        <% }) %>
-      </div>
-      <% if (hnPlan.plans.length) { %>
-        <div style="margin-top:16px"><a class="hn2a-btn" href="/user/account/plans">View plans</a></div>
-      <% } %>
-    </div>
-    <style>
-      .hn2p-usage { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
-      .hn2p-use-top { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: #667085; font-weight: 600; margin-bottom: 6px; }
-      .hn2p-use-top b { color: #12151a; font-weight: 800; }
-      .hn2p-bar { height: 6px; border-radius: 99px; background: #eef1f4; overflow: hidden; }
-      .hn2p-bar i { display: block; height: 100%; border-radius: 99px; background: #0EA968; }
-      .hn2p-bar i.is-over { background: #d97706; }
-      .hn2p-use-note { font-size: 11.5px; color: #98a2b3; font-weight: 600; margin-top: 5px; }
-      .hn2p-use-note.is-over { color: #92660c; }
-      @media (max-width: 767px) { .hn2p-usage { grid-template-columns: minmax(0, 1fr); } }
-    </style>
-    <% } %>
+          <% if (hnPlan.timePercent !== null && hnPlan.timePercent !== undefined) { %>
+            <div class="hn2p-pass-time" role="img" aria-label="<%= hnPlan.timePercent %> percent of this plan period used"><i style="width:<%= Math.max(3, hnPlan.timePercent) %>%"></i></div>
+            <% if (hnPlan.startedOn && hnPlan.state !== "grace") { %><div class="hn2p-pass-ends"><span>Started <%= hnPlan.startedOn %></span><span>Ends <%= hnPlan.endsOn %></span></div><% } %>
+          <% } %>
+          <% if (hnPlan.plans.length) { %>
+            <div class="hn2p-pass-cta">
+              <a class="hn2p-pass-btn" href="/user/account/plans"><%= hnMain %></a>
+              <a class="hn2p-pass-btn is-line" href="/user/account/plans">View plans</a>
+            </div>
+          <% } %>
+        </section>
 
-    <div class="hn2a-card">
-      <div class="hn2a-row">
-        <div>
-          <div class="hn2a-card-title">Account status</div>
-          <div class="hn2a-card-sub" style="margin:0">
-            <% if (st === "Active") { %>Your account is active.<% } else if (st === "Inactive" || st === "Banned") { %>Your account is inactive. Contact support to reactivate it.<% } else { %>Your account is pending activation.<% } %>
+        <h2 class="hn2g-h">What you are using</h2>
+        <div class="hn2p-usage">
+          <% hnPlan.usageRows.forEach(function (u, i) { const stop = u.over || u.full; %>
+            <div class="hn2p-use t-<%= hnTiles[i % 3] %> <%= stop ? 'is-stop' : '' %>">
+              <div class="hn2p-use-top"><span><%= u.label %></span><b><%= u.used %><%= u.limit === null ? "" : " of " + u.limit %></b></div>
+              <% if (u.limit === null) { %>
+                <div class="hn2p-use-note">Unlimited</div>
+              <% } else { %>
+                <div class="hn2p-bar" role="img" aria-label="<%= u.used %> of <%= u.limit %> used"><i class="<%= u.over ? 'is-over' : '' %>" style="width:<%= u.percent %>%"></i></div>
+                <% if (u.over) { %><div class="hn2p-use-note is-over">Above this plan's limit</div><% } %>
+                <% if (u.full) { %><div class="hn2p-use-note is-over">Limit reached</div><% } %>
+                <% if (stop && hnPlan.plans.length) { %><a class="hn2p-use-up" href="/user/account/plans">Upgrade to add more</a><% } %>
+                <% if (!stop) { %><div class="hn2p-use-note"><%= u.limit - u.used %> more can be added</div><% } %>
+              <% } %>
+            </div>
+          <% }) %>
+        </div>
+        <% } %>
+
+        <% if (!hnPlan) { %>
+        <div class="hn2a-card">
+          <div class="hn2a-row">
+            <div>
+              <div class="hn2a-card-title">Account status</div>
+              <div class="hn2a-card-sub" style="margin:0">
+                <% if (st === "Active") { %>Your account is active.<% } else if (st === "Inactive" || st === "Banned") { %>Your account is inactive. Contact support to reactivate it.<% } else { %>Your account is pending activation.<% } %>
+              </div>
+            </div>
+            <span class="hn2a-pill <%= stClass %>"><%= st %></span>
           </div>
         </div>
-        <span class="hn2a-pill <%= stClass %>"><%= String(st).toUpperCase() %></span>
+        <% } %>
+
+        <%# Receipts for plans paid online. %>
+        <% if (hnReceipts.length) { %>
+        <div class="hn2a-card hn2g-tablecard">
+          <div class="hn2g-tablehead"><div class="hn2a-card-title" style="margin:0">Plan payments</div><span class="hn2g-count"><%= hnReceipts.length %> <%= hnReceipts.length === 1 ? "payment" : "payments" %></span></div>
+          <table class="hn2a-table">
+            <thead><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Receipt</th></tr></thead>
+            <tbody>
+              <% hnReceipts.forEach(function (r) { %>
+                <tr>
+                  <td><%= day(r.date) %></td>
+                  <td><%= r.name %></td>
+                  <td><b style="color:var(--hn-ink)"><%= inr(r.amount) %></b></td>
+                  <td><% if (r.refunded) { %><span class="hn2a-pill is-warn">Refunded</span><% } else if (r.hasReceipt) { %><a class="hn2g-receipt" href="/user/account/checkout/receipt/<%= r.id %>" target="_blank" rel="noopener">Download receipt</a><% } else { %>—<% } %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+
+        <div class="hn2a-card hn2g-tablecard">
+          <div class="hn2g-tablehead"><div class="hn2a-card-title" style="margin:0">Billing history</div></div>
+          <% if (!history.length) { %>
+            <div class="hn2a-empty">No billing records yet.<% if (hnPlan && hnPlan.plans.length) { %> Your payments will be listed here after you choose a plan.<% } %></div>
+          <% } else { %>
+            <table class="hn2a-table">
+              <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Status</th></tr></thead>
+              <tbody>
+                <% history.forEach(function (b) { %>
+                  <tr>
+                    <td><%= day(b.date) %></td>
+                    <td><%= b.description || "—" %></td>
+                    <td><%= inr(b.amount) %></td>
+                    <td><span class="hn2a-pill <%= b.paid ? 'is-ok' : 'is-warn' %>"><%= b.paid ? 'Paid' : 'Due' %></span></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          <% } %>
+        </div>
       </div>
-    </div>
 
-    <%# Subscriptions Phase 3 — receipts for plans paid online. %>
-    <% const hnReceipts = (typeof receipts !== "undefined" && Array.isArray(receipts)) ? receipts : []; %>
-    <% if (hnReceipts.length) { %>
-    <div class="hn2a-card" style="padding:0;overflow:hidden">
-      <div style="padding:18px 20px 12px"><div class="hn2a-card-title">Plan payments</div></div>
-      <table class="hn2a-table">
-        <thead><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Receipt</th></tr></thead>
-        <tbody>
-          <% hnReceipts.forEach(function (r) { %>
-            <tr>
-              <td><%= day(r.date) %></td>
-              <td><%= r.name %></td>
-              <td><%= inr(r.amount) %></td>
-              <td><% if (r.refunded) { %><span class="hn2a-pill is-warn">REFUNDED</span><% } else if (r.hasReceipt) { %><a href="/user/account/checkout/receipt/<%= r.id %>" target="_blank" rel="noopener" style="color:#0a7d4c;font-weight:700">Receipt</a><% } else { %>—<% } %></td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
-    <% } %>
+      <aside class="hn2g-rail" aria-label="Plan details">
+        <% if (hnPlan) { %>
+        <div class="hn2a-card">
+          <div class="hn2a-card-title" style="margin-bottom:8px">Plan details</div>
+          <dl class="hn2g-kv">
+            <div><dt>Plan</dt><dd><%= hnPlan.name %></dd></div>
+            <% if (hnPlan.paidPrice) { %><div><dt>You paid</dt><dd><%= inr(hnPlan.paidPrice) %></dd></div><% } %>
+            <% if (hnPlan.startedOn) { %><div><dt>Started</dt><dd><%= hnPlan.startedOn %></dd></div><% } %>
+            <% if (hnPlan.endsOn) { %><div><dt><%= hnPlan.endsLabel %></dt><dd><%= hnPlan.endsOn %></dd></div><% } %>
+            <div><dt>Auto-renew</dt><dd>Off</dd></div>
+            <div><dt>Account</dt><dd><span class="hn2a-pill <%= stClass %>"><%= st %></span></dd></div>
+          </dl>
+        </div>
 
-    <div class="hn2a-card" style="padding:0;overflow:hidden">
-      <div style="padding:18px 20px 12px"><div class="hn2a-card-title">Billing history</div></div>
-      <% if (!history.length) { %>
-        <div class="hn2a-empty">No billing records yet.</div>
-      <% } else { %>
-        <table class="hn2a-table">
-          <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Status</th></tr></thead>
-          <tbody>
-            <% history.forEach(function (b) { %>
-              <tr>
-                <td><%= day(b.date) %></td>
-                <td><%= b.description || "—" %></td>
-                <td><%= inr(b.amount) %></td>
-                <td><span class="hn2a-pill <%= b.paid ? 'is-ok' : 'is-warn' %>"><%= b.paid ? 'PAID' : 'DUE' %></span></td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
-      <% } %>
-    </div>
+        <% if (hnPlan.state !== "none" && hnPlan.included.length) { %>
+        <div class="hn2a-card">
+          <div class="hn2a-card-title" style="margin-bottom:12px">Included in your plan</div>
+          <ul class="hn2g-inc">
+            <% hnPlan.included.forEach(function (t) { %><li><i aria-hidden="true">✓</i><span><%= t %></span></li><% }) %>
+            <% hnPlan.notIncluded.forEach(function (t) { %><li class="is-off"><i aria-hidden="true">–</i><span><%= t %> <span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">(not included)</span></span></li><% }) %>
+          </ul>
+          <% if (hnPlan.notIncluded.length && hnPlan.plans.length) { %><a class="hn2g-unlock" href="/user/account/plans">Upgrade to unlock everything</a><% } %>
+        </div>
+        <% } %>
+        <% } %>
 
-    <div class="hn2a-help">Questions about billing? Email <a href="mailto:hostelnodehelp@gmail.com" style="color:#0a7d4c;font-weight:700">hostelnodehelp@gmail.com</a>.</div>
+        <div class="hn2a-card hn2g-help">
+          <div class="hn2a-card-title" style="margin-bottom:8px">Need help with billing?</div>
+          <p>Paid but the plan did not change, or need a receipt? Write to us and we will sort it out.</p>
+          <a href="mailto:hostelnodehelp@gmail.com">hostelnodehelp@gmail.com</a>
+        </div>
+      </aside>
+    </div>
   </div>
 </div>

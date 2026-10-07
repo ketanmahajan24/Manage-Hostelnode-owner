@@ -1,0 +1,87 @@
+<%# Welcome popup, shown once right after signup (Middlewares/welcome.js). Renders nothing otherwise. %>
+<% const hnW = (typeof hnWelcome !== "undefined" && hnWelcome) ? hnWelcome : null; %>
+<% if (hnW) { const wp = hnW.plan; const wLook = wp ? (wp.look || "green") : "green"; %>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  .hn2w, .hn2w * { box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; }
+  .hn2w { position: fixed; inset: 0; z-index: 2100; background: rgba(8,40,26,0.6); display: flex; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
+  .hn2w[hidden] { display: none; }
+  .hn2w-box { width: 100%; max-width: 480px; margin: auto; background: #fff; border-radius: 24px; overflow: hidden; box-shadow: 0 30px 70px -20px rgba(8,40,26,0.55); outline: none; }
+  .hn2w-top { --c: #0a7d4c; position: relative; overflow: hidden; background: var(--c); color: #fff; padding: 26px 26px 24px; }
+  .hn2w-top.t-blue { --c: #1d5fd1; } .hn2w-top.t-slate { --c: #334155; } .hn2w-top.t-amber { --c: #b45309; }
+  .hn2w-top::after { content: ""; position: absolute; right: -60px; top: -90px; width: 230px; height: 230px; border-radius: 50%; background: rgba(255,255,255,0.1); }
+  .hn2w-top > * { position: relative; z-index: 1; }
+  .hn2w-pill { display: inline-block; background: #fff; color: var(--c); font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 99px; }
+  .hn2w .hn2w-title { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; margin: 12px 0 6px; color: #fff; }
+  .hn2w-line { font-size: 14px; font-weight: 500; line-height: 1.5; color: rgba(255,255,255,0.94); margin: 0; }
+  .hn2w-body { padding: 20px 26px 24px; }
+  .hn2w-h { font-size: 13px; font-weight: 600; color: #6b7c75; margin: 0 0 10px; }
+  .hn2w-list { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 9px; }
+  .hn2w-list li { display: flex; gap: 10px; font-size: 14px; font-weight: 500; color: #10231b; line-height: 1.4; }
+  .hn2w-list li::before { content: "✓"; flex-shrink: 0; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; background: #e3f6ec; color: #0a7d4c; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+  .hn2w-note { font-size: 13px; font-weight: 500; color: #3d4f47; line-height: 1.5; background: #f2faf6; border: 1px solid #e2ece7; border-radius: 12px; padding: 11px 13px; margin-bottom: 18px; }
+  .hn2w-acts { display: grid; gap: 10px; }
+  .hn2w-go, .hn2w-go:hover, .hn2w-go:focus { min-height: 48px; border: 0; border-radius: 13px; background: #0a7d4c; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 16px -8px rgba(10,125,76,0.7); }
+  .hn2w-go:hover { background: #086a40; }
+  .hn2w-go:focus-visible, .hn2w-bill:focus-visible { outline: 3px solid rgba(14,169,104,0.4); outline-offset: 2px; }
+  .hn2w-bill, .hn2w-bill:hover { display: flex; align-items: center; justify-content: center; min-height: 46px; border-radius: 13px; border: 1px solid #cfdcd5; background: #fff; color: #10231b; font-size: 14px; font-weight: 600; text-decoration: none; }
+  .hn2w-bill:hover { background: #f4faf7; }
+  @media (max-width: 480px) { .hn2w-top { padding: 22px 20px 20px; } .hn2w-body { padding: 18px 20px 20px; } .hn2w .hn2w-title { font-size: 21px; } }
+</style>
+<div class="hn2w" id="hn2wBack">
+  <div class="hn2w-box" role="dialog" aria-modal="true" aria-labelledby="hn2wTitle" tabindex="-1" id="hn2wBox">
+    <div class="hn2w-top t-<%= wLook %>">
+      <% if (wp && wp.state === "trial") { %>
+        <span class="hn2w-pill">Free trial started</span>
+        <h2 class="hn2w-title" id="hn2wTitle">Welcome to HostelNode</h2>
+        <p class="hn2w-line">Your account is ready and your <b><%= wp.name %></b> is on. You have <%= wp.daysLeft %> <%= wp.daysLeft === 1 ? "day" : "days" %>, until <%= wp.endsOn %>. No payment is needed now.</p>
+      <% } else if (wp && wp.state !== "none") { %>
+        <span class="hn2w-pill">Your plan: <%= wp.name %></span>
+        <h2 class="hn2w-title" id="hn2wTitle">Welcome to HostelNode</h2>
+        <p class="hn2w-line">Your account is ready. You are on the <b><%= wp.name %></b> plan.</p>
+      <% } else { %>
+        <span class="hn2w-pill">Account ready</span>
+        <h2 class="hn2w-title" id="hn2wTitle">Welcome to HostelNode</h2>
+        <p class="hn2w-line">Your account is ready. You are logged in and can start right away.</p>
+      <% } %>
+    </div>
+    <div class="hn2w-body">
+      <% if (wp && wp.state !== "none" && wp.included.length) { %>
+        <p class="hn2w-h">Your plan includes</p>
+        <ul class="hn2w-list"><% wp.included.slice(0, 6).forEach(function (t) { %><li><span><%= t %></span></li><% }) %></ul>
+      <% } %>
+      <% if (wp && wp.state === "trial") { %>
+        <div class="hn2w-note">When the trial ends you can pick a paid plan or continue on the free plan. Your data stays safe either way.</div>
+      <% } else if (wp && wp.state === "none" && wp.plans.length) { %>
+        <div class="hn2w-note">Choose a plan from Billing whenever you are ready.</div>
+      <% } %>
+      <div class="hn2w-acts">
+        <button type="button" class="hn2w-go" id="hn2wGo"><%= wp && wp.state === "trial" ? "Start using my free trial" : "Go to my dashboard" %></button>
+        <% if (wp) { %><a class="hn2w-bill" href="/user/account/billing">Manage billing and plans</a><% } %>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var back = document.getElementById('hn2wBack'), box = document.getElementById('hn2wBox');
+  if (!back) return;
+  var oldFlow = document.body.style.overflow; document.body.style.overflow = 'hidden';
+  function close() { back.hidden = true; document.body.style.overflow = oldFlow; document.removeEventListener('keydown', onKey); }
+  function onKey(e) {
+    if (e.key === 'Escape') return close();
+    if (e.key !== 'Tab') return;
+    var f = box.querySelectorAll('button, a[href]'); if (!f.length) return;
+    var first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === box)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+  document.getElementById('hn2wGo').addEventListener('click', close);
+  back.addEventListener('click', function (e) { if (e.target === back) close(); });
+  document.addEventListener('keydown', onKey);
+  box.focus();
+})();
+</script>
+<% } %>

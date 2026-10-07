@@ -108,6 +108,7 @@ app.engine("ejs", ejsMate);
 // setup chip). Read-only; never blocks or redirects a request.
 app.use(require("./Middlewares/navData"));
 app.use(require("./Middlewares/startTrial"));   // Subscriptions Phase 2: starts the free trial (once per login session)
+app.use(require("./Middlewares/welcome"));      // Welcome popup once, right after signup (shows the plan the owner is on)
 app.use(require("./Middlewares/planBanner"));   // Subscriptions Phase 4: "plan ends soon" notice (only when reminders are on)
 app.use(require("./Middlewares/planGate"));     // Subscriptions Phase 4: plan limits (only when switched on in admin)
 app.use(require("./Middlewares/planPopup"));    // Subscriptions: upgrade popup, limit notice and saved drafts (only on the pages that need them)

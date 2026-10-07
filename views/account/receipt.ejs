@@ -7,9 +7,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <title>Receipt <%= r.receipt %> | HostelNode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; background: #f2f4f7; font-family: 'DM Sans', Arial, Helvetica, sans-serif; color: #12151a; }
+  body { margin: 0; background: #f2f4f7; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; color: #12151a; }
   .sheet { max-width: 720px; margin: 28px auto; background: #fff; border: 1px solid #e4e7ec; border-radius: 14px; padding: 36px 40px; }
   .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; border-bottom: 2px solid #12151a; padding-bottom: 20px; }
   .brand { display: flex; align-items: center; gap: 10px; }
@@ -20,11 +23,11 @@
   .tag h1 { margin: 0; font-size: 22px; letter-spacing: .02em; }
   .paid { display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 800; letter-spacing: .06em; color: #0a7d4c; background: #e8f9f0; border: 1px solid #bfeed3; border-radius: 99px; padding: 3px 10px; }
   .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 24px 0; font-size: 13px; }
-  .cols h2 { margin: 0 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #98a2b3; }
+  .cols h2 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: #6b7c75; }
   .cols p { margin: 2px 0; line-height: 1.5; overflow-wrap: anywhere; }
   .cols .r { text-align: right; }
   table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-  th { text-align: left; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #667085; background: #f9fafb; padding: 10px 12px; border-bottom: 1px solid #e4e7ec; }
+  th { text-align: left; font-size: 12px; font-weight: 600; color: #667085; background: #f9fafb; padding: 10px 12px; border-bottom: 1px solid #e4e7ec; }
   td { padding: 14px 12px; border-bottom: 1px solid #f2f4f7; vertical-align: top; }
   td small { display: block; color: #667085; margin-top: 3px; }
   .num { text-align: right; white-space: nowrap; }

@@ -1,13 +1,16 @@
 <%# Subscriptions Phase 4 — plan / trial expiry notice (Middlewares/planBanner.js). Renders nothing when there is nothing to say. %>
 <% const hnPB = (typeof hnPlanBanner !== "undefined" && hnPlanBanner && hnPlanBanner.text) ? hnPlanBanner : null; %>
 <% if (hnPB) { %>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  .hn2b, .hn2b * { box-sizing: border-box; font-family: 'DM Sans', sans-serif; }
-  .hn2b { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 32px; font-size: 13px; font-weight: 600; border-bottom: 1px solid; }
-  .hn2b.is-warn { background: #fff8ec; border-color: #fbe6b8; color: #7a5510; }
-  .hn2b.is-bad  { background: #fef3f2; border-color: #fecdca; color: #912018; }
-  .hn2b-cta, .hn2b-cta:hover { flex-shrink: 0; display: inline-flex; align-items: center; min-height: 32px; padding: 5px 14px; border-radius: 9px; background: #12151a; color: #fff; font-size: 12.5px; font-weight: 700; text-decoration: none; }
-  .hn2b-cta:hover { background: #2a2f37; }
+  .hn2b, .hn2b * { box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; }
+  .hn2b { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 11px 32px; font-size: 13.5px; font-weight: 600; border-bottom: 1px solid; }
+  .hn2b.is-warn { background: #fdf0d9; border-color: #f6d9a8; color: #7c3a06; --b: #b45309; }
+  .hn2b.is-bad  { background: #fde8e6; border-color: #f6c3be; color: #8f241c; --b: #c8372d; }
+  .hn2b-cta, .hn2b-cta:hover { flex-shrink: 0; display: inline-flex; align-items: center; min-height: 32px; padding: 5px 14px; border-radius: 10px; background: var(--b, #0a7d4c); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
+  .hn2b-cta:hover { filter: brightness(0.92); }
   @media (max-width: 767px) { .hn2b { padding: 10px 14px; } }
 </style>
 <div class="hn2b <%= hnPB.tone === 'bad' ? 'is-bad' : 'is-warn' %>" role="status">

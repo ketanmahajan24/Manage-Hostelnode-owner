@@ -43,6 +43,11 @@ function planCard(p, currentPlanId) {
     strikePrice: p.strikePrice ? Number(p.strikePrice) : null,
     per: d.value === 1 ? `per ${d.unit}` : `for ${plural(d.value, d.unit)}`,
     offerEnds: p.offerEndsAt ? day(p.offerEndsAt) : "",
+    // "about ₹125 a month" for plans longer than one month (a plain division, shown as a helper line)
+    perMonth: (() => {
+      const months = d.unit === "year" ? d.value * 12 : d.unit === "month" ? d.value : 0;
+      return months > 1 && Number(p.price) > 0 ? Math.round(Number(p.price) / months) : 0;
+    })(),
     limitLines: LIMITS.map(l => limitLine(l.key, p.limits ? p.limits[l.key] : null)).filter(Boolean),
     features: FEATURES.map(f => ({ label: f.label, on: !!(p.features && p.features[f.key]) })),
     points: (p.displayPoints || []).slice(0, 10),
@@ -104,13 +109,32 @@ async function buildPlanInfo(ownerId, now) {
       };
     });
 
+    let paidSeen = 0;
     return {
       state: current.state, name: current.name, status, tone, line,
       usageRows,
       // "No plan" with nothing to choose from: nothing useful to show yet.
       show: current.state !== "none" || plans.length > 0,
+      // for the look of the Billing page: which colour the plan card takes, and how far through the period we are
+      look: { trial: "blue", active: "green", grace: "amber", default: "slate", none: "slate" }[current.state] || "slate",
+      daysLeft: current.daysLeft === undefined ? null : current.daysLeft,
+      // what the owner's own plan includes, in plain words
+      included: LIMITS.map(l => limitLine(l.key, current.limits ? current.limits[l.key] : null)).filter(Boolean)
+        .concat(FEATURES.filter(f => current.features && current.features[f.key]).map(f => f.label)),
+      notIncluded: FEATURES.filter(f => !(current.features && current.features[f.key])).map(f => f.label),
+      // a plan the owner paid for (or was given), still running: gets the richer look
+      isPaid: current.state === "active" && !!current.subscription && Number(current.subscription.snapshot && current.subscription.snapshot.price) > 0,
+      startedOn: current.startsAt ? day(current.startsAt) : "",
+      endsOn: current.state === "grace" ? day(current.graceEndsAt) : current.expiresAt ? day(current.expiresAt) : "",
+      endsLabel: current.state === "trial" ? "Trial ends" : current.state === "grace" ? "Kept until" : "Valid until",
+      paidPrice: current.subscription && current.subscription.snapshot ? Number(current.subscription.snapshot.price) || 0 : 0,
+      timePercent: (current.startsAt && current.expiresAt && new Date(current.expiresAt) > new Date(current.startsAt))
+        ? Math.max(0, Math.min(100, Math.round(((now - new Date(current.startsAt)) / (new Date(current.expiresAt) - new Date(current.startsAt))) * 100)))
+        : null,
       plans: plans.map(p => {
         const card = planCard(p, current.planId);
+        // each paid plan card gets its own colour; a free plan stays quiet
+        card.theme = card.price ? ["green", "blue", "violet", "amber"][paidSeen++ % 4] : "slate";
         // Let the owner ask to renew the plan they are on once it is close to (or past) its end.
         card.canRenew = card.isCurrent && (current.state === "grace" || (current.daysLeft !== null && current.daysLeft <= 7));
         return card;
