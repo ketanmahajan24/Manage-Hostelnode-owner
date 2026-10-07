@@ -125,6 +125,8 @@ async function buildPlanInfo(ownerId, now) {
       // a plan the owner paid for (or was given), still running: gets the richer look
       isPaid: current.state === "active" && !!current.subscription && Number(current.subscription.snapshot && current.subscription.snapshot.price) > 0,
       startedOn: current.startsAt ? day(current.startsAt) : "",
+      // when the owner's present plan began (for the free plan: when the last plan ended); null if not known
+      periodStart: current.startsAt || (current.expired && current.expired.expiresAt) || null,
       endsOn: current.state === "grace" ? day(current.graceEndsAt) : current.expiresAt ? day(current.expiresAt) : "",
       endsLabel: current.state === "trial" ? "Trial ends" : current.state === "grace" ? "Kept until" : "Valid until",
       paidPrice: current.subscription && current.subscription.snapshot ? Number(current.subscription.snapshot.price) || 0 : 0,

@@ -147,7 +147,14 @@ router.get("/account/billing", jwtAuthMiddleware, attachHostel, async (req, res)
       }
     } catch (e) { console.error("Billing receipts (non-fatal):", e.message); }
     // Leads received and how many became tenants (null on any problem: the card is then left out).
-    const leads = await require("../utils/leads").leadStats(user._id);
+    // "On your current plan" counts from the day that plan began (or, with no plan, from the day they joined).
+    const onPlan = plan && plan.show && plan.state !== "none";
+    const leadsFrom = (onPlan && plan.periodStart) || user.createdAt || null;
+    const leads = await require("../utils/leads").leadStats(user._id, { since: leadsFrom, months: true });
+    if (leads) {
+      leads.sinceOn = leadsFrom ? new Date(leadsFrom).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : "";
+      leads.planName = onPlan ? plan.name : "";
+    }
     res.render("account/billing.ejs", { user, history, plan, receipts, leads });
   } catch (err) {
     console.error("Billing page error:", err.message);

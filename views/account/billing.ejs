@@ -71,15 +71,22 @@
   .hn2g-leads-btn, .hn2g-leads-btn:hover, .hn2g-leads-btn:focus { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 18px; border-radius: 11px; background: var(--hn-violet); color: #fff; font-size: 13.5px; font-weight: 700; }
   .hn2g-leads-btn:hover { filter: brightness(0.92); }
   .hn2g-leads-btn:focus-visible { outline: 3px solid rgba(106,63,216,0.35); outline-offset: 2px; }
-  .hn2g-leads-nums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .hn2g-leads-nums > div { padding: 16px 20px; border-left: 1px solid #eef4f1; }
-  .hn2g-leads-nums > div:first-child { border-left: 0; }
-  .hn2g-leads-nums b { display: block; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: var(--hn-ink); font-variant-numeric: tabular-nums; }
-  .hn2g-leads-nums span { display: block; font-size: 12.5px; font-weight: 500; color: var(--hn-soft); margin-top: 7px; line-height: 1.35; }
+  .hn2g-leads-sec { padding: 16px 20px 18px; }
+  .hn2g-leads-sec.is-plan { border-top: 1px solid var(--hn-line); background: #f7fbf9; }
+  .hn2g-leads-sechead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .hn2g-leads-lab { font-size: 13.5px; font-weight: 700; color: var(--hn-ink); }
+  .hn2g-leads-lab small { display: block; font-size: 12.5px; font-weight: 500; color: var(--hn-soft); margin-top: 2px; }
+  .hn2g-leads-pick { height: 40px; border: 1px solid #cfdcd5; border-radius: 10px; padding: 0 12px; font-size: 13.5px; font-weight: 600; color: var(--hn-ink); background: #fff; max-width: 100%; cursor: pointer; }
+  .hn2g-leads-pick:focus { outline: none; border-color: var(--hn-violet); box-shadow: 0 0 0 3px rgba(106,63,216,0.2); }
+  .hn2g-leads-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .hn2g-leads-n { background: var(--hn-violet-tint); border-radius: 14px; padding: 14px 16px; }
+  .hn2g-leads-n.is-tenant { background: var(--hn-green-tint); }
+  .hn2g-leads-n b { display: block; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: var(--hn-ink); font-variant-numeric: tabular-nums; }
+  .hn2g-leads-n > span { display: block; font-size: 12.5px; font-weight: 500; color: var(--hn-body); margin-top: 7px; line-height: 1.35; }
+  .hn2g-leads-foot { font-size: 12.5px; font-weight: 500; color: var(--hn-soft); margin-top: 12px; }
   @media (max-width: 767px) {
-    .hn2g-leads-nums { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .hn2g-leads-nums > div:nth-child(odd) { border-left: 0; }
-    .hn2g-leads-nums > div:nth-child(n+3) { border-top: 1px solid #eef4f1; }
+    .hn2g-leads-pick { width: 100%; }
+    .hn2g-leads-n b { font-size: 24px; }
   }
 
   /* tables */
@@ -185,12 +192,48 @@
             </div>
             <a class="hn2g-leads-btn" href="<%= hnLeads.hasListings ? '/user/leads' : '/user/list-property' %>"><%= hnLeads.hasListings ? "Open leads" : "List a property" %></a>
           </div>
-          <div class="hn2g-leads-nums">
-            <div><b><%= hnLeads.monthLeads %></b><span>Leads in <%= hnLeads.month %></span></div>
-            <div><b><%= hnLeads.monthTenants %></b><span>Became tenants in <%= hnLeads.month %></span></div>
-            <div><b><%= hnLeads.allLeads %></b><span>Leads so far</span></div>
-            <div><b><%= hnLeads.allTenants %></b><span>Tenants from leads so far</span></div>
+          <% const hnMonths = Array.isArray(hnLeads.months) ? hnLeads.months : []; %>
+          <% if (hnLeads.hasListings && hnMonths.length) { %>
+          <div class="hn2g-leads-sec">
+            <div class="hn2g-leads-sechead">
+              <div class="hn2g-leads-lab">By month<small>Pick any month to see its numbers</small></div>
+              <select class="hn2g-leads-pick" id="hn2gMonth" aria-label="Month">
+                <% hnMonths.forEach(function (m, i) { %><option value="<%= i %>" data-leads="<%= m.leads %>" data-tenants="<%= m.tenants %>" data-label="<%= m.label %>"><%= m.label %> · <%= m.leads %></option><% }) %>
+                <option value="all" data-leads="<%= hnLeads.allLeads %>" data-tenants="<%= hnLeads.allTenants %>" data-label="all months">All months · <%= hnLeads.allLeads %></option>
+              </select>
+            </div>
+            <div class="hn2g-leads-two" aria-live="polite">
+              <div class="hn2g-leads-n"><b id="hn2gMonthLeads"><%= hnMonths[0].leads %></b><span>Leads in <span id="hn2gMonthA"><%= hnMonths[0].label %></span></span></div>
+              <div class="hn2g-leads-n is-tenant"><b id="hn2gMonthTenants"><%= hnMonths[0].tenants %></b><span>Tenants added from leads in <span id="hn2gMonthB"><%= hnMonths[0].label %></span></span></div>
+            </div>
           </div>
+          <% } %>
+          <% if (hnLeads.hasListings) { %>
+          <div class="hn2g-leads-sec is-plan">
+            <div class="hn2g-leads-sechead">
+              <div class="hn2g-leads-lab"><%= hnLeads.planName ? "On your current plan" : "Since you joined" %><small><% if (hnLeads.planName) { %><%= hnLeads.planName %><% if (hnLeads.sinceOn) { %> · <% } %><% } %><% if (hnLeads.sinceOn) { %><%= hnLeads.sinceOn %> to today<% } %></small></div>
+            </div>
+            <% const hnSinceL = hnLeads.sinceLeads === null || hnLeads.sinceLeads === undefined ? hnLeads.allLeads : hnLeads.sinceLeads; %>
+            <% const hnSinceT = hnLeads.sinceTenants === null || hnLeads.sinceTenants === undefined ? hnLeads.allTenants : hnLeads.sinceTenants; %>
+            <div class="hn2g-leads-two">
+              <div class="hn2g-leads-n"><b><%= hnSinceL %></b><span><%= hnLeads.planName ? "Leads since this plan started" : "Leads so far" %></span></div>
+              <div class="hn2g-leads-n is-tenant"><b><%= hnSinceT %></b><span><%= hnLeads.planName ? "Tenants added from leads on this plan" : "Tenants added from leads so far" %></span></div>
+            </div>
+            <% if (hnLeads.planName) { %><div class="hn2g-leads-foot">Since you joined HostelNode: <%= hnLeads.allLeads %> <%= hnLeads.allLeads === 1 ? "lead" : "leads" %>, <%= hnLeads.allTenants %> <%= hnLeads.allTenants === 1 ? "tenant" : "tenants" %> added from leads.</div><% } %>
+          </div>
+          <% } %>
+          <script>
+          (function () {
+            var pick = document.getElementById('hn2gMonth'); if (!pick) return;
+            pick.addEventListener('change', function () {
+              var o = pick.options[pick.selectedIndex]; if (!o) return;
+              document.getElementById('hn2gMonthLeads').textContent = o.getAttribute('data-leads');
+              document.getElementById('hn2gMonthTenants').textContent = o.getAttribute('data-tenants');
+              document.getElementById('hn2gMonthA').textContent = o.getAttribute('data-label');
+              document.getElementById('hn2gMonthB').textContent = o.getAttribute('data-label');
+            });
+          })();
+          </script>
         </section>
         <% } %>
 

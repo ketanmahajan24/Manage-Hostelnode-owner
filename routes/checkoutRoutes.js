@@ -82,14 +82,20 @@ async function mail(to, subject, html) {
   }
 }
 
-// Receipt email, sent once: only by the call that actually activated the plan.
+// Receipt email and WhatsApp message, sent once: only by the call that actually activated the plan.
 async function sendReceipt(result) {
   try {
     if (!result || !result.ok || !result.fresh || !result.record) return;
     const rec = result.record, sub = result.subscription || {};
-    const owner = await Owner.findById(rec.owner).select("name email").lean();
-    if (!owner || !owner.email) return;
+    const owner = await Owner.findById(rec.owner).select("name email phone").lean();
+    if (!owner) return;
     const snap = rec.snapshot || {};
+    // WhatsApp: same details, from HostelNode's WhatsApp number. Not awaited; never stops the email.
+    require("../utils/planReceiptWhatsapp").sendPlanReceiptWhatsApp({
+      phone: owner.phone, ownerName: owner.name, planName: snap.name,
+      amountText: inr(rec.amount), validUntil: sub.expiresAt ? day(sub.expiresAt) : "-", receiptNo: rec.receipt,
+    }).catch(() => {});
+    if (!owner.email) return;
     await mail(owner.email, `Payment received — ${snap.name} plan is active`,
       `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:auto;padding:24px;color:#12151a">
         <h2 style="color:#0a7d4c;margin:0 0 6px">Payment received</h2>

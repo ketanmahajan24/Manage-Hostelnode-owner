@@ -132,6 +132,7 @@ async function closeEnquiryAfterConvert(enquiryId, ownerId, memberId) {
  * and how many became tenants. Optionally also since a given date (`since`).
  * Read-only. Returns null if it cannot be worked out in time.
  */
+const MONTH_ROWS_MAX = 5000;   // newest enquiries looked at for the month picker
 async function leadStats(ownerId, opts = {}) {
   // Never hold a page or an email: after 2 seconds the numbers are simply left out.
   let timer;
@@ -142,24 +143,47 @@ async function leadStats(ownerId, opts = {}) {
   clearTimeout(timer);
   return result;
 }
-async function countLeads(ownerId, { now = new Date(), since = null, until = null } = {}) {
+async function countLeads(ownerId, { now = new Date(), since = null, until = null, months = false } = {}) {
   try {
     if (!ownerId) return null;
     const STATS_MS = 2000;
     const listingIds = (await Listing.find({ owner: ownerId }, { _id: 1 }).maxTimeMS(STATS_MS).lean()).map(l => l._id);
     const monthStart = moment(now).tz(TZ).startOf("month").toDate();
-    const out = { month: moment(now).tz(TZ).format("MMMM"), monthLeads: 0, monthTenants: 0, allLeads: 0, allTenants: 0, sinceLeads: null, hasListings: listingIds.length > 0 };
+    const thisKey = moment(now).tz(TZ).format("YYYY-MM");
+    const out = { month: moment(now).tz(TZ).format("MMMM"), monthLeads: 0, monthTenants: 0, allLeads: 0, allTenants: 0, sinceLeads: null, sinceTenants: null,
+                  months: months ? [{ key: thisKey, label: moment(now).tz(TZ).format("MMMM YYYY"), leads: 0, tenants: 0 }] : null,
+                  hasListings: listingIds.length > 0 };
     if (!listingIds.length) return out;
     const mine = { listing: { $in: listingIds } };
     const count = q => Enquiry.countDocuments({ ...mine, ...q }).maxTimeMS(STATS_MS);
-    const [monthLeads, monthTenants, allLeads, allTenants, sinceLeads] = await Promise.all([
+    const [monthLeads, monthTenants, allLeads, allTenants, sinceLeads, sinceTenants] = await Promise.all([
       count({ createdAt: { $gte: monthStart } }),
       count({ convertedAt: { $gte: monthStart } }),
       count({}),
       count({ convertedAt: { $gt: new Date(0) } }),
       since ? count({ createdAt: until ? { $gte: new Date(since), $lte: new Date(until) } : { $gte: new Date(since) } }) : Promise.resolve(null),
+      since ? count({ convertedAt: until ? { $gte: new Date(since), $lte: new Date(until) } : { $gte: new Date(since) } }) : Promise.resolve(null),
     ]);
-    return { ...out, monthLeads, monthTenants, allLeads, allTenants, sinceLeads };
+
+    // Month by month (India time), newest first, for the month picker on Billing.
+    // A lead counts in the month it arrived; a tenant counts in the month they were added.
+    let byMonth = out.months;
+    if (months) {
+      const rows = await Enquiry.find(mine, { createdAt: 1, convertedAt: 1, _id: 0 }).sort({ createdAt: -1 }).limit(MONTH_ROWS_MAX).maxTimeMS(STATS_MS).lean();
+      const map = new Map([[thisKey, { leads: 0, tenants: 0 }]]);
+      const bump = (d, field) => {
+        if (!d) return;
+        const k = moment(d).tz(TZ).format("YYYY-MM");
+        if (!map.has(k)) map.set(k, { leads: 0, tenants: 0 });
+        map.get(k)[field]++;
+      };
+      for (const r of rows) { bump(r.createdAt, "leads"); bump(r.convertedAt, "tenants"); }
+      map.set(thisKey, { leads: monthLeads, tenants: monthTenants });   // the current month always matches the header exactly
+      byMonth = [...map.keys()].sort().reverse().slice(0, 36).map(k => ({
+        key: k, label: moment.tz(k + "-01", "YYYY-MM-DD", TZ).format("MMMM YYYY"), leads: map.get(k).leads, tenants: map.get(k).tenants,
+      }));
+    }
+    return { ...out, monthLeads, monthTenants, allLeads, allTenants, sinceLeads, sinceTenants, months: byMonth };
   } catch (err) {
     console.error("leadStats (non-fatal):", err.message);
     return null;
