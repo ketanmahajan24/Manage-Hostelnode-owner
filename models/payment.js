@@ -55,6 +55,11 @@ const paymentSchema = new mongoose.Schema({
   payableDate: {
      type: Date 
     },
+  // Property Operations Phase 1: "2026-10" on monthly rent charges added by
+  // utils/monthlyRent.js, so a month is never charged twice. Empty on everything else.
+  chargeMonth: {
+    type: String
+  },
   status: { 
     type: String, 
     enum: ["Paid", "Due","Advanced"], 

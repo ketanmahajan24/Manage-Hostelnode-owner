@@ -107,8 +107,9 @@ async function buildDashboard(ownerId, hostels, now = new Date()) {
   const dueByHostel = new Map();                    // hostelId → { amount, members }
   for (const m of members) {
     const pays = Array.isArray(m.payments) ? m.payments.filter(Boolean) : [];
-    const fees = pays.reduce((s, p) => s + (Number(p.roomFees) || 0), 0);
     const paid = pays.reduce((s, p) => s + (Number(p.amountPaid) || 0), 0);
+    // Property Operations Phase 1: a removed tenant counts only for what they paid.
+    const fees = m.removedAt ? paid : pays.reduce((s, p) => s + (Number(p.roomFees) || 0), 0);
     const due  = Math.max(0, fees - paid);
     expected  += fees;
     collected += paid;

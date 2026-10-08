@@ -56,7 +56,7 @@
                     <option value="" disabled>Select Room To Assign</option>
                     <% rooms.forEach(room => { %>
                         <option value="<%= room._id %>"
-                            <%= room._id.toString() === allMembers.assignedRoom_id.toString() ? 'selected' : '' %>>
+                            <%= allMembers.assignedRoom_id && room._id.toString() === allMembers.assignedRoom_id.toString() ? 'selected' : '' %>>
                             <%= room.room_number %> &nbsp;&nbsp;&nbsp;/ Fees: <i class="fa-solid fa-indian-rupee-sign"></i><%= room.room_fees %>
                         </option>
                     <% }) %>

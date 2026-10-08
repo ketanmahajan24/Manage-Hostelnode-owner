@@ -137,7 +137,7 @@ tbody tr:hover {
     <div class="page-header">
         <div class="page-title">
             <i class="fa-solid fa-calendar-days" style="color:#09B850;"></i>
-            Upcoming 5 Days Payments
+            Rent due in the next 5 days
         </div>
     </div>
 
@@ -151,14 +151,14 @@ tbody tr:hover {
                     <th>Name</th>
                     <th>Room</th>
                     <th>Monthly Fee</th>
-                    <th>Payable Date</th>
+                    <th>Due on</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
 
             <tbody>
-                <% allMembers.filter(member => member.status === "Active").forEach((Member, index) => { %>
+                <% allMembers.forEach((Member, index) => { %>
 
                 <tr>
                     <td><%= index + 1 %></td>
@@ -168,7 +168,7 @@ tbody tr:hover {
                     <td><%= Member.assignedRoom %></td>
 
                     <td>
-                        <% if (Member.payments.length > 0){ %> 
+                        <% if (Member.payments.length > 0 && Member.payments[0]){ %> 
                             ₹<%= Member.payments[0].roomFees %>
                         <% } else { %> 
                             N/A
@@ -176,7 +176,7 @@ tbody tr:hover {
                     </td>
 
                     <td>
-                        <%= Member.joiningDate.toLocaleDateString("en-GB") %>
+                        <%= Member.nextDue ? new Date(Member.nextDue).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata" }) : "—" %>
                     </td>
 
                     <!-- 🔥 Status -->
@@ -194,7 +194,7 @@ tbody tr:hover {
                         </a>
 
                         <!-- WhatsApp Reminder -->
-                        <a href="https://wa.me/91<%=Member.mobileNo%>?text=Hello%20<%=Member.name%>%2C%20your%20hostel%20payment%20is%20due%20soon." target="_blank">
+                        <a href="https://wa.me/91<%= encodeURIComponent(Member.mobileNo) %>?text=<%= encodeURIComponent('Hello ' + Member.name + ', your hostel rent is due on ' + (Member.nextDue ? new Date(Member.nextDue).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : 'soon') + '.') %>" target="_blank" rel="noopener">
                             <button class="btn-reminder">
                                 <i class="fa-brands fa-whatsapp"></i>
                             </button>
@@ -204,6 +204,9 @@ tbody tr:hover {
                 </tr>
 
                 <% }); %>
+                <% if (!allMembers.length) { %>
+                <tr><td colspan="7" style="text-align:center;padding:28px;color:#667085">No rent is due in the next 5 days.</td></tr>
+                <% } %>
             </tbody>
 
         </table>

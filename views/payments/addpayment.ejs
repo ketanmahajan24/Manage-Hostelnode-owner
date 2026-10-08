@@ -172,13 +172,13 @@
 
             <div class="info-row">
                 <span class="label">Joining Date</span>
-                <span class="value"><%= member.joiningDate.toLocaleDateString("en-GB") %></span>
+                <span class="value"><%= member.joiningDate && !isNaN(new Date(member.joiningDate)) ? new Date(member.joiningDate).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata" }) : "—" %></span>
             </div>
 
         </div>
 
         <!-- Form -->
-        <form method="POST" action="/user/addpayment/<%=member._id%>" class="row g-4">
+        <form method="POST" action="/user/addpayment/<%=member._id%>" class="row g-4" onsubmit="var b=this.querySelector('[type=submit]'); if (b.disabled) return false; b.disabled=true; b.textContent='Saving…'; return true;">
 
             <div class="col-12">
                 <label class="form-label">Amount Received</label>
@@ -218,7 +218,7 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });   // today in India, as YYYY-MM-DD
     document.getElementById("paymentDate").value = today;
 });
 </script>

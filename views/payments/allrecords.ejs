@@ -229,8 +229,9 @@ tbody tr:hover {
                     <td>₹<%= member.dueAmount.toLocaleString() %></td>
 
                     <td>
-                        <% if (member.payments.length) { %>
-                            <%= new Date(member.payments.at(-1).paymentDate).toLocaleDateString('en-GB') %>
+                        <% const hnLastPaid = (member.payments || []).filter(p => p && Number(p.amountPaid) > 0).sort((a, b) => new Date(b.paymentDate || 0) - new Date(a.paymentDate || 0))[0]; %>
+                        <% if (hnLastPaid) { %>
+                            <%= new Date(hnLastPaid.paymentDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) %>
                         <% } else { %>
                             -
                         <% } %>

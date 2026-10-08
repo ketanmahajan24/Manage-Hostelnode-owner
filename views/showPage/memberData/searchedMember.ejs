@@ -199,14 +199,14 @@ tbody tr:hover {
                     <td class="member-name"><%= Member.name %></td>
                     <td><%= Member.fatherName %></td>
                     <td><%= Member.mobileNo %></td>
-                    <td><%= Member.aadharNo %></td>
+                    <td><%= Member.aadharNo ? "xxxx xxxx " + String(Member.aadharNo).replace(/\D/g, "").slice(-4) : "—" %></td>
                     <td><%= Member.address %></td>
                     <td><%= Member.profession %></td>
-                    <td><%= Member.joiningDate.toLocaleDateString("en-GB") %></td>
+                    <td><%= Member.joiningDate && !isNaN(new Date(Member.joiningDate)) ? new Date(Member.joiningDate).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata" }) : "—" %></td>
                     <td><%= Member.assignedRoom %></td>
 
                     <td>
-                        <% if (Member.payments.length > 0){ %> 
+                        <% if (Member.payments.length > 0 && Member.payments[0]){ %> 
                             ₹<%= Member.payments[0].roomFees %>
                         <% } else { %> 
                             N/A
@@ -214,10 +214,10 @@ tbody tr:hover {
                     </td>
 
                     <td>
-                        <% if(Member.status === "Active"){ %>
+                        <% if(!Member.leftDate){ %>
                             <span class="badge-active">Active</span>
                         <% } else { %>
-                            <span class="badge-inactive">Inactive</span>
+                            <span class="badge-inactive">Moved out</span>
                         <% } %>
                     </td>
 
@@ -238,7 +238,7 @@ tbody tr:hover {
 
                     <!-- Delete -->
                     <td>
-                        <form method="POST" action="/user/member/<%=Member._id%>?_method=DELETE">
+                        <form method="POST" action="/user/member/<%=Member._id%>?_method=DELETE" onsubmit="return confirm('Remove <%= String(Member.name).replace(/[\\'"<>\r\n\u2028\u2029]/g, ' ') %> from your tenant list? Their payment records are kept.');">
                             <button class="action-btn">
                                 <i class="fa-solid fa-trash icon-delete"></i>
                             </button>

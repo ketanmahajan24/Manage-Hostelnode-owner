@@ -138,7 +138,7 @@ tbody tr:hover {
 
                     <!-- Delete -->
                     <td>
-                        <form method="POST" action="/user/managerooms/<%=Room._id%>?_method=DELETE">
+                        <form method="POST" action="/user/managerooms/<%=Room._id%>?_method=DELETE" onsubmit="return confirm('Delete room <%= String(Room.room_number).replace(/[\\'"<>\r\n\u2028\u2029]/g, ' ') %>? This cannot be undone.');">
                             <button class="btn p-0 border-0 bg-transparent">
                                 <i class="fa-solid fa-trash-can action-icon delete-icon"></i>
                             </button>

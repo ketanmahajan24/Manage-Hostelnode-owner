@@ -22,6 +22,7 @@ const { loadOwnedEnquiry, closeEnquiryAfterConvert, indianMobile } = require("..
 const crypto = require('crypto');
 const fs = require('fs');
 const moment = require("moment-timezone");
+const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const validator = require("validator");
 const nodemailer = require("nodemailer");
@@ -480,16 +481,14 @@ router.get('/', jwtAuthMiddleware, attachHostel, async (req, res) => {
         totalPendingAmount   = 0, totalAdvancedPaid   = 0,
         paidAccounts         = 0, dueAccounts         = 0;
 
-    members.forEach(member => {
-      const fees = (member.payments || []).reduce((s, p) => s + (p.roomFees   || 0), 0);
-      const paid = (member.payments || []).reduce((s, p) => s + (p.amountPaid || 0), 0);
-      const due  = Math.max(0, fees - paid);
-      const adv  = Math.max(0, paid - fees);
-      totalExpectedRevenue += fees;
-      totalFeesCollected   += paid;
-      totalPendingAmount   += due;
-      totalAdvancedPaid    += adv;
-      paid >= fees ? paidAccounts++ : dueAccounts++;
+    // Property Operations Phase 1: removed tenants count only for what they paid.
+    withMoney(members).forEach(m => {
+      totalExpectedRevenue += m.totalFees;
+      totalFeesCollected   += m.amountPaid;
+      totalPendingAmount   += m.dueAmount;
+      totalAdvancedPaid    += m.advancedPaid;
+      if (m.removedAt) return;
+      m.dueAmount > 0 ? dueAccounts++ : paidAccounts++;
     });
 
     const fmt = n => new Intl.NumberFormat("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -502,7 +501,7 @@ router.get('/', jwtAuthMiddleware, attachHostel, async (req, res) => {
       selectedHostel:         res.locals.selectedHostel,
       availableBeds, totalBeds, bookedRooms,
       totalRooms:              rooms.length,
-      totalStudents:           members.length,
+      totalStudents:           members.filter(m => !m.leftDate && !m.removedAt).length,
       totalPendingAmount:      fmt(totalPendingAmount),
       totalAdvancedPaid:       fmt(totalAdvancedPaid),
       totalFeesCollected:      fmt(totalFeesCollected),
@@ -684,6 +683,39 @@ router.post("/create-hostel", jwtAuthMiddleware, attachHostel, async (req, res) 
 });
 
 // ============================================================
+//  PROPERTY OPERATIONS — Phase 1 safety fixes (tenants, rooms, floors, payments)
+//
+//  • Every record is looked up together with the logged-in owner, so one
+//    owner can never open or change another owner's tenants, rooms,
+//    floors or payments by guessing an id.
+//  • Bed counts are re-counted from the real tenants after each change
+//    (utils/tenantOps.js), so they cannot drift or go negative.
+//  • "Living here" = not moved out and not removed. Removing a tenant
+//    keeps the record and its payments, so reports stay correct.
+// ============================================================
+const { LIVING, NOT_REMOVED, isId, escapeRegex, syncRoomAndFloor, syncFloor, money, nextDueDate, TZ } = require("../utils/tenantOps");
+
+// Money owed / collected for a list of tenants (removed tenants: what they paid still counts as collected; their unpaid rent does not).
+function withMoney(members) {
+  return members.map(m => {
+    const f = money(m);
+    const obj = typeof m.toObject === "function" ? m.toObject() : m;
+    if (m.removedAt) return { ...obj, totalFees: f.paid, amountPaid: f.paid, dueAmount: 0, advancedPaid: 0 };
+    return { ...obj, totalFees: f.fees, amountPaid: f.paid, dueAmount: f.due, advancedPaid: f.advance };
+  });
+}
+
+// "Please select a property" for pages that need one.
+const needProperty = res => res.status(400).send("⚠️ Please select a hostel first.");
+
+// A positive amount of money, or null if what was typed is not one.
+function moneyIn(v, { max = 10000000 } = {}) {
+  if (v === undefined || v === null || String(v).trim() === "") return null;
+  const n = Number(String(v).replace(/,/g, ""));
+  return Number.isFinite(n) && n >= 0 && n <= max ? Math.round(n * 100) / 100 : null;
+}
+
+// ============================================================
 //  FLOORS
 // ============================================================
 router.get("/floors", jwtAuthMiddleware, attachHostel, async (req, res) => {
@@ -729,14 +761,14 @@ router.get("/newfloor", jwtAuthMiddleware, attachHostel, async (req, res) => {
 router.post("/newfloor", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
     const floorBody      = req.body.floor || {};
-    const floor_name     = clean(floorBody.floor_name || "");
+    const floor_name     = clean(floorBody.floor_name || "", 40);
     const userId         = req.user.id;
-    const selectedHostel = res.locals.selectedHostel?._id || req.session?.selectedHostel;
+    const selectedHostel = res.locals.selectedHostel?._id;   // only ever one of this owner's own properties
 
     if (!floor_name) return res.status(400).send("Floor name is required.");
-    if (!selectedHostel) return res.status(400).send("Please select a hostel first.");
+    if (!selectedHostel) return needProperty(res);
 
-    const existing = await Floor.findOne({ floor_name, user: userId, hostel: selectedHostel });
+    const existing = await Floor.findOne({ floor_name: { $regex: `^${escapeRegex(floor_name)}$`, $options: "i" }, user: userId, hostel: selectedHostel });
     if (existing) return res.status(400).send(`Floor "${floor_name}" already exists in this hostel.`);
 
     const newFloor = new Floor({ floor_name, user: userId, hostel: selectedHostel });
@@ -757,9 +789,15 @@ router.delete("/managefloor/:id", jwtAuthMiddleware, attachHostel, async (req, r
     const selectedHostel = res.locals.selectedHostel?._id;
     const { id }         = req.params;
 
-    if (!id) return res.status(400).send("Invalid floor ID.");
+    if (!isId(id) || !selectedHostel) return res.status(400).send("Invalid floor ID.");
 
-    await Floor.findOneAndDelete({ _id: id, user: userId, hostel: selectedHostel });
+    const floor = await Floor.findOne({ _id: id, user: userId, hostel: selectedHostel });
+    if (!floor) return res.status(404).send("Floor not found.");
+    // A floor that still has rooms cannot be deleted: its rooms (and the tenants in them) would be left without a floor.
+    const rooms = await Room.countDocuments({ floor_id: floor._id });
+    if (rooms) return res.status(400).send(`Floor "${floor.floor_name}" still has ${rooms} room${rooms === 1 ? "" : "s"}. Delete or move ${rooms === 1 ? "that room" : "those rooms"} first.`);
+
+    await Floor.deleteOne({ _id: floor._id });
     res.redirect("/user/managefloor");
   } catch (err) {
     console.error("delete floor error:", err.message);
@@ -775,7 +813,7 @@ router.get("/allrooms", jwtAuthMiddleware, attachHostel, async (req, res) => {
     const userId         = req.user.id;
     const user           = await Owner.findById(userId);
     const selectedHostel = res.locals.selectedHostel?._id;
-    if (!selectedHostel) return res.send("⚠️ Please select a hostel first.");
+    if (!selectedHostel) return needProperty(res);
 
     const [allRooms, allFloors] = await Promise.all([
       Room.find({ user: userId, hostel: selectedHostel }),
@@ -793,7 +831,7 @@ router.get("/managerooms", jwtAuthMiddleware, attachHostel, async (req, res) => 
     const userId         = req.user.id;
     const user           = await Owner.findById(userId);
     const selectedHostel = res.locals.selectedHostel?._id;
-    if (!selectedHostel) return res.send("⚠️ Please select a hostel first.");
+    if (!selectedHostel) return needProperty(res);
 
     const allRooms = await Room.find({ user: userId, hostel: selectedHostel });
     safeRender(res, "showPage/rooms/managerooms.ejs", { allRooms, user });
@@ -808,7 +846,7 @@ router.get("/newroom", jwtAuthMiddleware, attachHostel, async (req, res) => {
     const userId         = req.user.id;
     const user           = await Owner.findById(userId);
     const selectedHostel = res.locals.selectedHostel?._id;
-    if (!selectedHostel) return res.send("⚠️ Please select a hostel first.");
+    if (!selectedHostel) return needProperty(res);
 
     const floors = await Floor.find({ user: userId, hostel: selectedHostel });
     safeRender(res, "showPage/rooms/newRoom.ejs", { floors, user });
@@ -822,37 +860,34 @@ router.post("/newroom", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
     const userId         = req.user.id;
     const selectedHostel = res.locals.selectedHostel?._id;
-    if (!selectedHostel) return res.status(400).send("Please select a hostel first.");
+    if (!selectedHostel) return needProperty(res);
 
     const roomBody       = req.body.room || {};
     const floor_id       = roomBody.floor_id;
-    const room_number    = clean(roomBody.room_number || "");
-    const room_fees      = toNum(roomBody.room_fees);
-    const sharing_cap    = toNum(roomBody.sharing_capacity);
-    const occupied_beds  = toNum(roomBody.occupied_beds);
+    const room_number    = clean(roomBody.room_number || "", 20);
+    const room_fees      = moneyIn(roomBody.room_fees);
+    const sharing_cap    = Number(roomBody.sharing_capacity);
 
-    if (!floor_id || !room_number) {
+    if (!floor_id || !isId(String(floor_id)) || !room_number) {
       return res.status(400).send("Floor and room number are required.");
     }
-    if (sharing_cap < 1) return res.status(400).send("Sharing capacity must be at least 1.");
-    if (occupied_beds > sharing_cap) return res.status(400).send("Occupied beds cannot exceed sharing capacity.");
+    if (room_fees === null) return res.status(400).send("Enter the rent per bed as a number (0 or more).");
+    if (!Number.isInteger(sharing_cap) || sharing_cap < 1 || sharing_cap > 50) return res.status(400).send("Sharing capacity must be a whole number from 1 to 50.");
 
     const floor = await Floor.findOne({ _id: floor_id, user: userId, hostel: selectedHostel });
     if (!floor) return res.status(404).send("Floor not found or you are not authorized.");
 
-    const existing = await Room.findOne({ room_number, floor_id, hostel: selectedHostel });
+    const existing = await Room.findOne({ room_number: { $regex: `^${escapeRegex(room_number)}$`, $options: "i" }, floor_id, hostel: selectedHostel });
     if (existing) return res.status(400).send(`Room "${room_number}" already exists on this floor.`);
 
+    // A new room is empty: its beds fill as tenants are added.
     const newRoom = new Room({
       user: userId, hostel: selectedHostel, floor_id,
       floor_name: floor.floor_name, room_number, room_fees,
-      sharing_capacity: sharing_cap, occupied_beds
+      sharing_capacity: sharing_cap, occupied_beds: 0
     });
     await newRoom.save();
-
-    await Floor.findByIdAndUpdate(floor_id, {
-      $inc: { total_rooms: 1, total_beds: sharing_cap }
-    });
+    await syncFloor(floor._id).catch(e => console.error("Floor count (non-fatal):", e.message));
     res.redirect("/user/allrooms");
 
   } catch (err) {
@@ -868,6 +903,7 @@ router.get("/managerooms/:id/edit", jwtAuthMiddleware, attachHostel, async (req,
     const userId         = req.user.id;
     const user           = await Owner.findById(userId);
     const selectedHostel = res.locals.selectedHostel?._id;
+    if (!isId(req.params.id)) return res.status(404).send("Room not found or you are not authorized.");
 
     const room = await Room.findOne({ _id: req.params.id, user: userId, hostel: selectedHostel });
     if (!room) return res.status(404).send("Room not found or you are not authorized.");
@@ -881,18 +917,24 @@ router.get("/managerooms/:id/edit", jwtAuthMiddleware, attachHostel, async (req,
 
 router.put("/manageroom/:id", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
+    const userId      = req.user.id;
     const { id }      = req.params;
     const roomBody    = req.body.room || {};
-    const room_fees   = toNum(roomBody.room_fees);
-    const sharing_cap = toNum(roomBody.sharing_capacity);
+    const room_fees   = moneyIn(roomBody.room_fees);
+    const sharing_cap = Number(roomBody.sharing_capacity);
+    if (!isId(id)) return res.status(404).send("Room not found.");
 
-    const room = await Room.findById(id);
+    const room = await Room.findOne({ _id: id, user: userId });
     if (!room) return res.status(404).send("Room not found.");
-    if (sharing_cap < 1) return res.status(400).send("Sharing capacity must be at least 1.");
+    if (room_fees === null) return res.status(400).send("Enter the rent per bed as a number (0 or more).");
+    if (!Number.isInteger(sharing_cap) || sharing_cap < 1 || sharing_cap > 50) return res.status(400).send("Sharing capacity must be a whole number from 1 to 50.");
 
-    await Floor.findByIdAndUpdate(room.floor_id, { $inc: { total_beds: -room.sharing_capacity } });
-    await Room.findByIdAndUpdate(id, { room_fees, sharing_capacity: sharing_cap });
-    await Floor.findByIdAndUpdate(room.floor_id, { $inc: { total_beds: sharing_cap } });
+    // Never fewer beds than the people living in the room.
+    const living = await Member.countDocuments({ assignedRoom_id: room._id, ...LIVING });
+    if (sharing_cap < living) return res.status(400).send(`${living} tenant${living === 1 ? " lives" : "s live"} in room ${room.room_number}, so it needs at least ${living} bed${living === 1 ? "" : "s"}.`);
+
+    await Room.updateOne({ _id: room._id, user: userId }, { $set: { room_fees, sharing_capacity: sharing_cap } });
+    await syncRoomAndFloor(room._id);
 
     res.redirect("/user/managerooms");
   } catch (err) {
@@ -903,16 +945,17 @@ router.put("/manageroom/:id", jwtAuthMiddleware, attachHostel, async (req, res) 
 
 router.delete("/managerooms/:id", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
-    const room = await Room.findById(req.params.id);
+    const userId = req.user.id;
+    if (!isId(req.params.id)) return res.status(404).send("Room not found.");
+    const room = await Room.findOne({ _id: req.params.id, user: userId });
     if (!room) return res.status(404).send("Room not found.");
 
-    await Room.findByIdAndDelete(req.params.id);
-    await Floor.findByIdAndUpdate(room.floor_id, {
-      $inc: { total_rooms: -1, occupied_beds: -room.occupied_beds, total_beds: -room.sharing_capacity, active_number: -room.occupied_beds }
-    });
-    if (room.sharing_capacity === room.occupied_beds) {
-      await Floor.findByIdAndUpdate(room.floor_id, { $inc: { occupied_rooms: -1 } });
-    }
+    // A room that people live in cannot be deleted: move them out first.
+    const living = await Member.countDocuments({ assignedRoom_id: room._id, ...LIVING });
+    if (living) return res.status(400).send(`${living} tenant${living === 1 ? " lives" : "s live"} in room ${room.room_number}. Move ${living === 1 ? "them" : "them"} out before deleting the room.`);
+
+    await Room.deleteOne({ _id: room._id, user: userId });
+    await syncFloor(room.floor_id).catch(e => console.error("Floor count (non-fatal):", e.message));
     res.redirect("/user/managerooms");
   } catch (err) {
     console.error("room delete error:", err.message);
@@ -921,16 +964,16 @@ router.delete("/managerooms/:id", jwtAuthMiddleware, attachHostel, async (req, r
 });
 
 // ============================================================
-//  MEMBERS
+//  MEMBERS (tenants)
 // ============================================================
 router.get("/members", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
     const userId         = req.user.id;
     const user           = await Owner.findById(userId);
     const selectedHostel = res.locals.selectedHostel?._id;
-    if (!selectedHostel) return res.send("⚠️ Please select a hostel first.");
+    if (!selectedHostel) return needProperty(res);
 
-    const members = await Member.find({ user: userId, hostel: selectedHostel }).populate("payments");
+    const members = await Member.find({ user: userId, hostel: selectedHostel, ...NOT_REMOVED }).populate("payments");
     safeRender(res, "showPage/memberData/Allmember.ejs", { allMembers: members, user });
   } catch (err) {
     console.error("members GET error:", err.message);
@@ -943,11 +986,12 @@ router.get("/member-edit/:id/edit", jwtAuthMiddleware, attachHostel, async (req,
     const userId         = req.user.id;
     const user           = await Owner.findById(userId);
     const selectedHostel = res.locals.selectedHostel?._id;
-    if (!selectedHostel) return res.send("⚠️ Please select a hostel first.");
+    if (!selectedHostel) return needProperty(res);
+    if (!isId(req.params.id)) return res.status(404).send("Member not found.");
 
     const [rooms, member] = await Promise.all([
       Room.find({ user: userId, hostel: selectedHostel }),
-      Member.findById(req.params.id).populate("payments")
+      Member.findOne({ _id: req.params.id, user: userId, ...NOT_REMOVED }).populate("payments")
     ]);
 
     if (!member) return res.status(404).send("Member not found.");
@@ -960,9 +1004,28 @@ router.get("/member-edit/:id/edit", jwtAuthMiddleware, attachHostel, async (req,
 
 router.put("/member-edit/:id", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
-    const memberBody   = req.body.member || {};
-    const updatedMember = await Member.findByIdAndUpdate(req.params.id, { ...memberBody }, { new: true, runValidators: true });
-    if (!updatedMember) return res.status(404).send("Member not found.");
+    const userId     = req.user.id;
+    const memberBody = req.body.member || {};
+    if (!isId(req.params.id)) return res.status(404).send("Member not found.");
+
+    // Only these details can be changed here. Room, property, status, payments and the owner cannot.
+    const set = {};
+    if (typeof memberBody.name === "string") {
+      const name = clean(memberBody.name, 100);
+      if (!name) return res.status(400).send("Name is required.");
+      set.name = name;
+    }
+    if (typeof memberBody.mobileNo === "string") {
+      const mobileNo = memberBody.mobileNo.trim();
+      if (!/^[6-9]\d{9}$/.test(mobileNo)) return res.status(400).send("Invalid mobile number.");
+      set.mobileNo = mobileNo;
+    }
+    for (const k of ["fatherName", "aadharNo", "address", "profession"]) {
+      if (typeof memberBody[k] === "string") set[k] = clean(memberBody[k], k === "address" ? 500 : 100);
+    }
+
+    const updated = await Member.findOneAndUpdate({ _id: req.params.id, user: userId, ...NOT_REMOVED }, { $set: set }, { new: true, runValidators: true });
+    if (!updated) return res.status(404).send("Member not found.");
     res.redirect("/user/members");
   } catch (err) {
     console.error("member update error:", err.message);
@@ -971,20 +1034,22 @@ router.put("/member-edit/:id", jwtAuthMiddleware, attachHostel, async (req, res)
   }
 });
 
+// "Remove" a tenant: hidden from the lists, the bed is freed, the record and payments are kept.
 router.delete("/member/:id", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
-    const member = await Member.findById(req.params.id);
-    if (!member) return res.status(404).send("Member not found.");
+    const userId = req.user.id;
+    if (!isId(req.params.id)) return res.status(404).send("Member not found.");
+    const now = new Date();
 
-    await Member.findByIdAndDelete(req.params.id);
+    const member = await Member.findOneAndUpdate(
+      { _id: req.params.id, user: userId, ...NOT_REMOVED },
+      { $set: { removedAt: now, status: "Inactive" } },
+      { new: false }
+    );
+    if (!member) return res.redirect("/user/members");   // already removed: nothing to do
+    if (!member.leftDate) await Member.updateOne({ _id: member._id }, { $set: { leftDate: now } });
 
-    if (member.assignedRoom_id) {
-      const room = await Room.findById(member.assignedRoom_id);
-      if (room) {
-        await Room.findByIdAndUpdate(member.assignedRoom_id, { $inc: { occupied_beds: -1 } });
-        await Floor.findByIdAndUpdate(room.floor_id, { $inc: { active_number: -1, occupied_beds: -1 } });
-      }
-    }
+    if (member.assignedRoom_id) await syncRoomAndFloor(member.assignedRoom_id);
     res.redirect("/user/members");
   } catch (err) {
     console.error("member delete error:", err.message);
@@ -997,9 +1062,9 @@ router.get("/activeMember", jwtAuthMiddleware, attachHostel, async (req, res) =>
     const userId         = req.user.id;
     const user           = await Owner.findById(userId);
     const selectedHostel = res.locals.selectedHostel?._id;
-    if (!selectedHostel) return res.send("⚠️ Please select a hostel first.");
+    if (!selectedHostel) return needProperty(res);
 
-    const allMembers = await Member.find({ user: userId, hostel: selectedHostel });
+    const allMembers = await Member.find({ user: userId, hostel: selectedHostel, ...NOT_REMOVED });
     safeRender(res, "showPage/memberData/activeMember.ejs", { allMembers, user });
   } catch (err) {
     console.error("activeMember error:", err.message);
@@ -1007,25 +1072,24 @@ router.get("/activeMember", jwtAuthMiddleware, attachHostel, async (req, res) =>
   }
 });
 
-router.get("/activeMember/:id", jwtAuthMiddleware, attachHostel, async (req, res) => {
+// Move out. Opening the old link no longer changes anything; the button on Active Tenants sends a POST after a confirm.
+router.get("/activeMember/:id", jwtAuthMiddleware, (req, res) => res.redirect("/user/activeMember"));
+
+router.post("/activeMember/:id", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
-    const member = await Member.findById(req.params.id);
-    if (!member) return res.status(404).send("Member not found.");
+    const userId = req.user.id;
+    if (!isId(req.params.id)) return res.status(404).send("Member not found.");
 
-    member.status   = "Inactive";
-    member.leftDate = new Date();
-    await member.save();
-
-    if (member.assignedRoom_id) {
-      const room = await Room.findById(member.assignedRoom_id);
-      if (room) {
-        await Room.findByIdAndUpdate(member.assignedRoom_id, { $inc: { occupied_beds: -1 } });
-        await Floor.findByIdAndUpdate(room.floor_id, { $inc: { active_number: -1, occupied_beds: -1 } });
-      }
-    }
-    res.redirect("/user/members");
+    // Only a tenant who still lives here can move out, and only once.
+    const member = await Member.findOneAndUpdate(
+      { _id: req.params.id, user: userId, ...LIVING },
+      { $set: { status: "Inactive", leftDate: new Date() } },
+      { new: true }
+    );
+    if (member && member.assignedRoom_id) await syncRoomAndFloor(member.assignedRoom_id);
+    res.redirect("/user/activeMember");
   } catch (err) {
-    console.error("activeMember toggle error:", err.message);
+    console.error("activeMember move-out error:", err.message);
     res.status(500).send("Server Error.");
   }
 });
@@ -1068,34 +1132,48 @@ router.post("/newMember", jwtAuthMiddleware, attachHostel, async (req, res) => {
     const selectedHostel = res.locals.selectedHostel?._id;
     const m              = req.body.member || {};
 
-    const { assignedRoom_id, name, fatherName, mobileNo, aadharNo, address, profession, joiningDate } = m;
+    const { assignedRoom_id, name, fatherName, mobileNo, aadharNo, address, profession } = m;
 
-    if (!assignedRoom_id || !name || !mobileNo) {
+    if (!selectedHostel) return needProperty(res);
+    if (!assignedRoom_id || !isId(String(assignedRoom_id)) || !clean(name || "") || !mobileNo) {
       return res.status(400).send("Room, name, and mobile number are required.");
     }
-    if (!/^[6-9]\d{9}$/.test(mobileNo)) {
+    if (!/^[6-9]\d{9}$/.test(String(mobileNo))) {
       return res.status(400).send("Invalid mobile number.");
     }
+    // Joining date: a real date, not more than a year away either way. Empty = today.
+    let joiningDate = m.joiningDate ? new Date(m.joiningDate) : new Date();
+    if (isNaN(joiningDate) || Math.abs(joiningDate - Date.now()) > 366 * 864e5) return res.status(400).send("Enter a valid joining date.");
 
-    const room = await Room.findById(assignedRoom_id);
+    // The room must be this owner's, in the property they are working in.
+    const room = await Room.findOne({ _id: assignedRoom_id, user: userId, hostel: selectedHostel });
     if (!room) return res.status(404).send("Room not found.");
-    if (room.sharing_capacity <= room.occupied_beds) return res.status(400).send("This room is full. Please choose another room.");
+    const living = await Member.countDocuments({ assignedRoom_id: room._id, ...LIVING });
+    if (living >= (Number(room.sharing_capacity) || 0)) return res.status(400).send("This room is full. Please choose another room.");
 
+    // A new tenant lives here from today: "Active". (Unpaid rent shows as dues, not as a different status.)
     const newMember = new Member({
       user: userId, hostel: selectedHostel,
-      assignedRoom_id, name: clean(name), fatherName: clean(fatherName || ""),
-      mobileNo, aadharNo: clean(aadharNo || ""), address: clean(address || ""),
-      profession: clean(profession || ""), joiningDate,
-      assignedRoom: room.room_number, status: "Inactive"
+      assignedRoom_id: room._id, name: clean(name, 100), fatherName: clean(fatherName || "", 100),
+      mobileNo: String(mobileNo), aadharNo: clean(aadharNo || "", 20), address: clean(address || "", 500),
+      profession: clean(profession || "", 100), joiningDate,
+      assignedRoom: room.room_number, status: "Active"
     });
+    await newMember.validate();   // check everything before saving anything, so no half-saved records
 
-    const newPayment = new Payment({ memberId: newMember._id, roomId: assignedRoom_id, roomFees: room.room_fees });
+    // The joining month's rent, dated on the joining day and marked with its month, so the
+    // monthly job (utils/monthlyRent.js) charges the following months and never this one again.
+    const newPayment = new Payment({ user: userId, memberId: newMember._id, roomId: room._id, roomFees: room.room_fees, totalFees: room.room_fees, dueAmount: room.room_fees,
+      paymentDate: joiningDate, payableDate: joiningDate, chargeMonth: moment(joiningDate).tz(TZ).format("YYYY-MM") });
     await newPayment.save();
     newMember.payments.push(newPayment._id);
-    await newMember.save();
-
-    await Room.findByIdAndUpdate(assignedRoom_id, { $inc: { occupied_beds: 1 } });
-    await Floor.findByIdAndUpdate(room.floor_id, { $inc: { active_number: 1, occupied_beds: 1 } });
+    try {
+      await newMember.save();
+    } catch (e) {
+      await Payment.deleteOne({ _id: newPayment._id }).catch(() => {});
+      throw e;
+    }
+    await syncRoomAndFloor(room._id);
 
     // Phase 3 — tenant added from an enquiry ("Convert"): close that enquiry.
     // Only runs when the form carried an enquiry id; never throws.
@@ -1124,13 +1202,11 @@ router.get("/newAdded/successfully", jwtAuthMiddleware, attachHostel, async (req
 router.get("/members/:id/addpayment", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
     const user   = await Owner.findById(req.user.id);
-    const member = await Member.findById(req.params.id).populate('payments');
+    if (!isId(req.params.id)) return res.status(404).send("Member not found.");
+    const member = await Member.findOne({ _id: req.params.id, user: req.user.id, ...NOT_REMOVED }).populate('payments');
     if (!member) return res.status(404).send("Member not found.");
 
-    const totalFees = (member.payments || []).reduce((s, p) => s + (p.roomFees   || 0), 0);
-    const amtPaid   = (member.payments || []).reduce((s, p) => s + (p.amountPaid || 0), 0);
-    const dueAmount = Math.max(0, totalFees - amtPaid);
-
+    const dueAmount = money(member).due;
     safeRender(res, "payments/addpayment.ejs", { member, dueAmount, user });
   } catch (err) {
     console.error("addpayment GET error:", err.message);
@@ -1140,27 +1216,37 @@ router.get("/members/:id/addpayment", jwtAuthMiddleware, attachHostel, async (re
 
 router.post("/addpayment/:id", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
-    const user = await Owner.findById(req.user.id);
+    const userId = req.user.id;
     const { id } = req.params;
-    const p    = req.body.payment || {};
+    const p      = req.body.payment || {};
 
-    const amountPaid  = toNum(p.amountPaid);
-    const paymentMode = clean(p.paymentMode || "");
-    const paymentDate = p.paymentDate;
+    const amountPaid  = moneyIn(p.amountPaid);
+    const paymentMode = clean(p.paymentMode || "", 30);
 
-    if (amountPaid <= 0) return res.status(400).send("Amount paid must be greater than 0.");
+    if (!isId(id)) return res.status(404).send("Member not found.");
+    if (amountPaid === null || amountPaid <= 0) return res.status(400).send("Amount paid must be greater than 0.");
     if (!paymentMode)    return res.status(400).send("Payment mode is required.");
 
-    const member = await Member.findById(id);
+    // Payment date: a real date, not in the future. Empty = now.
+    let paymentDate = p.paymentDate ? new Date(p.paymentDate) : new Date();
+    if (isNaN(paymentDate)) return res.status(400).send("Enter a valid payment date.");
+    if (paymentDate - Date.now() > 864e5) return res.status(400).send("The payment date cannot be in the future.");
+
+    const member = await Member.findOne({ _id: id, user: userId, ...NOT_REMOVED });
     if (!member) return res.status(404).send("Member not found.");
 
-    const newPayment = new Payment({ memberId: id, amountPaid, paymentMode, paymentDate });
-    const saved      = await newPayment.save();
+    // The same payment sent twice within a few seconds (double click, refresh) is recorded once.
+    const recent = await Payment.findOne({
+      memberId: member._id, amountPaid, paymentMode,
+      _id: { $gt: mongoose.Types.ObjectId.createFromTime(Math.floor(Date.now() / 1000) - 15) },
+    }).sort({ _id: -1 });
+    if (recent) return res.redirect(`/user/payment-receipt/${recent._id}`);
 
-    member.payments.push(saved._id);
-    member.status   = "Active";
-    member.leftDate = "";
-    await member.save();
+    const saved = await new Payment({ user: userId, memberId: member._id, amountPaid, paymentMode, paymentDate, status: "Paid" }).save();
+
+    // Record it on the tenant. A tenant who has moved out stays moved out (paying old dues does not move them back in).
+    const set = member.leftDate ? {} : { status: "Active" };
+    await Member.updateOne({ _id: member._id }, { $addToSet: { payments: saved._id }, ...(member.leftDate ? {} : { $set: set }) });
 
     res.redirect(`/user/payment-receipt/${saved._id}`);
   } catch (err) {
@@ -1172,11 +1258,13 @@ router.post("/addpayment/:id", jwtAuthMiddleware, attachHostel, async (req, res)
 router.get("/payment-receipt/:paymentId", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
     const user    = await Owner.findById(req.user.id);
+    if (!isId(req.params.paymentId)) return res.status(404).send("Payment not found.");
     const payment = await Payment.findById(req.params.paymentId);
     if (!payment) return res.status(404).send("Payment not found.");
 
-    const member = await Member.findById(payment.memberId);
-    if (!member) return res.status(404).send("Member not found.");
+    // Only the owner of that tenant may see the receipt.
+    const member = await Member.findOne({ _id: payment.memberId, user: req.user.id });
+    if (!member) return res.status(404).send("Payment not found.");
 
     safeRender(res, "payments/paymentreciept.ejs", { member, payment, user });
   } catch (err) {
@@ -1185,21 +1273,27 @@ router.get("/payment-receipt/:paymentId", jwtAuthMiddleware, attachHostel, async
   }
 });
 
+// Search by name or mobile (part of either), inside the property being worked on.
+async function searchMembers(userId, hostelId, text) {
+  const q = clean(text || "", 60);
+  if (!q) return [];
+  const digits = q.replace(/\D/g, "");
+  const or = [{ name: { $regex: escapeRegex(q), $options: "i" } }];
+  if (digits.length >= 3) or.push({ mobileNo: { $regex: escapeRegex(digits) } });
+  const filter = { user: userId, ...NOT_REMOVED, $or: or };
+  if (hostelId) filter.hostel = hostelId;
+  return Member.find(filter).populate("payments").limit(200);
+}
+
 router.post("/member/search", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
     const userId      = req.user.id;
     const user        = await Owner.findById(userId);
-    const searchQuery = clean(req.body.name || "");
+    const searchQuery = clean(req.body.name || "", 60);
 
     if (!searchQuery) return res.status(400).send("Search query is required.");
 
-    const members = await Member.find({
-      user: userId,
-      $or: [
-        { name:     { $regex: searchQuery, $options: "i" } },
-        { mobileNo: searchQuery }
-      ]
-    }).populate('payments');
+    const members = await searchMembers(userId, res.locals.selectedHostel?._id, searchQuery);
 
     if (!members.length) {
       return safeRender(res, "showPage/memberData/searchedNotFoundMember.ejs", { user, errorMessage: "Member not found." });
@@ -1216,19 +1310,10 @@ router.get("/allfeesrecords", jwtAuthMiddleware, attachHostel, async (req, res) 
     const userId         = req.user.id;
     const user           = await Owner.findById(userId);
     const selectedHostel = res.locals.selectedHostel?._id;
-    if (!selectedHostel) return res.send("⚠️ Please select a hostel first.");
+    if (!selectedHostel) return needProperty(res);
 
-    const allMembers = await Member.find({ user: userId, hostel: selectedHostel }).populate("payments").sort({ createdAt: -1 });
-
-    const membersWithFees = allMembers.map(m => {
-      const totalFees   = (m.payments || []).reduce((s, p) => s + (p.roomFees   || 0), 0);
-      const amountPaid  = (m.payments || []).reduce((s, p) => s + (p.amountPaid || 0), 0);
-      const dueAmount   = Math.max(0, totalFees - amountPaid);
-      const advancedPaid = Math.max(0, amountPaid - totalFees);
-      return { ...m.toObject(), totalFees, advancedPaid, amountPaid, dueAmount };
-    });
-
-    safeRender(res, "payments/allrecords.ejs", { allMembers: membersWithFees, user });
+    const allMembers = await Member.find({ user: userId, hostel: selectedHostel, ...NOT_REMOVED }).populate("payments").sort({ _id: -1 });
+    safeRender(res, "payments/allrecords.ejs", { allMembers: withMoney(allMembers), user });
   } catch (err) {
     console.error("allfeesrecords error:", err.message);
     res.status(500).send("Internal Server Error.");
@@ -1239,23 +1324,10 @@ router.post("/searchfeesrecords", jwtAuthMiddleware, attachHostel, async (req, r
   try {
     const userId      = req.user.id;
     const user        = await Owner.findById(userId);
-    const searchQuery = clean(req.body.searchQuery || "");
+    const searchQuery = clean(req.body.searchQuery || "", 60);
 
-    const filtered = await Member.find({
-      user: userId,
-      $or: [
-        { name:     { $regex: searchQuery, $options: "i" } },
-        { mobileNo: searchQuery }
-      ]
-    }).populate("payments");
-
-    const membersWithFees = filtered.map(m => {
-      const totalFees    = (m.payments || []).reduce((s, p) => s + (p.roomFees   || 0), 0);
-      const amountPaid   = (m.payments || []).reduce((s, p) => s + (p.amountPaid || 0), 0);
-      const dueAmount    = Math.max(0, totalFees - amountPaid);
-      const advancedPaid = Math.max(0, amountPaid - totalFees);
-      return { ...m.toObject(), totalFees, advancedPaid, amountPaid, dueAmount };
-    });
+    const filtered = await searchMembers(userId, res.locals.selectedHostel?._id, searchQuery);
+    const membersWithFees = withMoney(filtered);
 
     if (!membersWithFees.length) {
       return safeRender(res, "payments/allrecordsNotFound.ejs", { allMembers: [], errorMessage: "No records found.", user });
@@ -1270,9 +1342,10 @@ router.post("/searchfeesrecords", jwtAuthMiddleware, attachHostel, async (req, r
 router.get('/payment-history/:memberId', jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
     const user     = await Owner.findById(req.user.id);
-    const member   = await Member.findById(req.params.memberId);
+    if (!isId(req.params.memberId)) return res.status(404).send("Member not found.");
+    const member   = await Member.findOne({ _id: req.params.memberId, user: req.user.id });
     if (!member) return res.status(404).send("Member not found.");
-    const payments = await Payment.find({ memberId: req.params.memberId }).sort({ paymentDate: -1 });
+    const payments = await Payment.find({ memberId: member._id }).sort({ paymentDate: -1 });
     safeRender(res, 'payments/PaymentHistoryOfOne.ejs', { member, payments, user });
   } catch (err) {
     console.error("payment-history error:", err.message);
@@ -1280,22 +1353,22 @@ router.get('/payment-history/:memberId', jwtAuthMiddleware, attachHostel, async 
   }
 });
 
+// Rent due today or in the next 5 days (India time), for tenants who live here.
 router.get("/upcomingPayments", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
     const userId         = req.user.id;
     const user           = await Owner.findById(userId);
     const selectedHostel = res.locals.selectedHostel?._id;
-    if (!selectedHostel) return res.send("⚠️ Please select a hostel first.");
+    if (!selectedHostel) return needProperty(res);
 
-    const today       = new Date();
-    const upcomingDays = Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      return d.getDate();
-    });
-
-    const members = await Member.find({ user: userId, hostel: selectedHostel }).populate('payments');
-    const upcoming = members.filter(m => upcomingDays.includes(new Date(m.joiningDate).getDate()));
+    const today = moment().tz(TZ).startOf("day");
+    const last  = today.clone().add(5, "days");
+    const members = await Member.find({ user: userId, hostel: selectedHostel, ...LIVING }).populate('payments');
+    const upcoming = members
+      .map(m => ({ m, due: nextDueDate(m.joiningDate) }))
+      .filter(x => x.due && !x.due.isAfter(last))
+      .sort((a, b) => a.due - b.due)
+      .map(x => Object.assign(x.m, { nextDue: x.due.toDate() }));
 
     safeRender(res, "payments/upcomingPayments.ejs", { allMembers: upcoming, user });
   } catch (err) {
@@ -1304,22 +1377,28 @@ router.get("/upcomingPayments", jwtAuthMiddleware, attachHostel, async (req, res
   }
 });
 
+// Dues: every tenant who owes money, most owed first.
 router.get("/deureports", jwtAuthMiddleware, attachHostel, async (req, res) => {
   try {
     const userId         = req.user.id;
     const user           = await Owner.findById(userId);
     const selectedHostel = res.locals.selectedHostel?._id;
-    if (!selectedHostel) return res.send("⚠️ Please select a hostel first.");
+    if (!selectedHostel) return needProperty(res);
 
-    const allMembers = await Member.find({ user: userId, hostel: selectedHostel }).populate("payments");
-    const membersWithFees = allMembers.map(m => {
-      const totalFees    = (m.payments || []).reduce((s, p) => s + (p.roomFees   || 0), 0);
-      const amountPaid   = (m.payments || []).reduce((s, p) => s + (p.amountPaid || 0), 0);
-      const dueAmount    = Math.max(0, totalFees - amountPaid);
-      const advancedPaid = Math.max(0, amountPaid - totalFees);
-      return { ...m.toObject(), totalFees, advancedPaid, amountPaid, dueAmount };
-    });
-    safeRender(res, "payments/duesReport.ejs", { allMembers: membersWithFees, user });
+    const allMembers = await Member.find({ user: userId, hostel: selectedHostel, ...NOT_REMOVED }).populate("payments");
+    const dues = withMoney(allMembers)
+      .filter(m => m.dueAmount > 0)
+      .sort((a, b) => b.dueAmount - a.dueAmount)
+      .map(m => {
+        // The oldest month not yet covered by payments (charges paid oldest first).
+        const charges = (m.payments || []).filter(p => p && Number(p.roomFees) > 0)
+          .sort((a, b) => new Date(a.paymentDate || 0) - new Date(b.paymentDate || 0));
+        let paid = m.amountPaid, since = null;
+        for (const c of charges) { if (paid >= c.roomFees) { paid -= c.roomFees; continue; } since = c.paymentDate || null; break; }
+        return { ...m, dueSince: since, movedOut: !!m.leftDate };
+      });
+    const total = dues.reduce((s, m) => s + m.dueAmount, 0);
+    safeRender(res, "payments/duesReport.ejs", { dues, total, user });
   } catch (err) {
     console.error("deureports error:", err.message);
     res.status(500).send("Internal Server Error.");
@@ -1334,12 +1413,13 @@ router.get("/revenue", jwtAuthMiddleware, attachHostel, async (req, res) => {
     const userId         = req.user.id;
     const user           = await Owner.findById(userId);
     const selectedHostel = res.locals.selectedHostel?._id;
-    if (!selectedHostel) return res.send("⚠️ Please select a hostel first.");
+    if (!selectedHostel) return needProperty(res);
 
     const fmt = n => new Intl.NumberFormat("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
     const empty = { totalExpectedRevenue: fmt(0), totalFeesCollected: fmt(0), totalPendingAmount: fmt(0), totalAdvancedPaid: fmt(0), balance: fmt(0), paidAccounts: 0, dueAccounts: 0, feesCollectionCompleted: 0, user };
 
-    const allMembers = await Member.find({ user: userId, hostel: selectedHostel }).populate("payments");
+    // Removed tenants are included for what they paid (money really collected), not for unpaid rent.
+    const allMembers = withMoney(await Member.find({ user: userId, hostel: selectedHostel }).populate("payments"));
     if (!allMembers.length) return safeRender(res, "payments/revenue", empty);
 
     let totalExpectedRevenue = 0, totalFeesCollected = 0,
@@ -1347,18 +1427,17 @@ router.get("/revenue", jwtAuthMiddleware, attachHostel, async (req, res) => {
         paidAccounts         = 0, dueAccounts         = 0;
 
     allMembers.forEach(m => {
-      const fees = (m.payments || []).reduce((s, p) => s + (p.roomFees   || 0), 0);
-      const paid = (m.payments || []).reduce((s, p) => s + (p.amountPaid || 0), 0);
-      totalExpectedRevenue += fees;
-      totalFeesCollected   += paid;
-      totalPendingAmount   += Math.max(0, fees - paid);
-      totalAdvancedPaid    += Math.max(0, paid - fees);
-      paid >= fees ? paidAccounts++ : dueAccounts++;
+      totalExpectedRevenue += m.totalFees;
+      totalFeesCollected   += m.amountPaid;
+      totalPendingAmount   += m.dueAmount;
+      totalAdvancedPaid    += m.advancedPaid;
+      if (m.removedAt) return;
+      m.dueAmount > 0 ? dueAccounts++ : paidAccounts++;
     });
 
     const balance = totalExpectedRevenue - totalFeesCollected;
     const feesCollectionCompleted = totalExpectedRevenue > 0
-      ? ((totalFeesCollected / totalExpectedRevenue) * 100).toFixed(2) : 0;
+      ? Math.min(100, Math.round((totalFeesCollected / totalExpectedRevenue) * 100)) : 0;
 
     safeRender(res, "payments/revenue", {
       totalExpectedRevenue: fmt(totalExpectedRevenue),

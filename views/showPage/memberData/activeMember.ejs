@@ -183,7 +183,7 @@ table {
             </thead>
 
             <tbody>
-                <% allMembers.filter(member => member.status === "Active").forEach((Member, index) => { %>
+                <% allMembers.filter(member => !member.leftDate).forEach((Member, index) => { %>
 
                 <tr>
                     <td><%= index + 1 %></td>
@@ -196,18 +196,18 @@ table {
                     <td><%= Member.mobileNo %></td>
                     <td><%= Member.assignedRoom %></td>
                     <td><%= Member.profession %></td>
-                    <td><%= Member.joiningDate.toLocaleDateString("en-GB") %></td>
+                    <td><%= Member.joiningDate && !isNaN(new Date(Member.joiningDate)) ? new Date(Member.joiningDate).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata" }) : "—" %></td>
 
                     <td>
                         <span class="badge-active">Active</span>
                     </td>
 
                     <td>
-                        <a href="/user/activeMember/<%=Member._id %>">
-                            <button class="btn-action">
+                        <form method="POST" action="/user/activeMember/<%=Member._id %>" style="display:inline;" onsubmit="return confirm('Move out <%= String(Member.name).replace(/[\\'"<>\r\n\u2028\u2029]/g, ' ') %> today? Their bed becomes free.');">
+                            <button type="submit" class="btn-action" title="Move out" aria-label="Move out <%= Member.name %>">
                                 <i class="fa-solid fa-user-slash"></i>
                             </button>
-                        </a>
+                        </form>
                     </td>
                 </tr>
 

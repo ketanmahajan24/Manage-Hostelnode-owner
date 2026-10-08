@@ -158,40 +158,18 @@ cron.schedule("0 10 * * *", async () => {
   }
 }, { timezone: "Asia/Kolkata" });
 
-cron.schedule("0 0 * * *", async () => {
-  console.log("🔄 Running Monthly Fee Check...");
-  try {
-    const today   = moment().startOf("day");
-    const members = await Member.find({ status: "Active" });
-
-    for (let member of members) {
-      const joiningDate = moment(member.joiningDate).startOf("day");
-      if (joiningDate.date() === today.date()) {
-        const room = await Room.findById(member.assignedRoom_id);
-        if (!room) continue;
-
-        const newPayment = new Payment({
-          memberId:     member._id,
-          roomId:       room._id,
-          roomFees:     room.room_fees,
-          totalFees:    room.room_fees,
-          advancedPaid: 0,
-          amountPaid:   0,
-          dueAmount:    room.room_fees,
-          status:       "Due",
-          paymentDate:  new Date()
-        });
-
-        await newPayment.save();
-        member.payments.push(newPayment._id);
-        await member.save();
-        console.log(`💰 Fee added for ${member.name}`);
-      }
-    }
-  } catch (err) {
-    console.error("❌ Cron error:", err);
-  }
-});
+// Property Operations Phase 1 — monthly rent charges (utils/monthlyRent.js): India time,
+// once per tenant per month however often it runs, and catches up after downtime.
+// Runs at 00:05 every night and once a minute after the server starts.
+cron.schedule("5 0 * * *", async () => {
+  const r = await require("./utils/monthlyRent").runMonthlyRent();
+  if (r.charged || r.errors) console.log(`Monthly rent: ${r.charged} charged, ${r.errors} errors`);
+}, { timezone: "Asia/Kolkata" });
+setTimeout(() => {
+  require("./utils/monthlyRent").runMonthlyRent()
+    .then(r => { if (r.charged || r.errors) console.log(`Monthly rent (startup check): ${r.charged} charged, ${r.errors} errors`); })
+    .catch(() => {});
+}, Number(process.env.HN_RENT_STARTUP_DELAY_MS) || 60 * 1000).unref();
 
 // (Flatmate reminder cron removed — Flatmate doesn't run on this
 //   deployment at all, so there's nothing for it to sweep here.)

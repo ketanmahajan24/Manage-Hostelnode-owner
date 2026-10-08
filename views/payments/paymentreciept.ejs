@@ -204,7 +204,7 @@
             </button>
 
             <a 
-              href="https://wa.me/91<%=member.mobileNo%>?text=Dear <%=member.name%>, your payment receipt:%0AAmount: ₹<%=payment.amountPaid%>%0ADate: <%= new Date(payment.paymentDate).toLocaleDateString('en-GB')%>"
+              href="https://wa.me/91<%= encodeURIComponent(member.mobileNo) %>?text=<%= encodeURIComponent('Dear ' + member.name + ', your payment receipt:\nAmount: ₹' + payment.amountPaid + '\nDate: ' + new Date(payment.paymentDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' })) %>"
               target="_blank"
               class="btn-primary-custom"
             >

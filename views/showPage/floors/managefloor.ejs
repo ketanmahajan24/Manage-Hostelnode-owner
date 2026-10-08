@@ -102,7 +102,7 @@ tbody tr:hover {
                     <td><%=Floor.floor_name%></td>
 
                     <td>
-                        <form method="POST" action="/user/managefloor/<%=Floor._id%>?_method=DELETE">
+                        <form method="POST" action="/user/managefloor/<%=Floor._id%>?_method=DELETE" onsubmit="return confirm('Delete floor <%= String(Floor.floor_name).replace(/[\\'"<>\r\n\u2028\u2029]/g, ' ') %>? This cannot be undone.');">
                             <button class="btn p-0 border-0 bg-transparent btn-delete">
                                 <i class="fa-solid fa-trash-can"></i>
                             </button>

@@ -58,6 +58,13 @@ const memberSchema = new mongoose.Schema({
         type: Date ,
         default:null
     },
+    // Property Operations Phase 1: set when the owner removes a tenant record.
+    // The record and its payments are kept (reports stay correct); it just
+    // no longer shows in the lists. Empty for every other tenant.
+    removedAt: {
+        type: Date,
+        default: null
+    },
     payments: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "Payment"
