@@ -133,6 +133,7 @@ app.use("/messages",    messagesRouter);      // this repo's SLIM, PG-chat-only 
 //   hostelnode.com's job), so send a bare visit straight to login. ──
 app.get("/", (req, res) => res.redirect("/login"));
 
+app.get("/",       (req, res) => res.render("onboarding.ejs"));
 // ── Auth pages — the Owner's own login/signup (userRoutes.js handles
 //   the POST /user/signup submit; these just render the forms) ──
 app.get("/signup",       (req, res) => res.render("authPrivate/signup.ejs"));
