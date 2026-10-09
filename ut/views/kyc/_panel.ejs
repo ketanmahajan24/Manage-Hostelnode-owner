@@ -1,0 +1,38 @@
+<%# Property Operations Phase 4 — Aadhaar KYC panel in Add tenant (step 1). The script (_panelScript.ejs)
+    keeps it up to date as the mobile number is typed and while waiting for the tenant. kv = KYC view. %>
+<style>
+  .hn4-kyc { border-radius: 16px; padding: 14px 16px; margin: 4px 0 14px; border: 2px dashed #cbd5e1; background: #f8fafc; }
+  .hn4-kyc.t-ok { border: 2px solid #bfe8d2; background: #f0fbf5; }
+  .hn4-kyc.t-warn { border: 2px solid #f6d9a8; background: #fffaf0; }
+  .hn4-kyc.t-bad { border: 2px solid #f6c3be; background: #fff6f5; }
+  .hn4-kh { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 15px; font-weight: 800; color: var(--hn-ink); }
+  .hn4-kb { font-size: 13px; color: var(--hn-body); font-weight: 500; margin-top: 6px; }
+  .hn4-kb .hn3-rw { font-size: 13.5px; padding: 7px 0; }
+  .hn4-mis { background: var(--hn-amber-tint); color: #7a3d06; border-radius: 10px; padding: 8px 10px; font-size: 12.5px; font-weight: 700; margin-top: 10px; }
+  .hn4-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .hn4-acts .hn2a-btn { white-space: nowrap; }
+</style>
+<%
+  const b = kv.badge, d = kv.details;
+  const tone = !kv.ready ? "" : b.key === "verified" ? "t-ok" : b.key === "pending" ? "t-warn" : kerr ? "t-bad" : "";
+%>
+<div class="hn4-kyc <%= tone %>" data-kyc aria-live="polite">
+  <div class="hn4-kh"><span data-k-title><%= !kv.ready ? "🪪 Aadhaar KYC" : b.key === "verified" ? "✅ KYC verified with DigiLocker" : b.key === "pending" ? "⏳ Waiting for them to verify" : "🪪 Aadhaar not verified yet" %></span>
+    <span class="hn3-pill <%= b.key === 'verified' ? 't-ok' : b.key === 'pending' ? 't-warn' : 't-slate' %>" data-k-pill <%= kv.ready ? "" : "hidden" %>><%= b.label %></span></div>
+  <div class="hn4-kb" data-k-body>
+    <% if (!kv.ready) { %>DigiLocker KYC is not switched on yet. You can admit without it for now.
+    <% } else if (d) { %>
+      <div class="hn3-rw"><span>Name on Aadhaar</span><span><%= d.name %></span></div>
+      <div class="hn3-rw"><span>Date of birth</span><span><%= d.dob %><%= d.gender ? " · " + d.gender : "" %></span></div>
+      <div class="hn3-rw"><span>Aadhaar</span><span>xxxx xxxx <%= d.last4 %> · verified <%= d.verifiedAt %></span></div>
+    <% } else if (b.key === "verified") { %>Verified with DigiLocker. To see the name and birth date on their Aadhaar, ask them to share it with you: they get the link and tap Share.
+    <% } else if (b.key === "pending") { %>This updates by itself when they finish on DigiLocker.
+    <% } else { %>Tenants verify their own Aadhaar with DigiLocker (about a minute, Aadhaar OTP).<%= kv.required ? " Needed before admission." : "" %> No smartphone? Use "Verify on this phone": they sign in with their own Aadhaar OTP.<% } %>
+  </div>
+  <div class="hn4-mis" data-k-mis <%= d && d.otherMobile ? "" : "hidden" %>><%= d && d.otherMobile ? "⚠️ Verified on your phone. The Aadhaar's linked mobile is a different number." : "" %></div>
+  <div class="hn4-acts" data-k-acts <%= kv.ready && !(b.key === "verified" && kv.shared) ? "" : "hidden" %>>
+    <button type="submit" class="hn2a-btn is-sm" formaction="/user/kyc/request" formmethod="post" formtarget="_blank" formnovalidate data-kyc-btn data-k-ask><%= b.key === "verified" ? "💬 Ask to share details" : b.key === "pending" ? "💬 Send the link again" : "💬 Send link on WhatsApp" %></button>
+    <button type="submit" class="hn2a-btn is-ghost is-sm" formaction="/user/kyc/start" formmethod="post" formtarget="_blank" formnovalidate data-kyc-btn data-k-here <%= b.key === "verified" ? "hidden" : "" %>>📱 Verify on this phone</button>
+  </div>
+  <% if (kerr) { %><div class="hn3-err" id="e-kyc"><%= kerr %></div><% } %>
+</div>

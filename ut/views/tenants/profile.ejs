@@ -1,0 +1,301 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Property Operations Phase 3 — one tenant: header, then Overview / Payments / Documents / History. %>
+<%- include("../account/_style.ejs") %>
+<%- include("_style.ejs") %>
+<%
+  const PHONE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>';
+  const CHAT = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>';
+  const id = String(m._id), base = "/user/tenants/" + id;
+  const tone = T.toneOf(m._id);
+  const kb = kycView.badge, kd = kycView.details;   // Phase 4: Aadhaar KYC with DigiLocker
+  const DOTS = { admitted: "violet", moved: "blue", rent: "amber", dueDay: "amber", deposit: "green", notice: "amber", noticeCancel: "green", movedOut: "slate", undoMoveOut: "blue", details: "slate", document: "slate", payment: "green" };
+  const roomLine = (m.assignedRoom ? "Room " + m.assignedRoom : "No room") + (m.bedLabel ? " · bed " + m.bedLabel : "") + (floor ? " · " + floor.floor_name : "");
+  const depHeld = Number(m.depositPaid) || 0, depAgreed = Number(m.depositAmount) || 0, depLeft = Math.max(0, depAgreed - depHeld);
+  const confirmName = T.plain(m.name);
+%>
+<style>
+  .hn3p .hn2a-inner { max-width: 1180px; }
+  .hn3-back { font-size: 13px; font-weight: 700; color: var(--hn-soft); display: inline-block; margin-bottom: 10px; }
+  .hn3-hd { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding: 20px 22px; }
+  .hn3-hd .hn3-ini { width: 64px; height: 64px; font-size: 22px; }
+  .hn3-hd h1 { font-size: 22px; font-weight: 800; margin: 0; letter-spacing: -0.01em; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hn3-hd .m { font-size: 13.5px; color: var(--hn-soft); font-weight: 600; margin-top: 5px; }
+  .hn3-hd .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+  .hn3-more { position: relative; }
+  .hn3-more summary { list-style: none; }
+  .hn3-more summary::-webkit-details-marker { display: none; }
+  .hn3-more .menu { position: absolute; right: 0; top: 48px; background: #fff; border: 1px solid var(--hn-line); border-radius: 12px; box-shadow: 0 12px 30px -12px rgba(16,35,27,0.35); padding: 6px; min-width: 200px; z-index: 20; }
+  .hn3-more .menu a, .hn3-more .menu button { display: block; width: 100%; text-align: left; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 600; color: var(--hn-ink); background: none; border: 0; cursor: pointer; }
+  .hn3-more .menu a:hover, .hn3-more .menu button:hover { background: #f4faf7; }
+  .hn3-more .menu .is-danger { color: var(--hn-coral); }
+  .hn3-ptabs { display: flex; gap: 4px; border-bottom: 1px solid var(--hn-line); margin: 18px 0; overflow-x: auto; }
+  .hn3-ptabs a { padding: 10px 14px; font-size: 14px; font-weight: 700; color: var(--hn-soft); white-space: nowrap; }
+  .hn3-ptabs a[aria-current="page"] { color: var(--hn-ink); box-shadow: inset 0 -3px var(--hn-green); }
+  .hn3-cols { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; align-items: start; }
+  .hn3-box h2 { font-size: 15px; font-weight: 800; margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .hn3-box h2 a, .hn3-box h2 summary { font-size: 13px; color: var(--hn-green); font-weight: 700; cursor: pointer; }
+  .hn3-acts2 { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; align-items: flex-start; }
+  .hn3-acts2 > form, .hn3-acts2 > details { margin: 0; }
+  .hn3-panel { margin-top: 10px; }
+  .hn3-panel > summary { list-style: none; display: inline-flex; }
+  .hn3-panel > summary::-webkit-details-marker { display: none; }
+  .hn3-panel[open] > summary { background: var(--hn-green-tint); border-color: var(--hn-green); color: var(--hn-green); }
+  .hn3-form { background: #f7fbf9; border: 1px solid var(--hn-line); border-radius: 14px; padding: 14px; margin-top: 10px; }
+  .hn3-form .hn2a-field:last-child { margin-bottom: 0; }
+  .hn3-ev { display: flex; gap: 12px; padding: 9px 0; font-size: 13.5px; font-weight: 600; color: var(--hn-ink); }
+  .hn3-ev i { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex: none; }
+  .hn3-ev small { display: block; color: var(--hn-soft); font-weight: 500; font-size: 12.5px; margin-top: 2px; }
+  .d-violet { background: var(--hn-violet); } .d-blue { background: var(--hn-blue); } .d-amber { background: var(--hn-amber); } .d-green { background: var(--hn-green); } .d-slate { background: #94a3b8; }
+  .hn3-doc { display: flex; align-items: center; gap: 10px; border: 1px solid var(--hn-line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-size: 13.5px; font-weight: 600; }
+  .hn3-doc a.n { color: var(--hn-ink); flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .hn3-doc a.n:hover { color: var(--hn-green); }
+  .hn3-doc small { color: var(--hn-soft); font-size: 12px; white-space: nowrap; }
+  .hn3-res { border-radius: 14px; padding: 14px 16px; margin: 10px 0; }
+  .hn3-res b { display: block; font-size: 24px; }
+  .hn3-res.is-refund { background: var(--hn-green-tint); color: var(--hn-green); }
+  .hn3-res.is-collect { background: var(--hn-coral-tint); color: var(--hn-coral); }
+  .hn3-res.is-even { background: var(--hn-slate-tint); color: var(--hn-slate); }
+  .hn3-ptable td.amt, .hn3-ptable th.amt { text-align: right; white-space: nowrap; }
+  @media (max-width: 900px) { .hn3-cols { grid-template-columns: 1fr; } .hn3-hd .acts { margin-left: 0; width: 100%; } }
+  @media (max-width: 640px) {
+    .hn3-hd .acts { display: grid; grid-template-columns: 1fr 1fr; }
+    .hn3-hd .acts .hn2a-btn { width: 100%; }
+    .hn3-hd .acts .is-collect { grid-column: 1 / -1; order: -1; }
+    .hn3-hd .acts .hn3-more { grid-column: 1 / -1; }
+    .hn3-hd .acts .hn3-more summary { width: 100%; }
+    .hn3-more .menu { left: 0; right: auto; }
+  }
+</style>
+
+<div class="hn2a hn3 hn3p">
+  <div class="hn2a-inner">
+    <a class="hn3-back" href="/user/members<%= living ? '' : '?tab=out' %>">← Tenants</a>
+    <% if (flash.msg) { %><div class="hn2a-notice is-ok" role="status"><%= flash.msg %></div><% } %>
+    <% if (flash.err) { %><div class="hn2a-notice is-bad" role="alert"><%= flash.err %></div><% } %>
+    <% if (!sameHostel) { %><div class="hn3-callout t-blue"><span aria-hidden="true">🏠</span><div><%= m.name %> lives in <b><%= hostel ? hostel.hostelName : "another property" %></b>. <a href="/user/hostel/<%= m.hostel %>?next=<%= encodeURIComponent(base) %>" style="font-weight:800;color:inherit;text-decoration:underline">Switch to it</a> to make changes.</div></div><% } %>
+
+    <div class="hn2a-card hn3-hd">
+      <span class="hn3-ini c-<%= tone %>" aria-hidden="true"><%= T.initials(m.name) %></span>
+      <div style="min-width:0;flex:1">
+        <h1><%= m.name %> <span class="hn3-pill <%= status.key === 'living' ? 't-ok' : status.key === 'notice' ? 't-warn' : 't-slate' %>"><%= status.key === "notice" ? "Leaving " + T.day(m.leavingDate) : status.label %></span> <span class="hn3-pill <%= kb.key === 'verified' ? 't-ok' : kb.key === 'pending' ? 't-warn' : 't-slate' %>"><%= kb.key === "verified" ? "KYC verified" : kb.key === "pending" ? "KYC pending" : "KYC not verified" %></span><% if (m.fromEnquiry) { %> <span class="hn3-pill t-violet">From lead</span><% } %></h1>
+        <div class="m"><%= roomLine %> · <%= living ? "since " + T.dayYear(m.joiningDate) : T.dayYear(m.joiningDate) + " – " + T.dayYear(m.leftDate) %><% if (living) { %> · <%= T.inr(rent) %><%= dueDay ? " due on " + T.ordinal(dueDay) : "" %><% } %></div>
+      </div>
+      <div class="acts">
+        <a class="hn2a-btn is-ghost" href="tel:+91<%= m.mobileNo %>"><%- PHONE %> Call</a>
+        <a class="hn2a-btn is-ghost" href="https://wa.me/91<%= m.mobileNo %>" target="_blank" rel="noopener"><%- CHAT %> WhatsApp</a>
+        <% if (living && kycView.ready && !(kb.key === "verified" && kycView.shared)) { %><form method="POST" action="/user/kyc/request" target="_blank" style="margin:0"><input type="hidden" name="mobile" value="<%= m.mobileNo %>"><input type="hidden" name="name" value="<%= m.name %>"><button type="submit" class="hn2a-btn is-ghost"><%= kb.key === "verified" ? "💬 Ask to share KYC details" : kb.key === "pending" ? "💬 Ask again to verify KYC" : "💬 Ask to verify KYC" %></button></form><% } %>
+        <% if (money.due > 0) { %><a class="hn2a-btn is-collect" href="/user/members/<%= id %>/addpayment">Collect <%= T.inr(money.due) %></a>
+        <% } else if (living) { %><a class="hn2a-btn is-ghost is-collect" href="/user/members/<%= id %>/addpayment">Record a payment</a><% } %>
+        <details class="hn3-more">
+          <summary class="hn2a-btn is-ghost" aria-label="More actions">⋯</summary>
+          <div class="menu">
+            <a href="/user/payment-history/<%= id %>">Payment history (old view)</a>
+            <% if (sameHostel) { %><form method="POST" action="/user/member/<%= id %>?_method=DELETE" data-confirm="Remove <%= confirmName %>? They are hidden from your lists and their bed is freed. Their payments stay in your reports."><button type="submit" class="is-danger">Remove tenant</button></form><% } %>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <nav class="hn3-ptabs" aria-label="Tenant">
+      <% [["overview", "Overview"], ["payments", "Payments"], ["documents", "Documents" + ((m.documents || []).length ? " (" + m.documents.length + ")" : "")], ["history", "History"]].forEach(function (t) { %>
+        <a href="<%= base %><%= t[0] === 'overview' ? '' : '?tab=' + t[0] %>" <%- tab === t[0] ? 'aria-current="page"' : '' %>><%= t[1] %></a>
+      <% }) %>
+    </nav>
+
+    <% if (tab === "overview") { %>
+    <div class="hn3-cols"><div>
+      <% if (living) { %>
+      <section class="hn2a-card hn3-box" aria-labelledby="h-stay">
+        <h2 id="h-stay">Stay</h2>
+        <% if (leavingPassed) { %><div class="hn3-callout t-amber"><span aria-hidden="true">⏰</span><div>The leaving date (<%= T.dayYear(m.leavingDate) %>) has passed. If <%= m.name.split(" ")[0] %> has left, move them out. If they are staying longer, change the date: rent is not charged for months after the leaving date.</div></div><% } %>
+        <div class="hn3-rw"><span>Rent</span><span><%= T.inr(rent) %> a month · due on <%= dueDay ? T.ordinal(dueDay) : "—" %><% if (ownRent && bedRentNow !== null && rent !== bedRentNow) { %><br><small class="t-soft-text" style="font-weight:500">Own rent for this tenant (the bed is <%= T.inr(bedRentNow) %>)</small><% } %></span></div>
+        <div class="hn3-rw"><span>Security deposit</span><span><% if (!depAgreed && !depHeld) { %>None<% } else if (depLeft > 0) { %><span class="t-bad-text"><%= T.inr(depHeld) %> of <%= T.inr(depAgreed) %> received</span><% } else { %><%= T.inr(depHeld) %> held<%= m.depositMode ? " · " + m.depositMode.toLowerCase() : "" %><% } %></span></div>
+        <div class="hn3-rw"><span>This month</span><span class="<%= money.state.tone === 'bad' ? 't-bad-text' : money.state.tone === 'ok' ? 't-ok-text' : '' %>"><%= money.state.text %><%= money.state.sub ? " · " + money.state.sub : "" %></span></div>
+        <% if (m.leavingDate) { %><div class="hn3-rw"><span>Leaving</span><span class="t-bad-text" style="color:var(--hn-amber)"><%= T.dayYear(m.leavingDate) %><%= m.noticeReason ? " · " + m.noticeReason : "" %></span></div><% } %>
+
+        <% if (sameHostel) { %>
+        <div class="hn3-acts2">
+          <details class="hn3-panel"><summary class="hn2a-btn is-ghost is-sm">Change room</summary>
+            <form class="hn3-form" method="POST" action="/user/members/<%= id %>/move">
+              <input type="hidden" name="back" value="tenant">
+              <% if (!moveTo.length) { %><div class="hn2a-help" style="margin:0">There is no free bed to move to right now.</div><% } else { %>
+              <div class="hn2a-field"><label class="hn2a-label" for="mv-to">Move to</label>
+                <select class="hn2a-select" id="mv-to" name="to" required><option value="">Choose a free bed</option>
+                  <% moveTo.forEach(function (b) { %><option value="<%= b.value %>">Room <%= b.room %> · bed <%= b.label %> (<%= b.floor %>) — <%= T.inr(b.rent) %></option><% }) %>
+                </select></div>
+              <div class="hn2a-field"><label class="hn2a-switch"><input type="checkbox" name="useNewRent" value="1"> Charge the new bed's rent from the next rent</label>
+                <div class="hn2a-help">Leave it off and <%= m.name.split(" ")[0] %> keeps paying <%= T.inr(rent) %>.</div></div>
+              <button type="submit" class="hn2a-btn is-sm">Move</button>
+              <% } %>
+            </form>
+          </details>
+          <details class="hn3-panel"><summary class="hn2a-btn is-ghost is-sm"><%= m.leavingDate ? "Change leaving date" : "Give notice" %></summary>
+            <form class="hn3-form" method="POST" action="<%= base %>/notice">
+              <p class="hn2a-help" style="margin:0 0 10px"><%= m.name.split(" ")[0] %> stays living here until you move them out. Their bed shows "Leaving soon".</p>
+              <div class="hn2a-field"><label class="hn2a-label" for="nt-date">Leaving date</label>
+                <input class="hn2a-input" type="date" id="nt-date" name="leavingDate" required value="<%= T.ymd(m.leavingDate) %>" data-default-days="30"></div>
+              <div class="hn2a-field"><span class="hn2a-label">Reason <span class="hn3-opt" style="color:var(--hn-soft);font-weight:500">(optional)</span></span>
+                <div class="hn3-seg"><% ["Course over", "Job", "Other"].forEach(function (r) { %><label><input type="radio" name="reason" value="<%= r %>" <%= m.noticeReason === r ? "checked" : "" %>><span><%= r %></span></label><% }) %></div></div>
+              <button type="submit" class="hn2a-btn is-sm">Save notice</button>
+            </form>
+          </details>
+          <% if (m.leavingDate) { %><form method="POST" action="<%= base %>/notice/cancel" data-confirm="Cancel the notice? <%= confirmName %> stays on."><button type="submit" class="hn2a-btn is-ghost is-sm">Cancel notice</button></form><% } %>
+          <a class="hn2a-btn is-ghost is-sm is-danger" href="<%= base %>/move-out">Move out</a>
+        </div>
+
+        <details class="hn3-panel"><summary class="hn2a-btn is-ghost is-sm">Edit rent, due day or deposit</summary>
+          <form class="hn3-form" method="POST" action="<%= base %>/stay">
+            <div class="hn3-g3">
+              <div class="hn2a-field"><label class="hn2a-label" for="st-rent">Monthly rent</label><input class="hn2a-input" id="st-rent" name="rent" value="<%= rent %>" inputmode="numeric" required></div>
+              <div class="hn2a-field"><label class="hn2a-label" for="st-due">Due day</label><select class="hn2a-select" id="st-due" name="dueDay"><% for (let d = 1; d <= 31; d++) { %><option value="<%= d %>" <%= dueDay === d ? "selected" : "" %>><%= T.ordinal(d) %></option><% } %></select></div>
+              <div class="hn2a-field"><label class="hn2a-label" for="st-dep">Deposit agreed</label><input class="hn2a-input" id="st-dep" name="deposit" value="<%= depAgreed %>" inputmode="numeric"></div>
+            </div>
+            <div class="hn2a-help" style="margin:0 0 10px">A new rent or due day applies from the next monthly rent. Rent already charged does not change.</div>
+            <button type="submit" class="hn2a-btn is-sm">Save</button>
+          </form>
+        </details>
+        <% if (depLeft > 0 || (!depAgreed && !depHeld)) { %>
+        <details class="hn3-panel"><summary class="hn2a-btn is-ghost is-sm">Record deposit received</summary>
+          <form class="hn3-form" method="POST" action="<%= base %>/deposit">
+            <div class="hn3-g2">
+              <div class="hn2a-field"><label class="hn2a-label" for="dp-amt">Amount received</label><input class="hn2a-input" id="dp-amt" name="amount" value="<%= depLeft || '' %>" inputmode="numeric" required></div>
+              <div class="hn2a-field"><span class="hn2a-label">Paid by</span><div class="hn3-seg"><label><input type="radio" name="mode" value="cash" checked><span>Cash</span></label><label><input type="radio" name="mode" value="upi"><span>UPI</span></label></div></div>
+            </div>
+            <button type="submit" class="hn2a-btn is-sm">Record deposit</button>
+          </form>
+        </details>
+        <% } %>
+        <% } %>
+      </section>
+      <% } else { %>
+      <section class="hn2a-card hn3-box" aria-labelledby="h-out">
+        <h2 id="h-out">Moved out</h2>
+        <div class="hn3-rw"><span>Moved out on</span><span><%= T.dayYear(m.leftDate) %></span></div>
+        <% if (settlement && !settlement.undoneAt) { const net = Number(settlement.net) || 0; %>
+          <div class="hn3-rw"><span>Deposit held</span><span><%= T.inr(settlement.depositHeld) %></span></div>
+          <% if (settlement.advance > 0) { %><div class="hn3-rw"><span>Paid in advance</span><span><%= T.inr(settlement.advance) %></span></div><% } %>
+          <% if (settlement.dues > 0) { %><div class="hn3-rw"><span>Unpaid rent</span><span class="t-bad-text">− <%= T.inr(settlement.dues) %></span></div><% } %>
+          <% (settlement.deductions || []).forEach(function (d) { %><div class="hn3-rw"><span><%= d.label %></span><span class="t-bad-text">− <%= T.inr(d.amount) %></span></div><% }) %>
+          <div class="hn3-res <%= net > 0 ? 'is-refund' : net < 0 ? 'is-collect' : 'is-even' %>"><span style="font-size:13px;font-weight:700"><%= net > 0 ? "Refunded" + (settlement.mode ? " (" + settlement.mode.toLowerCase() + ")" : "") : net < 0 ? "To collect from " + m.name.split(" ")[0] : "Settled" %></span><b><%= net === 0 ? "Nothing to pay" : T.inr(Math.abs(net)) %></b></div>
+          <% if (money.due > 0) { %><div class="hn2a-help" style="margin-bottom:10px"><%= T.inr(money.due) %> is still due. It shows in Dues until it is collected.</div><% } %>
+          <div class="hn3-acts2">
+            <a class="hn2a-btn is-ghost is-sm" href="<%= base %>/slip.pdf" target="_blank" rel="noopener">⬇ Settlement slip <%= settlement.slipNo %></a>
+            <% if (slipWhatsApp) { %><form method="POST" action="<%= base %>/slip/send"><button type="submit" class="hn2a-btn is-ghost is-sm">Send slip on WhatsApp</button></form><% } %>
+            <% if (canUndo && sameHostel) { %><form method="POST" action="<%= base %>/undo-move-out" data-confirm="Undo the move-out? <%= confirmName %> goes back to bed <%= m.assignedRoom %>-<%= m.bedLabel %> and the settlement is cancelled."><button type="submit" class="hn2a-btn is-ghost is-sm">Undo move-out</button></form><% } %>
+          </div>
+          <% if (canUndo) { %><div class="hn2a-help">You can undo this move-out until <%= new Date(new Date(settlement.at).getTime() + 864e5).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }) %>.</div><% } %>
+        <% } else { %>
+          <div class="hn2a-help">Moved out before settlement slips were added.<%= money.due > 0 ? " " + T.inr(money.due) + " is still due." : "" %></div>
+        <% } %>
+      </section>
+      <% } %>
+
+      <section class="hn2a-card hn3-box" aria-labelledby="h-person">
+        <h2 id="h-person">Person</h2>
+        <div class="hn3-rw"><span>Mobile</span><span><%= m.mobileNo %></span></div>
+        <% if (m.email) { %><div class="hn3-rw"><span>Email</span><span><%= m.email %></span></div><% } %>
+        <% if (m.dob || m.gender) { %><div class="hn3-rw"><span>Date of birth</span><span><%= [m.dob ? T.dayYear(m.dob) : "", m.gender].filter(Boolean).join(" · ") %></span></div><% } %>
+        <% if (m.profession) { %><div class="hn3-rw"><span>College or work</span><span><%= m.profession %></span></div><% } %>
+        <% if (kd) { %>
+          <div class="hn3-rw"><span>Aadhaar (DigiLocker)</span><span>xxxx xxxx <%= kd.last4 %> · verified <%= kd.verifiedAt %></span></div>
+          <div class="hn3-rw"><span>Name on Aadhaar</span><span><%= kd.name %><%= kd.dob ? " · " + kd.dob : "" %></span></div>
+        <% } else if (kb.key === "verified") { %><div class="hn3-rw"><span>Aadhaar</span><span>KYC verified with DigiLocker (details not shared with you)</span></div>
+        <% } else if (m.aadharNo) { %><div class="hn3-rw"><span>Aadhaar</span><span><%= T.maskAadhaar(m.aadharNo) %> (typed, not verified)</span></div><% } %>
+        <% if (m.guardianName || m.guardianMobile || m.fatherName) { %><div class="hn3-rw"><span>Guardian</span><span><%= [m.guardianName || m.fatherName, m.guardianMobile].filter(Boolean).join(" · ") %></span></div><% } %>
+        <% if (m.emergencyContact) { %><div class="hn3-rw"><span>Emergency</span><span><%= m.emergencyContact %></span></div><% } %>
+        <% if (m.address) { %><div class="hn3-rw"><span>Address</span><span><%= m.address %></span></div><% } %>
+        <% if (sameHostel) { %>
+        <details class="hn3-panel"><summary class="hn2a-btn is-ghost is-sm">Edit details</summary>
+          <form class="hn3-form" method="POST" action="<%= base %>/person">
+            <div class="hn3-g2">
+              <div class="hn2a-field"><label class="hn2a-label" for="p-name">Full name</label><input class="hn2a-input" id="p-name" name="name" value="<%= m.name %>" required maxlength="100"></div>
+              <div class="hn2a-field"><label class="hn2a-label" for="p-mob">Mobile</label><input class="hn2a-input" id="p-mob" name="mobileNo" value="<%= m.mobileNo %>" required inputmode="numeric" pattern="[6-9][0-9]{9}" maxlength="10"></div>
+              <div class="hn2a-field"><label class="hn2a-label" for="p-email">Email</label><input class="hn2a-input" id="p-email" type="email" name="email" value="<%= m.email || '' %>" maxlength="120"></div>
+              <div class="hn2a-field"><label class="hn2a-label" for="p-gen">Gender</label><select class="hn2a-select" id="p-gen" name="gender"><option value="">—</option><% ["Male", "Female", "Other"].forEach(function (g) { %><option <%= m.gender === g ? "selected" : "" %>><%= g %></option><% }) %></select></div>
+              <div class="hn2a-field"><label class="hn2a-label" for="p-dob">Date of birth</label><input class="hn2a-input" id="p-dob" type="date" name="dob" value="<%= T.ymd(m.dob) %>" max="<%= today %>"></div>
+              <div class="hn2a-field"><label class="hn2a-label" for="p-prof">College or occupation</label><input class="hn2a-input" id="p-prof" name="profession" value="<%= m.profession || '' %>" maxlength="100"></div>
+              <div class="hn2a-field"><label class="hn2a-label" for="p-gn">Guardian name</label><input class="hn2a-input" id="p-gn" name="guardianName" value="<%= m.guardianName || m.fatherName || '' %>" maxlength="100"></div>
+              <div class="hn2a-field"><label class="hn2a-label" for="p-gm">Guardian mobile</label><input class="hn2a-input" id="p-gm" name="guardianMobile" value="<%= m.guardianMobile || '' %>" inputmode="numeric" pattern="[6-9][0-9]{9}" maxlength="10"></div>
+            </div>
+            <div class="hn2a-field"><label class="hn2a-label" for="p-em">Emergency contact</label><input class="hn2a-input" id="p-em" name="emergencyContact" value="<%= m.emergencyContact || '' %>" maxlength="120"></div>
+            <div class="hn2a-field"><label class="hn2a-label" for="p-addr">Permanent address</label><textarea class="hn2a-input" id="p-addr" name="address" maxlength="500"><%= m.address || '' %></textarea></div>
+            <button type="submit" class="hn2a-btn is-sm">Save details</button>
+          </form>
+        </details>
+        <% } %>
+      </section>
+    </div><div>
+      <section class="hn2a-card hn3-box" aria-labelledby="h-hist">
+        <h2 id="h-hist">History <a href="<%= base %>?tab=history">See all</a></h2>
+        <% if (!history.length) { %><div class="hn2a-help">Nothing yet.</div><% } %>
+        <% history.forEach(function (e) { %><div class="hn3-ev"><i class="d-<%= DOTS[e.kind] || 'slate' %>"></i><div><%= e.text %><small><%= T.day(e.at) %><%= e.note ? " · " + e.note : "" %><%= e.by ? " · by " + e.by : "" %></small></div></div><% }) %>
+      </section>
+      <section class="hn2a-card hn3-box" aria-labelledby="h-docs">
+        <h2 id="h-docs">Documents <a href="<%= base %>?tab=documents">+ Upload</a></h2>
+        <% if (!(m.documents || []).length) { %><div class="hn2a-help">Rent agreement, ID or college ID. Only you can see them.</div><% } %>
+        <% (m.documents || []).slice(-3).reverse().forEach(function (d) { %><div class="hn3-doc"><span aria-hidden="true"><%= d.mime === "application/pdf" ? "📄" : "🖼️" %></span><a class="n" href="<%= base %>/documents/<%= d._id %>" target="_blank" rel="noopener"><%= d.name %></a><small><%= T.day(d.uploadedAt) %></small></div><% }) %>
+      </section>
+    </div></div>
+
+    <% } else if (tab === "payments") { %>
+    <section class="hn2a-card" aria-labelledby="h-pay">
+      <div class="hn2a-row" style="margin-bottom:12px"><h2 id="h-pay" class="hn2a-card-title" style="margin:0">Payments</h2>
+        <% if (money.due > 0 || living) { %><a class="hn2a-btn is-sm" href="/user/members/<%= id %>/addpayment"><%= money.due > 0 ? "Collect " + T.inr(money.due) : "Record a payment" %></a><% } %></div>
+      <div class="hn3-g3" style="margin-bottom:14px">
+        <div class="hn3-rw" style="border:0"><span>Charged</span><span><%= T.inr(money.fees) %></span></div>
+        <div class="hn3-rw" style="border:0"><span>Paid</span><span class="t-ok-text"><%= T.inr(money.paid) %></span></div>
+        <div class="hn3-rw" style="border:0"><span><%= money.advance > 0 ? "In advance" : "Due" %></span><span class="<%= money.due > 0 ? 't-bad-text' : '' %>"><%= T.inr(money.advance > 0 ? money.advance : money.due) %></span></div>
+      </div>
+      <% if (!payments.length) { %><div class="hn2a-empty">No payments yet.</div><% } else { %>
+      <div style="overflow-x:auto"><table class="hn2a-table hn3-ptable">
+        <thead><tr><th>Date</th><th>What</th><th class="amt">Amount</th><th></th></tr></thead>
+        <tbody><% payments.forEach(function (p) { const isPaid = Number(p.amountPaid) > 0; const month = p.chargeMonth ? new Date(p.chargeMonth + "-01T00:00:00+05:30").toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "Asia/Kolkata" }) : ""; %>
+          <tr><td><%= T.dayYear(p.paymentDate) %></td>
+            <td><%= isPaid ? "Paid" + (p.paymentMode ? " · " + p.paymentMode : "") : (p.paymentMode === "Move-out deductions" ? "Move-out deductions" : p.paymentMode === "Advance refunded" ? "Advance refunded" : "Rent" + (month ? " for " + month : "") + " charged") %></td>
+            <td class="amt <%= isPaid ? 't-ok-text' : '' %>" style="font-weight:700"><%= isPaid ? T.inr(p.amountPaid) : T.inr(p.roomFees) %></td>
+            <td class="amt"><% if (isPaid) { %><a href="/user/payment-receipt/<%= p._id %>" style="color:var(--hn-green);font-weight:700">Receipt</a><% } %></td></tr>
+        <% }) %></tbody>
+      </table></div>
+      <% } %>
+    </section>
+
+    <% } else if (tab === "documents") { %>
+    <section class="hn2a-card" aria-labelledby="h-docs2">
+      <h2 id="h-docs2" class="hn2a-card-title">Documents</h2>
+      <div class="hn2a-card-sub">Rent agreement, ID, college ID… PDF, JPG or PNG up to 5 MB. Only you can open these files.</div>
+      <form method="POST" action="<%= base %>/documents" enctype="multipart/form-data" class="hn3-form" style="margin:0 0 16px">
+        <div class="hn3-g2">
+          <div class="hn2a-field"><label class="hn2a-label" for="dc-file">File</label><input class="hn2a-file" id="dc-file" type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" required></div>
+          <div class="hn2a-field"><label class="hn2a-label" for="dc-name">Name <span style="color:var(--hn-soft);font-weight:500">(optional)</span></label><input class="hn2a-input" id="dc-name" name="name" maxlength="60" placeholder="e.g. Rent agreement"></div>
+        </div>
+        <button type="submit" class="hn2a-btn is-sm">Upload</button>
+      </form>
+      <% if (!(m.documents || []).length) { %><div class="hn2a-empty">No documents yet.</div><% } %>
+      <% (m.documents || []).slice().reverse().forEach(function (d) { %>
+        <div class="hn3-doc"><span aria-hidden="true"><%= d.mime === "application/pdf" ? "📄" : "🖼️" %></span><a class="n" href="<%= base %>/documents/<%= d._id %>" target="_blank" rel="noopener"><%= d.name %></a><small><%= T.dayYear(d.uploadedAt) %> · <%= Math.max(1, Math.round((d.size || 0) / 1024)) %> KB</small>
+          <form method="POST" action="<%= base %>/documents/<%= d._id %>/delete" data-confirm="Delete <%= T.plain(d.name) %>?"><button type="submit" class="hn2a-btn is-ghost is-sm is-danger">Delete</button></form></div>
+      <% }) %>
+    </section>
+
+    <% } else { %>
+    <section class="hn2a-card" aria-labelledby="h-hist2">
+      <h2 id="h-hist2" class="hn2a-card-title">History</h2>
+      <div class="hn2a-card-sub">Everything that happened for <%= m.name %>, newest first, with who did it.</div>
+      <% if (!history.length) { %><div class="hn2a-empty">Nothing yet.</div><% } %>
+      <% history.forEach(function (e) { %><div class="hn3-ev"><i class="d-<%= DOTS[e.kind] || 'slate' %>"></i><div><%= e.text %><small><%= T.dayYear(e.at) %><%= e.note ? " · " + e.note : "" %><%= e.by ? " · by " + e.by : "" %></small></div></div><% }) %>
+    </section>
+    <% } %>
+  </div>
+</div>
+<script>
+(function () {
+  document.querySelectorAll('[data-confirm]').forEach(function (f) { f.addEventListener('submit', function (e) { if (!confirm(f.getAttribute('data-confirm'))) e.preventDefault(); }); });
+  // Give notice: suggest 30 days from today.
+  var d = document.querySelector('[data-default-days]');
+  if (d && !d.value) { var t = new Date(Date.now() + 30 * 864e5 + 5.5 * 3600e3); d.value = t.toISOString().slice(0, 10); }
+  // Close the ⋯ menu when clicking elsewhere.
+  var more = document.querySelector('.hn3-more');
+  if (more) document.addEventListener('click', function (e) { if (more.open && !more.contains(e.target)) more.open = false; });
+  document.querySelectorAll('form').forEach(function (f) { f.addEventListener('submit', function (e) { if (e.defaultPrevented) return; var b = f.querySelector('button[type=submit]'); if (b) setTimeout(function () { b.disabled = true; }, 0); }); });
+})();
+</script>

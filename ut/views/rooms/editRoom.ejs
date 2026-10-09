@@ -1,0 +1,50 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Property Operations Phase 2 — edit one room. %>
+<%- include("../account/_style.ejs") %>
+<style>
+  .hn2n .hn2a-inner { max-width: 760px; }
+  .hn2n-g { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .hn2n .hn2a-input, .hn2n .hn2a-select { max-width: none; height: 44px; }
+  .hn2n-seg { display: flex; gap: 8px; }
+  .hn2n-seg label { flex: 1; }
+  .hn2n-seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .hn2n-seg span { display: block; text-align: center; height: 44px; line-height: 42px; border: 1px solid #cfdcd5; border-radius: 11px; font-size: 14px; font-weight: 700; color: var(--hn-body); cursor: pointer; background: #fff; }
+  .hn2n-seg input:checked + span { border: 2px solid var(--hn-green); background: var(--hn-green-tint); color: var(--hn-green); line-height: 40px; }
+  .hn2n-seg input:focus-visible + span { outline: 3px solid rgba(14,169,104,0.35); outline-offset: 2px; }
+  .hn2n-checks { display: flex; gap: 10px 18px; flex-wrap: wrap; font-size: 14px; font-weight: 600; color: var(--hn-body); }
+  .hn2n-checks label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .hn2n-checks input { width: 18px; height: 18px; accent-color: var(--hn-green); }
+  .hn2n-foot { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  @media (max-width: 640px) { .hn2n-g { grid-template-columns: 1fr; } }
+</style>
+<div class="hn2a hn2n">
+  <div class="hn2a-inner">
+    <a href="/user/allrooms" style="font-size:13px;font-weight:600;color:var(--hn-green)">← Rooms &amp; beds</a>
+    <h1 class="hn2a-title" style="margin-top:8px">Edit room <%= room.room_number %></h1>
+    <div class="hn2a-sub"><%= living ? (living === 1 ? "1 tenant lives here" : living + " tenants live here") : "Nobody lives here right now" %></div>
+    <% if (flash.err) { %><div class="hn2a-notice is-bad" role="alert"><%= flash.err %></div><% } %>
+    <form class="hn2a-card" method="POST" action="/user/manageroom/<%= room._id %>?_method=PUT">
+      <div class="hn2n-g">
+        <div><label class="hn2a-label" for="rn">Room number</label><input class="hn2a-input" id="rn" name="room[room_number]" value="<%= room.room_number %>" required maxlength="20"></div>
+        <div><label class="hn2a-label" for="fl">Floor</label>
+          <select class="hn2a-select" id="fl" name="room[floor_id]">
+            <% floors.forEach(function (f) { %><option value="<%= f.id %>" <%= String(room.floor_id) === f.id ? "selected" : "" %>><%= f.name %></option><% }) %>
+          </select></div>
+      </div>
+      <div class="hn2n-g">
+        <div><label class="hn2a-label" for="cap">Beds in this room</label><input class="hn2a-input" id="cap" name="room[sharing_capacity]" type="number" min="<%= Math.max(1, living) %>" max="20" value="<%= room.sharing_capacity %>" required>
+          <div class="hn2a-help"><%= living ? "At least " + living + ", for the tenants who live here." : "From 1 to 20." %></div></div>
+        <div><label class="hn2a-label" for="rent">Rent per bed (per month)</label><input class="hn2a-input" id="rent" name="room[room_fees]" inputmode="numeric" value="<%= room.room_fees %>" required>
+          <div class="hn2a-help">New charges use the new rent. Beds with their own rent keep it.</div></div>
+      </div>
+      <div style="margin-bottom:14px"><span class="hn2a-label">Room type</span>
+        <div class="hn2n-seg" style="max-width:360px">
+          <label><input type="radio" name="room[roomType]" value="AC" <%= room.roomType === "AC" ? "checked" : "" %>><span>AC</span></label>
+          <label><input type="radio" name="room[roomType]" value="Non-AC" <%= room.roomType === "Non-AC" ? "checked" : "" %>><span>Non-AC</span></label>
+        </div></div>
+      <div><span class="hn2a-label">Included</span>
+        <div class="hn2n-checks"><% amenities.forEach(function (a) { %><label><input type="checkbox" name="room[amenities]" value="<%= a %>" <%= (room.amenities || []).includes(a) ? "checked" : "" %>> <%= a %></label><% }) %></div></div>
+      <div class="hn2n-foot"><button type="submit" class="hn2a-btn">Save room</button><a class="hn2a-btn is-ghost" href="/user/allrooms">Cancel</a></div>
+    </form>
+  </div>
+</div>

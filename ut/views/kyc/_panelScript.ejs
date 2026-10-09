@@ -1,0 +1,66 @@
+<%# Property Operations Phase 4 — keeps the Add tenant KYC panel (and step 3) in step with the mobile number. %>
+<script>
+(function () {
+  var f = document.getElementById('hn3Admit'); var box = document.querySelector('[data-kyc]'); if (!f || !box) return;
+  var mob = f.querySelector('[name="member[mobileNo]"]'), nameEl = f.querySelector('[name="member[name]"]');
+  var dobEl = f.querySelector('[name="member[dob]"]'), genEl = f.querySelector('[name="member[gender]"]');
+  var view = JSON.parse(document.getElementById('hn4Kyc').textContent);
+  var q = function (s) { return box.querySelector(s); };
+  var norm = function (s) { return String(s || '').toLowerCase().replace(/[^a-zऀ-ॿ ]/g, ' ').replace(/\s+/g, ' ').trim(); };
+  var firstName = function () { return (String(nameEl.value || '').trim().split(/\s+/)[0]) || 'them'; };
+  var row = function (k, v) { var r = document.createElement('div'); r.className = 'hn3-rw'; var a = document.createElement('span'); a.textContent = k; var b = document.createElement('span'); b.textContent = v; r.appendChild(a); r.appendChild(b); return r; };
+  function render() {
+    var b = view.badge || { key: 'none', label: 'Not verified' }, d = view.details, ok = /^[6-9]\d{9}$/.test(mob.value.trim());
+    box.className = 'hn4-kyc ' + (!view.ready ? '' : b.key === 'verified' ? 't-ok' : b.key === 'pending' ? 't-warn' : '');
+    var pill = q('[data-k-pill]'); pill.hidden = !view.ready || !ok; pill.textContent = b.label; pill.className = 'hn3-pill ' + (b.key === 'verified' ? 't-ok' : b.key === 'pending' ? 't-warn' : 't-slate');
+    var title = q('[data-k-title]'), body = q('[data-k-body]'), mis = q('[data-k-mis]'), acts = q('[data-k-acts]');
+    body.textContent = ''; mis.hidden = true; mis.textContent = '';
+    if (!view.ready) { title.textContent = '🪪 Aadhaar KYC'; body.textContent = 'DigiLocker KYC is not switched on yet. You can admit without it for now.'; acts.hidden = true; }
+    else if (!ok) { title.textContent = '🪪 Aadhaar KYC'; body.textContent = 'Type the mobile number to check their Aadhaar KYC.'; acts.hidden = true; }
+    else if (b.key === 'verified') {
+      title.textContent = '✅ KYC verified with DigiLocker';
+      acts.hidden = !!view.shared; q('[data-k-here]').hidden = true; q('[data-k-ask]').textContent = '💬 Ask to share details';
+      if (d && d.otherMobile) { mis.hidden = false; mis.textContent = "⚠️ Verified on your phone. The Aadhaar's linked mobile is a different number."; }
+      if (d) {
+        body.appendChild(row('Name on Aadhaar', d.name)); body.appendChild(row('Date of birth', d.dob + (d.gender ? ' · ' + d.gender : '')));
+        body.appendChild(row('Aadhaar', 'xxxx xxxx ' + d.last4 + ' · verified ' + d.verifiedAt));
+        if (norm(d.name) && norm(nameEl.value) !== norm(d.name)) {
+          mis.hidden = false; if (mis.textContent) mis.appendChild(document.createElement('br'));
+          mis.appendChild(document.createTextNode('⚠️ The name typed ("' + nameEl.value.trim() + '") is different from the Aadhaar name. '));
+          var u = document.createElement('button'); u.type = 'button'; u.className = 'hn3-linkbtn'; u.textContent = 'Use the Aadhaar details';
+          u.addEventListener('click', function () { nameEl.value = d.name; if (d.dobIso && dobEl) dobEl.value = d.dobIso; if (d.gender && genEl) genEl.value = d.gender; render(); });
+          mis.appendChild(u);
+        }
+      } else body.textContent = 'Verified with DigiLocker. To see the name and birth date on their Aadhaar, ask them to share it with you: they get the link and tap Share.';
+    } else if (b.key === 'pending') {
+      title.textContent = '⏳ Waiting for ' + firstName() + ' to verify'; acts.hidden = false; q('[data-k-here]').hidden = false;
+      body.textContent = (view.askedAt ? 'Link sent. ' : '') + 'This updates by itself when ' + firstName() + ' finishes on DigiLocker.';
+      q('[data-k-ask]').textContent = '💬 Send the link again';
+    } else {
+      title.textContent = '🪪 Aadhaar not verified yet'; acts.hidden = false; q('[data-k-here]').hidden = false; q('[data-k-ask]').textContent = '💬 Send link on WhatsApp';
+      body.textContent = 'Tenants verify their own Aadhaar with DigiLocker (about a minute, Aadhaar OTP).' + (view.required ? ' Needed before admission.' : '') + ' No smartphone? Use "Verify on this phone": they sign in with their own Aadhaar OTP.';
+    }
+    // Step 3: the KYC line, and the lock when KYC is required.
+    var c = f.querySelector('[data-c="kyc"]');
+    if (c) { c.textContent = ''; var p = document.createElement('span'); p.className = pill.className; p.textContent = b.label; c.appendChild(p); }
+    var blocked = !!(view.required && b.key !== 'verified');
+    var blk = f.querySelector('[data-kyc-block]'); if (blk) blk.hidden = !blocked;
+    var sub = f.querySelector('[data-submit]'); if (sub) { sub.disabled = blocked; sub.textContent = blocked ? 'Admit tenant (after KYC)' : 'Admit tenant'; }
+  }
+  var timer = null, last = '';
+  function check(force) {
+    var m = mob.value.trim();
+    if (!/^[6-9]\d{9}$/.test(m)) { view = Object.assign({}, view, { badge: { key: 'none', label: 'Not verified' }, details: null }); render(); return; }
+    if (!force && m === last && view.badge && view.badge.key === 'verified') return;
+    last = m;
+    fetch('/user/kyc/status?mobile=' + encodeURIComponent(m), { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; }).then(function (v) { if (v && mob.value.trim() === m) { view = v; render(); } }).catch(function () {});
+  }
+  mob.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(function () { check(true); }, 400); });
+  nameEl.addEventListener('input', render);
+  // While not verified, look again every 5 seconds (the tenant may be finishing on their phone right now).
+  setInterval(function () { if (document.visibilityState === 'visible' && view.ready && (!view.badge || view.badge.key !== 'verified')) check(true); }, 5000);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') check(true); });
+  render();
+})();
+</script>

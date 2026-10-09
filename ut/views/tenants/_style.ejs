@@ -1,0 +1,56 @@
+<%# Property Operations Phase 3 — shared look for the tenant pages (on top of account/_style.ejs). %>
+<style>
+  .hn3 .hn2a-inner { max-width: 1180px; }
+  .hn3 [hidden] { display: none !important; }
+  .hn3-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .hn3-pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap; vertical-align: middle; }
+  .hn3-pill.t-ok { background: var(--hn-green-tint); color: var(--hn-green); }
+  .hn3-pill.t-warn { background: var(--hn-amber-tint); color: var(--hn-amber); }
+  .hn3-pill.t-bad { background: var(--hn-coral-tint); color: var(--hn-coral); }
+  .hn3-pill.t-blue { background: var(--hn-blue-tint); color: var(--hn-blue); }
+  .hn3-pill.t-violet { background: var(--hn-violet-tint); color: var(--hn-violet); }
+  .hn3-pill.t-slate { background: var(--hn-slate-tint); color: var(--hn-slate); }
+  .hn3-ini { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex: none; }
+  .hn3-ini.c-green { background: var(--hn-green-tint); color: var(--hn-green); }
+  .hn3-ini.c-blue { background: var(--hn-blue-tint); color: var(--hn-blue); }
+  .hn3-ini.c-amber { background: var(--hn-amber-tint); color: var(--hn-amber); }
+  .hn3-ini.c-violet { background: var(--hn-violet-tint); color: var(--hn-violet); }
+  .hn3-ini.c-slate { background: var(--hn-slate-tint); color: var(--hn-slate); }
+  .hn3-tabs { display: inline-flex; background: #fff; border: 1px solid var(--hn-line); border-radius: 12px; padding: 4px; gap: 2px; max-width: 100%; overflow-x: auto; }
+  .hn3-tabs a { padding: 8px 15px; border-radius: 9px; font-size: 13.5px; font-weight: 700; color: var(--hn-soft); white-space: nowrap; }
+  .hn3-tabs a[aria-current="page"] { background: var(--hn-ink); color: #fff; }
+  .hn3-tabs a em { font-style: normal; opacity: 0.7; margin-left: 6px; }
+  .hn3-tabs a:focus-visible, .hn3 a:focus-visible, .hn3 button:focus-visible, .hn3 summary:focus-visible { outline: 3px solid rgba(14,169,104,0.35); outline-offset: 2px; }
+  .hn3-ic { width: 36px; height: 36px; border-radius: 10px; border: 1px solid #cfdcd5; display: inline-flex; align-items: center; justify-content: center; background: #fff; color: var(--hn-ink); flex: none; }
+  .hn3-ic:hover { background: #f4faf7; }
+  .hn3-ic svg { width: 16px; height: 16px; }
+  .hn3 .hn2a-btn.is-sm { min-height: 36px; padding: 7px 13px; font-size: 13px; border-radius: 10px; }
+  .hn3 .hn2a-btn.is-danger { color: var(--hn-coral); }
+  .hn3 .hn2a-btn:disabled, .hn3 .hn2a-btn:disabled:hover { background: #cbd5e1; color: #fff; box-shadow: none; cursor: not-allowed; }
+  .hn3 .hn2a-input, .hn3 .hn2a-select { max-width: none; height: 44px; }
+  .hn3 textarea.hn2a-input { height: 72px; padding: 10px 12px; resize: vertical; }
+  .hn3-err { color: var(--hn-coral); font-size: 12.5px; font-weight: 600; margin-top: 5px; }
+  .hn3 .is-invalid { border-color: var(--hn-coral) !important; }
+  .hn3-seg { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hn3-seg label { flex: 1; min-width: 72px; margin: 0; }
+  .hn3-seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .hn3-seg span { display: block; text-align: center; height: 44px; line-height: 42px; border: 1px solid #cfdcd5; border-radius: 11px; font-size: 14px; font-weight: 700; color: var(--hn-body); cursor: pointer; background: #fff; }
+  .hn3-seg input:checked + span { border: 2px solid var(--hn-green); background: var(--hn-green-tint); color: var(--hn-green); line-height: 40px; }
+  .hn3-seg input:focus-visible + span { outline: 3px solid rgba(14,169,104,0.35); outline-offset: 2px; }
+  .hn3-callout { border-radius: 14px; padding: 12px 14px; font-size: 13.5px; font-weight: 600; display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px; }
+  .hn3-callout.t-violet { background: var(--hn-violet-tint); color: #4c2a9e; }
+  .hn3-callout.t-amber { background: var(--hn-amber-tint); color: #7a3d06; }
+  .hn3-callout.t-green { background: var(--hn-green-tint); color: #0a5c38; }
+  .hn3-callout.t-blue { background: var(--hn-blue-tint); color: #17479c; }
+  .hn3-rw { display: flex; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid #eef4f1; font-size: 14px; font-weight: 600; color: var(--hn-ink); }
+  .hn3-rw > span:first-child { color: var(--hn-soft); font-weight: 500; flex: none; }
+  .hn3-rw > span:last-child { text-align: right; overflow-wrap: anywhere; }
+  .hn3-rw:last-child { border-bottom: 0; }
+  .hn3-g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .hn3-g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .t-bad-text { color: var(--hn-coral); } .t-ok-text { color: var(--hn-green); } .t-soft-text { color: var(--hn-soft); }
+  @media (max-width: 767px) {
+    .hn3-g2, .hn3-g3 { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { .hn3 * { transition: none !important; } }
+</style>

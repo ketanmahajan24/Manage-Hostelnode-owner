@@ -1,0 +1,153 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Property Operations Phase 2 — Add rooms: one room, or many at once with the same setup. %>
+<%- include("../account/_style.ejs") %>
+<style>
+  .hn2n .hn2a-inner { max-width: 820px; }
+  .hn2n-tabs { display: inline-flex; background: #fff; border: 1px solid var(--hn-line); border-radius: 12px; padding: 4px; margin-bottom: 16px; }
+  .hn2n-tabs button { padding: 8px 16px; border-radius: 9px; font-size: 13.5px; font-weight: 700; color: var(--hn-soft); border: 0; background: transparent; cursor: pointer; }
+  .hn2n-tabs button[aria-selected="true"] { background: var(--hn-ink); color: #fff; }
+  .hn2n-g { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .hn2n-g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .hn2n .hn2a-input, .hn2n .hn2a-select { max-width: none; height: 44px; }
+  .hn2n-seg { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hn2n-seg label { flex: 1; min-width: 52px; }
+  .hn2n-seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .hn2n-seg span { display: block; text-align: center; height: 44px; line-height: 42px; border: 1px solid #cfdcd5; border-radius: 11px; font-size: 14px; font-weight: 700; color: var(--hn-body); cursor: pointer; background: #fff; }
+  .hn2n-seg input:checked + span { border: 2px solid var(--hn-green); background: var(--hn-green-tint); color: var(--hn-green); line-height: 40px; }
+  .hn2n-seg input:focus-visible + span { outline: 3px solid rgba(14,169,104,0.35); outline-offset: 2px; }
+  .hn2n-checks { display: flex; gap: 10px 18px; flex-wrap: wrap; font-size: 14px; font-weight: 600; color: var(--hn-body); }
+  .hn2n-checks label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .hn2n-checks input { width: 18px; height: 18px; accent-color: var(--hn-green); }
+  .hn2n-prev { margin-top: 18px; background: var(--hn-green-tint); border: 1px solid #bfe8d2; border-radius: 14px; padding: 14px 16px; }
+  .hn2n-prev b { font-size: 15px; color: var(--hn-ink); }
+  .hn2n-prev.is-bad { background: var(--hn-coral-tint); border-color: #f6c3be; }
+  .hn2n-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .hn2n-list span { background: #fff; border: 1px solid #bfe8d2; border-radius: 8px; padding: 5px 9px; font-size: 13px; font-weight: 700; color: var(--hn-green); }
+  .hn2n-list span.is-dup { border-color: #f6c3be; color: var(--hn-coral); background: var(--hn-coral-tint); }
+  .hn2n-foot { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  [hidden] { display: none !important; }
+  @media (max-width: 640px) { .hn2n-g { grid-template-columns: 1fr; } .hn2n-foot .hn2a-btn { flex: 1; } }
+</style>
+
+<div class="hn2a hn2n">
+  <div class="hn2a-inner">
+    <h1 class="hn2a-title">Add rooms</h1>
+    <div class="hn2a-sub">Add one room, or many at once with the same setup</div>
+    <% if (flash.err) { %><div class="hn2a-notice is-bad" role="alert"><%= flash.err %></div><% } %>
+
+    <% if (!floors.length) { %>
+      <div class="hn2a-card" style="text-align:center;padding:40px 20px">
+        <div class="hn2a-card-title">Add a floor first</div>
+        <div class="hn2a-card-sub">Rooms belong to a floor (Ground, 1, 2… or Block A).</div>
+        <a class="hn2a-btn" href="/user/floors#add">+ Add a floor</a>
+      </div>
+    <% } else { %>
+    <div class="hn2n-tabs" role="tablist" aria-label="How many rooms">
+      <button type="button" role="tab" id="tabOne" aria-selected="<%= mode === 'one' %>" aria-controls="formOne">One room</button>
+      <button type="button" role="tab" id="tabMany" aria-selected="<%= mode !== 'one' %>" aria-controls="formMany">Many rooms at once</button>
+    </div>
+
+    <% ["many", "one"].forEach(function (kind) { const isMany = kind === "many"; %>
+    <form class="hn2a-card" method="POST" action="<%= isMany ? '/user/rooms/bulk' : '/user/newroom' %>" id="<%= isMany ? 'formMany' : 'formOne' %>" role="tabpanel" aria-labelledby="<%= isMany ? 'tabMany' : 'tabOne' %>" <%= (isMany ? mode === 'one' : mode !== 'one') ? 'hidden' : '' %>>
+      <div class="hn2n-g">
+        <div>
+          <label class="hn2a-label" for="<%= kind %>Floor">Floor</label>
+          <select class="hn2a-select" id="<%= kind %>Floor" name="room[floor_id]" required data-floor>
+            <% floors.forEach(function (f, i) { %><option value="<%= f.id %>" <%= (pick ? pick === f.id : i === 0) ? "selected" : "" %>><%= f.name %></option><% }) %>
+          </select>
+        </div>
+        <div>
+          <% if (isMany) { %>
+            <span class="hn2a-label">Room numbers</span>
+            <div class="hn2n-g2">
+              <input class="hn2a-input" name="room[from]" placeholder="From, e.g. 201" required maxlength="20" aria-label="First room number" data-from>
+              <input class="hn2a-input" name="room[to]" placeholder="To, e.g. 208" required maxlength="20" aria-label="Last room number" data-to>
+            </div>
+          <% } else { %>
+            <label class="hn2a-label" for="oneNumber">Room number</label>
+            <input class="hn2a-input" id="oneNumber" name="room[room_number]" placeholder="e.g. 101 or G01" required maxlength="20">
+          <% } %>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <span class="hn2a-label">Sharing (beds per room)</span>
+        <div class="hn2n-seg">
+          <% [1,2,3,4,5,6].forEach(function (n) { %><label><input type="radio" name="room[sharing_capacity]" value="<%= n %>" <%= n === 2 ? "checked" : "" %> data-cap><span><%= n %></span></label><% }) %>
+        </div>
+      </div>
+
+      <div class="hn2n-g">
+        <div>
+          <label class="hn2a-label" for="<%= kind %>Rent">Rent per bed (per month)</label>
+          <input class="hn2a-input" id="<%= kind %>Rent" name="room[room_fees]" inputmode="numeric" placeholder="₹ e.g. 6000" required pattern="[0-9,₹ ]*">
+          <div class="hn2a-help">You can give one bed a different rent later.</div>
+        </div>
+        <div>
+          <span class="hn2a-label">Room type</span>
+          <div class="hn2n-seg">
+            <label><input type="radio" name="room[roomType]" value="AC"><span>AC</span></label>
+            <label><input type="radio" name="room[roomType]" value="Non-AC" checked><span>Non-AC</span></label>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <span class="hn2a-label">Included</span>
+        <div class="hn2n-checks">
+          <% amenities.forEach(function (a) { %><label><input type="checkbox" name="room[amenities]" value="<%= a %>"> <%= a %></label><% }) %>
+        </div>
+      </div>
+
+      <% if (isMany) { %>
+        <div class="hn2n-prev" data-prev aria-live="polite"><b data-prev-title>Type the first and last room numbers to see the rooms.</b><div class="hn2n-list" data-prev-list></div></div>
+      <% } %>
+
+      <div class="hn2n-foot">
+        <button type="submit" class="hn2a-btn" data-submit><%= isMany ? "Add rooms" : "Add room" %></button>
+        <a class="hn2a-btn is-ghost" href="/user/allrooms">Cancel</a>
+      </div>
+    </form>
+    <% }) %>
+    <% } %>
+  </div>
+</div>
+
+<script type="application/json" id="hn2nExisting"><%- JSON.stringify(existing || {}).replace(/</g, "\\u003c") %></script>
+<script>
+(function () {
+  var one = document.getElementById('formOne'), many = document.getElementById('formMany');
+  if (!one || !many) return;
+  var tOne = document.getElementById('tabOne'), tMany = document.getElementById('tabMany');
+  function show(m) { var isOne = m === 'one'; one.hidden = !isOne; many.hidden = isOne; tOne.setAttribute('aria-selected', isOne); tMany.setAttribute('aria-selected', !isOne); }
+  tOne.addEventListener('click', function () { show('one'); }); tMany.addEventListener('click', function () { show('many'); });
+
+  // Live preview of the rooms that "many at once" will add (the server checks again).
+  var existing = JSON.parse(document.getElementById('hn2nExisting').textContent);
+  var f = many, from = f.querySelector('[data-from]'), to = f.querySelector('[data-to]'), floor = f.querySelector('[data-floor]');
+  var box = f.querySelector('[data-prev]'), title = f.querySelector('[data-prev-title]'), list = f.querySelector('[data-prev-list]'), submit = f.querySelector('[data-submit]');
+  function range() {
+    var a = String(from.value).trim().match(/^(.*?)(\d+)$/), b = String(to.value).trim().match(/^(.*?)(\d+)$/);
+    if (!a || !b) return { err: from.value && to.value ? 'Room numbers must end in a number, for example 201 to 208 or G01 to G08.' : '' };
+    if (a[1].toLowerCase() !== b[1].toLowerCase()) return { err: 'Both room numbers must start the same way (for example G01 and G08).' };
+    var s = Number(a[2]), e = Number(b[2]);
+    if (e < s) return { err: 'The last room number must be after the first.' };
+    if (e - s + 1 > 60) return { err: 'Add at most 60 rooms at a time.' };
+    var out = []; for (var n = s; n <= e; n++) out.push(a[1] + String(n).padStart(a[2].length, '0'));
+    return { list: out };
+  }
+  function update() {
+    var r = range(); list.textContent = ''; box.classList.remove('is-bad');
+    if (!r.list) { title.textContent = r.err || 'Type the first and last room numbers to see the rooms.'; if (r.err) box.classList.add('is-bad'); submit.textContent = 'Add rooms'; return; }
+    var have = existing[floor.value] || [], cap = Number((f.querySelector('[data-cap]:checked') || {}).value || 0), fresh = 0;
+    r.list.forEach(function (n) { var dup = have.indexOf(n.toLowerCase()) >= 0; if (!dup) fresh++; var s = document.createElement('span'); s.textContent = dup ? n + ' exists' : n; if (dup) s.className = 'is-dup'; list.appendChild(s); });
+    var floorName = floor.options[floor.selectedIndex] ? floor.options[floor.selectedIndex].text : '';
+    title.textContent = fresh + ' room' + (fresh === 1 ? '' : 's') + ' · ' + (fresh * cap) + ' beds will be added to ' + floorName + (fresh < r.list.length ? ' (' + (r.list.length - fresh) + ' already there, skipped)' : '');
+    if (!fresh) box.classList.add('is-bad');
+    submit.textContent = fresh ? 'Add ' + fresh + ' room' + (fresh === 1 ? '' : 's') : 'Add rooms';
+  }
+  [from, to, floor].forEach(function (x) { x.addEventListener('input', update); x.addEventListener('change', update); });
+  f.querySelectorAll('[data-cap]').forEach(function (x) { x.addEventListener('change', update); });
+  [one, many].forEach(function (form) { form.addEventListener('submit', function () { var b = form.querySelector('[data-submit]'); setTimeout(function () { b.disabled = true; }, 0); }); });
+})();
+</script>

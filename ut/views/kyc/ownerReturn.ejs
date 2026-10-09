@@ -1,0 +1,37 @@
+<%# Property Operations Phase 4 — back from DigiLocker on the owner's phone ("Verify on this phone").
+    A plain page (the login cookie is not sent on this return, see kycOwnerRoutes.js). %>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Aadhaar KYC · HostelNode</title>
+<%- include("../account/_style.ejs") %></head><body style="margin:0">
+<% const pending = out.state === "pending" && tries < 20; %>
+<% if (pending) { %><meta http-equiv="refresh" content="3;url=/user/kyc/return?vid=<%= encodeURIComponent(vid) %>&t=<%= tries + 1 %>"><% } %>
+<style>
+  .hn4r .hn2a-inner { max-width: 560px; }
+  .hn4r .big { font-size: 46px; line-height: 1; }
+  .hn4r .rw { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid #eef4f1; font-size: 14px; font-weight: 600; text-align: left; }
+  .hn4r .rw span:first-child { color: var(--hn-soft); font-weight: 500; }
+  .hn4r .rw:last-child { border-bottom: 0; }
+</style>
+<div class="hn2a hn4r"><div class="hn2a-inner">
+  <div class="hn2a-card" style="text-align:center;padding:30px 22px">
+  <% if (out.state === "verified") { %>
+    <div class="big" aria-hidden="true">✅</div>
+    <h1 class="hn2a-title" style="margin-top:10px">Aadhaar verified</h1>
+    <div class="hn2a-sub" style="margin-bottom:14px">Verified with DigiLocker. Go back to the Add tenant form: it shows the verified name and details by itself.</div>
+    <div style="margin-top:18px"><a class="hn2a-btn" href="/user/newmember">Back to Add tenant</a></div>
+    <div class="hn2a-help" style="margin-top:10px">If the form is open in another tab, you can close this one.</div>
+  <% } else if (pending) { %>
+    <div class="big" aria-hidden="true">⏳</div>
+    <h1 class="hn2a-title" style="margin-top:10px">Checking with DigiLocker…</h1>
+    <div class="hn2a-sub">This takes a few seconds. The page refreshes by itself.</div>
+  <% } else if (out.state === "pending") { %>
+    <div class="big" aria-hidden="true">⏳</div><h1 class="hn2a-title" style="margin-top:10px">Still checking with DigiLocker</h1><div class="hn2a-sub">This is taking longer than usual. Go back to the form: it shows the result by itself in a few minutes.</div>
+    <div style="margin-top:16px"><a class="hn2a-btn" href="/user/newmember">Back to Add tenant</a></div>
+  <% } else { %>
+    <div class="big" aria-hidden="true">⚠️</div>
+    <h1 class="hn2a-title" style="margin-top:10px">Verification not finished</h1>
+    <div class="hn2a-sub"><%= out.reason === "denied" ? "Sharing was not allowed on DigiLocker." : out.reason === "expired" ? "The DigiLocker link expired (it lasts 10 minutes)." : out.reason === "not_linked" ? "DigiLocker did not return an Aadhaar for this account." : out.reason === "other_person" ? "This Aadhaar is already used for another mobile number, or this number is verified with a different Aadhaar." : out.state === "pending" ? "DigiLocker has not confirmed yet." : "This verification could not be completed." %> Nothing was saved. Go back to the form and try again.</div>
+    <div style="margin-top:18px"><a class="hn2a-btn" href="/user/newmember">Back to Add tenant</a></div>
+  <% } %>
+  </div>
+</div></div>
+</body></html>
