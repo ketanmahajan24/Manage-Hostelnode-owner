@@ -93,7 +93,7 @@
         <span><%= summary.dueTotal ? ("Due from " + summary.dueCount + (summary.dueCount === 1 ? " tenant" : " tenants")) : "Nothing due right now" %></span>
       </a>
       <a class="hn2a-card" href="<%= qs({ tab: 'notice', dues: '', kyc: '' }) %>"><b><%= summary.notice %></b><span>Moving out soon</span></a>
-      <a class="hn2a-card" href="<%= qs({ tab: 'living', kyc: 'none' }) %>"><b><%= summary.noKyc %></b><span>KYC not done</span></a>
+      <a class="hn2a-card" href="<%= qs({ tab: 'living', kyc: 'none' }) %>"><b><%= summary.noKyc %></b><span>KYC not verified</span></a>
     </div>
 
     <nav class="hn3-tabs" aria-label="Tenants">
@@ -115,7 +115,7 @@
         </select>
       <% } %>
       <label class="hn3-chip <%= onlyDues ? 'is-on' : '' %>"><input type="checkbox" name="dues" value="1" <%= onlyDues ? "checked" : "" %>> Has dues</label>
-      <label class="hn3-chip <%= onlyNoKyc ? 'is-on' : '' %>"><input type="checkbox" name="kyc" value="none" <%= onlyNoKyc ? "checked" : "" %>> KYC not done</label>
+      <label class="hn3-chip <%= onlyNoKyc ? 'is-on' : '' %>"><input type="checkbox" name="kyc" value="none" <%= onlyNoKyc ? "checked" : "" %>> KYC not verified</label>
       <button type="submit" class="hn2a-btn is-ghost is-sm" data-nojs>Search</button>
       <% if (filtered) { %><a class="hn3-clear" href="/user/members?tab=<%= tab %>">Clear</a><% } %>
     </form>
@@ -150,7 +150,7 @@
         <div class="c-room" role="cell"><%= r.room %><%= r.bed ? " · " + r.bed : "" %><% if (r.floor) { %><small><%= r.floor %></small><% } %></div>
         <div class="c-rent" role="cell"><%= T.inr(r.rent) %><% if (r.dueDay && tab !== "out") { %><small>due on <%= T.ordinal(r.dueDay) %></small><% } %></div>
         <div class="c-month is-<%= r.money.state.tone %>" role="cell"><%= tab === "out" && r.money.due === 0 ? "Settled ✓" : r.money.state.text %><% if (r.money.state.sub) { %><small><%= r.money.state.sub %></small><% } %></div>
-        <div class="c-kyc" role="cell"><span class="hn3-pill <%= r.kyc ? 't-ok' : 't-warn' %>"><%= r.kyc ? "Verified" : "Not done" %></span></div>
+        <div class="c-kyc" role="cell"><span class="hn3-pill <%= r.kyc.key === 'verified' ? 't-ok' : r.kyc.key === 'pending' ? 't-warn' : 't-slate' %>"><%= r.kyc.key === "verified" ? "Verified" : r.kyc.key === "pending" ? "Pending" : "Not verified" %></span></div>
         <div class="hn3-acts c-acts" role="cell">
           <a class="hn3-ic" href="tel:+91<%= r.mobile %>" aria-label="Call <%= r.name %>"><%- PHONE %><span class="hn3-lbl">Call</span></a>
           <a class="hn3-ic" href="https://wa.me/91<%= r.mobile %>" target="_blank" rel="noopener" aria-label="WhatsApp <%= r.name %>"><%- CHAT %><span class="hn3-lbl">WhatsApp</span></a>

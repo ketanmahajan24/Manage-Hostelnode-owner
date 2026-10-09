@@ -1021,6 +1021,13 @@ router.put("/member-edit/:id", jwtAuthMiddleware, attachHostel, async (req, res)
     if (typeof memberBody.mobileNo === "string") {
       const mobileNo = memberBody.mobileNo.trim();
       if (!/^[6-9]\d{9}$/.test(mobileNo)) return res.status(400).send("Invalid mobile number.");
+      // Phase 4: while KYC is required, a tenant's number can only change to a KYC-verified number.
+      const kyc = require("../utils/kyc");
+      const current = await Member.findOne({ _id: req.params.id, user: userId }, { mobileNo: 1 }).lean();
+      if (current && current.mobileNo !== mobileNo && (await kyc.settings()).enforced) {
+        const rec = await kyc.recordFor(mobileNo);
+        if (!kyc.verifiedFor(rec, userId)) return res.status(400).send("KYC is required: the new mobile number must be verified with DigiLocker first.");
+      }
       set.mobileNo = mobileNo;
     }
     for (const k of ["fatherName", "aadharNo", "address", "profession"]) {

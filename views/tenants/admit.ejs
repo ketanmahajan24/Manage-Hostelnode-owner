@@ -70,6 +70,8 @@
     <% if (E._form) { %><div class="hn2a-notice is-bad" role="alert"><%= E._form %></div><% } else if (Object.keys(E).filter(function (k) { return k[0] !== "_"; }).length) { %><div class="hn2a-notice is-bad" role="alert">Please check the highlighted fields.</div><% } %>
 
     <form class="hn2a-card" method="POST" action="/user/newMember" id="hn3Admit" novalidate data-step="<%= step %>">
+      <%# Pressing Enter in a field uses this button (never the KYC buttons further down). %>
+      <button type="submit" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">Admit tenant</button>
       <% if (lead) { %><input type="hidden" name="enquiryId" value="<%= lead.id %>"><% } %>
       <ol class="hn3-steps" aria-label="Steps">
         <li data-s="1"><i></i><span>1 · Person</span></li>
@@ -89,6 +91,7 @@
           <div class="hn2a-field"><label class="hn2a-label" for="f-gen">Gender <span class="hn3-opt">(optional)</span></label>
             <select class="hn2a-select<%= pre('gender') %>" id="f-gen" name="member[gender]"><option value="">Choose</option><% ["Male", "Female", "Other"].forEach(function (g) { %><option <%= v.gender === g ? "selected" : "" %>><%= g %></option><% }) %></select></div>
         </div>
+        <%- include("../kyc/_panel.ejs", { kv: kycView, kerr: E.kyc, where: "step1" }) %>
         <div class="hn3-g2">
           <div class="hn2a-field"><label class="hn2a-label" for="f-email">Email <span class="hn3-opt">(optional)</span></label>
             <input class="hn2a-input<%= pre('email') %> <%- inv('email') %>" id="f-email" type="email" name="member[email]" value="<%= v.email || '' %>" maxlength="120"><%- err("email") %></div>
@@ -107,7 +110,6 @@
         </div>
         <div class="hn2a-field"><label class="hn2a-label" for="f-emer">Emergency contact <span class="hn3-opt">(if not the guardian)</span></label>
           <input class="hn2a-input" id="f-emer" name="member[emergencyContact]" value="<%= v.emergencyContact || '' %>" maxlength="120" placeholder="Name and mobile"></div>
-        <div class="hn3-callout t-amber"><span aria-hidden="true">🪪</span><div>Aadhaar KYC: <b>not done yet</b>. Allowed for now. When DigiLocker KYC is switched on (Phase 4), a tenant can only be admitted after KYC.</div></div>
         <div class="hn3-foot"><a class="hn2a-btn is-ghost" href="<%= lead ? '/user/leads' : '/user/members' %>">Cancel</a><button type="button" class="hn2a-btn" data-next="2">Next: room and money →</button></div>
       </fieldset>
 
@@ -204,9 +206,16 @@
         <div class="hn3-ctitle"><span>Money today</span><button type="button" data-next="2">Change</button></div>
         <div class="hn3-rw"><span>Deposit</span><span data-c="dep"></span></div>
         <div class="hn3-rw"><span data-c="firstlabel">First month's rent</span><span data-c="first"></span></div>
-        <div class="hn3-rw"><span>KYC</span><span><span class="hn3-pill t-warn">Not done yet</span></span></div>
+        <div class="hn3-rw"><span>KYC</span><span data-c="kyc"><span class="hn3-pill <%= kycView.badge.key === 'verified' ? 't-ok' : kycView.badge.key === 'pending' ? 't-warn' : 't-slate' %>"><%= kycView.badge.label %></span></span></div>
+        <div data-kyc-block <%= kycView.required && kycView.badge.key !== "verified" ? "" : "hidden" %>>
+          <div class="hn3-callout" style="background:var(--hn-coral-tint);color:#8a2219;margin-top:14px"><span aria-hidden="true">🔒</span><div><b>Aadhaar KYC is needed before admission.</b> Send the KYC link or verify on this phone. This step updates by itself once it is done.</div></div>
+          <div class="hn4-acts" style="margin-bottom:6px">
+            <button type="submit" class="hn2a-btn is-sm" formaction="/user/kyc/request" formmethod="post" formtarget="_blank" formnovalidate data-kyc-btn>💬 Send KYC link on WhatsApp</button>
+            <button type="submit" class="hn2a-btn is-ghost is-sm" formaction="/user/kyc/start" formmethod="post" formtarget="_blank" formnovalidate data-kyc-btn>📱 Verify on this phone</button>
+          </div>
+        </div>
         <% if (welcomeOn) { %><div class="hn3-callout t-green" style="margin-top:14px"><span aria-hidden="true">💬</span><div data-c="welcome">The tenant gets a WhatsApp welcome with their room, bed, rent and due day.</div></div><% } %>
-        <div class="hn3-foot"><button type="button" class="hn2a-btn is-ghost" data-next="2">← Back</button><button type="submit" class="hn2a-btn" style="min-width:200px;min-height:48px;font-size:15px" data-submit>Admit tenant</button></div>
+        <div class="hn3-foot"><button type="button" class="hn2a-btn is-ghost" data-next="2">← Back</button><button type="submit" class="hn2a-btn" style="min-width:200px;min-height:48px;font-size:15px" data-submit <%= kycView.required && kycView.badge.key !== "verified" ? "disabled" : "" %>>Admit tenant</button></div>
       </fieldset>
       <div class="no-js-only"><button type="submit" class="hn2a-btn">Admit tenant</button></div>
     </form>
@@ -364,6 +373,8 @@
     er.hidden = !(pl && pl.earlier.length); if (!er.hidden) { var ev = val('earlier'); set('earlier', pl.earlier.length + (pl.earlier.length === 1 ? ' month · ' : ' months · ') + (ev === 'due' ? inr(pl.earlierTotal) + ' added to dues' : ev === 'paid' ? 'already paid' : '—')); }
   }
   f.addEventListener('submit', function (e) {
+    // The KYC buttons open WhatsApp or DigiLocker in a new tab; they do not admit.
+    if (e.submitter && e.submitter.hasAttribute('data-kyc-btn')) return;
     if (!ok(1)) { e.preventDefault(); show(1); return; }
     if (!ok(2)) { e.preventDefault(); show(2); return; }
     var b = $('[data-submit]'); setTimeout(function () { b.disabled = true; b.textContent = 'Saving…'; }, 0);
@@ -377,4 +388,6 @@
   window.addEventListener('load', function () { setTimeout(function () { pickBed(false); planUI(); totals(); }, 50); });
 })();
 </script>
+<script type="application/json" id="hn4Kyc"><%- JSON.stringify(kycView).replace(/</g, "\\u003c") %></script>
+<%- include("../kyc/_panelScript.ejs") %>
 <noscript><style>.no-js-only { display: block !important; margin-top: 16px; } [data-next] { display: none !important; } [data-bedpicker] { display: block !important; }</style></noscript>

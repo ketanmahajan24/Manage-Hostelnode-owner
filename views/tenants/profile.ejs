@@ -7,7 +7,7 @@
   const CHAT = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>';
   const id = String(m._id), base = "/user/tenants/" + id;
   const tone = T.toneOf(m._id);
-  const kyc = m.kycStatus === "verified";
+  const kb = kycView.badge, kd = kycView.details;   // Phase 4: Aadhaar KYC with DigiLocker
   const DOTS = { admitted: "violet", moved: "blue", rent: "amber", dueDay: "amber", deposit: "green", notice: "amber", noticeCancel: "green", movedOut: "slate", undoMoveOut: "blue", details: "slate", document: "slate", payment: "green" };
   const roomLine = (m.assignedRoom ? "Room " + m.assignedRoom : "No room") + (m.bedLabel ? " · bed " + m.bedLabel : "") + (floor ? " · " + floor.floor_name : "");
   const depHeld = Number(m.depositPaid) || 0, depAgreed = Number(m.depositAmount) || 0, depLeft = Math.max(0, depAgreed - depHeld);
@@ -77,12 +77,13 @@
     <div class="hn2a-card hn3-hd">
       <span class="hn3-ini c-<%= tone %>" aria-hidden="true"><%= T.initials(m.name) %></span>
       <div style="min-width:0;flex:1">
-        <h1><%= m.name %> <span class="hn3-pill <%= status.key === 'living' ? 't-ok' : status.key === 'notice' ? 't-warn' : 't-slate' %>"><%= status.key === "notice" ? "Leaving " + T.day(m.leavingDate) : status.label %></span> <span class="hn3-pill <%= kyc ? 't-ok' : 't-warn' %>"><%= kyc ? "KYC verified" : "KYC not done" %></span><% if (m.fromEnquiry) { %> <span class="hn3-pill t-violet">From lead</span><% } %></h1>
+        <h1><%= m.name %> <span class="hn3-pill <%= status.key === 'living' ? 't-ok' : status.key === 'notice' ? 't-warn' : 't-slate' %>"><%= status.key === "notice" ? "Leaving " + T.day(m.leavingDate) : status.label %></span> <span class="hn3-pill <%= kb.key === 'verified' ? 't-ok' : kb.key === 'pending' ? 't-warn' : 't-slate' %>"><%= kb.key === "verified" ? "KYC verified" : kb.key === "pending" ? "KYC pending" : "KYC not verified" %></span><% if (m.fromEnquiry) { %> <span class="hn3-pill t-violet">From lead</span><% } %></h1>
         <div class="m"><%= roomLine %> · <%= living ? "since " + T.dayYear(m.joiningDate) : T.dayYear(m.joiningDate) + " – " + T.dayYear(m.leftDate) %><% if (living) { %> · <%= T.inr(rent) %><%= dueDay ? " due on " + T.ordinal(dueDay) : "" %><% } %></div>
       </div>
       <div class="acts">
         <a class="hn2a-btn is-ghost" href="tel:+91<%= m.mobileNo %>"><%- PHONE %> Call</a>
         <a class="hn2a-btn is-ghost" href="https://wa.me/91<%= m.mobileNo %>" target="_blank" rel="noopener"><%- CHAT %> WhatsApp</a>
+        <% if (living && kycView.ready && !(kb.key === "verified" && kycView.shared)) { %><form method="POST" action="/user/kyc/request" target="_blank" style="margin:0"><input type="hidden" name="mobile" value="<%= m.mobileNo %>"><input type="hidden" name="name" value="<%= m.name %>"><button type="submit" class="hn2a-btn is-ghost"><%= kb.key === "verified" ? "💬 Ask to share KYC details" : kb.key === "pending" ? "💬 Ask again to verify KYC" : "💬 Ask to verify KYC" %></button></form><% } %>
         <% if (money.due > 0) { %><a class="hn2a-btn is-collect" href="/user/members/<%= id %>/addpayment">Collect <%= T.inr(money.due) %></a>
         <% } else if (living) { %><a class="hn2a-btn is-ghost is-collect" href="/user/members/<%= id %>/addpayment">Record a payment</a><% } %>
         <details class="hn3-more">
@@ -195,7 +196,11 @@
         <% if (m.email) { %><div class="hn3-rw"><span>Email</span><span><%= m.email %></span></div><% } %>
         <% if (m.dob || m.gender) { %><div class="hn3-rw"><span>Date of birth</span><span><%= [m.dob ? T.dayYear(m.dob) : "", m.gender].filter(Boolean).join(" · ") %></span></div><% } %>
         <% if (m.profession) { %><div class="hn3-rw"><span>College or work</span><span><%= m.profession %></span></div><% } %>
-        <% if (m.aadharNo) { %><div class="hn3-rw"><span>Aadhaar</span><span><%= T.maskAadhaar(m.aadharNo) %></span></div><% } %>
+        <% if (kd) { %>
+          <div class="hn3-rw"><span>Aadhaar (DigiLocker)</span><span>xxxx xxxx <%= kd.last4 %> · verified <%= kd.verifiedAt %></span></div>
+          <div class="hn3-rw"><span>Name on Aadhaar</span><span><%= kd.name %><%= kd.dob ? " · " + kd.dob : "" %></span></div>
+        <% } else if (kb.key === "verified") { %><div class="hn3-rw"><span>Aadhaar</span><span>KYC verified with DigiLocker (details not shared with you)</span></div>
+        <% } else if (m.aadharNo) { %><div class="hn3-rw"><span>Aadhaar</span><span><%= T.maskAadhaar(m.aadharNo) %> (typed, not verified)</span></div><% } %>
         <% if (m.guardianName || m.guardianMobile || m.fatherName) { %><div class="hn3-rw"><span>Guardian</span><span><%= [m.guardianName || m.fatherName, m.guardianMobile].filter(Boolean).join(" · ") %></span></div><% } %>
         <% if (m.emergencyContact) { %><div class="hn3-rw"><span>Emergency</span><span><%= m.emergencyContact %></span></div><% } %>
         <% if (m.address) { %><div class="hn3-rw"><span>Address</span><span><%= m.address %></span></div><% } %>

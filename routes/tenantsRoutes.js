@@ -45,6 +45,7 @@ const { natural, bedRent, tenantRent, ensureBeds, buildBedMap } = require("../ut
 const T = require("../utils/tenants");
 const { loadOwnedEnquiry, closeEnquiryAfterConvert, indianMobile } = require("../utils/leads.js");
 const { withLocks } = require("../utils/locks");
+const kyc = require("../utils/kyc");
 
 /* ── small helpers ─────────────────────────────────────────── */
 const clean = (s, max = 100) => (typeof s === "string" ? s.replace(/[\u0000-\u001f]/g, " ").trim().replace(/<[^>]*>/g, "").slice(0, max) : "");
@@ -105,6 +106,9 @@ router.get("/members", jwtAuthMiddleware, attachHostel, needHostel, async (req, 
     const roomOf = new Map(rooms.map(r => [String(r._id), r]));
     const floorName = new Map(floors.map(f => [String(f._id), f.floor_name]));
 
+    // Phase 4: Aadhaar KYC (DigiLocker) of everyone shown, by mobile number.
+    const kycMap = await kyc.recordsFor(living.map(m => m.mobileNo));
+    const kycOf = m => kyc.badgeOf(kycMap.get(kyc.phoneOf(m.mobileNo)), userId);
     // Summary (always for everyone living here, whatever the filters).
     const livingMoney = living.map(m => ({ m, money: T.moneyOf(m) }));
     const owing = livingMoney.filter(x => x.money.due > 0);
@@ -114,7 +118,7 @@ router.get("/members", jwtAuthMiddleware, attachHostel, needHostel, async (req, 
       out: outCount,
       dueTotal: owing.reduce((s, x) => s + x.money.due, 0),
       dueCount: owing.length,
-      noKyc: living.filter(m => m.kycStatus !== "verified").length,
+      noKyc: living.filter(m => kycOf(m).key !== "verified").length,
     };
 
     // The tab's tenants.
@@ -122,6 +126,7 @@ router.get("/members", jwtAuthMiddleware, attachHostel, needHostel, async (req, 
     if (tab === "out") {
       list = (await Member.find({ user: userId, hostel, ...NOT_REMOVED, leftDate: { $ne: null } }).populate("payments").sort({ leftDate: -1 }).limit(300))
         .map(m => ({ m, money: T.moneyOf(m) }));
+      for (const [k, v] of await kyc.recordsFor(list.map(x => x.m.mobileNo))) kycMap.set(k, v);
     } else {
       list = tab === "notice" ? livingMoney.filter(x => x.m.leavingDate) : livingMoney;
     }
@@ -132,7 +137,7 @@ router.get("/members", jwtAuthMiddleware, attachHostel, needHostel, async (req, 
     }
     if (floorId) list = list.filter(({ m }) => String((roomOf.get(String(m.assignedRoom_id)) || {}).floor_id || "") === floorId);
     if (onlyDues) list = list.filter(x => x.money.due > 0);
-    if (onlyNoKyc) list = list.filter(x => x.m.kycStatus !== "verified");
+    if (onlyNoKyc) list = list.filter(x => kycOf(x.m).key !== "verified");
     if (tab !== "out") list.sort((a, b) => natural(a.m.assignedRoom || "", b.m.assignedRoom || "") || natural(a.m.bedLabel || "", b.m.bedLabel || ""));
 
     const rows = list.map(({ m, money }) => {
@@ -145,7 +150,7 @@ router.get("/members", jwtAuthMiddleware, attachHostel, needHostel, async (req, 
         rent: 0,
         dueDay: T.dueDayOf(m), leaving: m.leavingDate && !m.leftDate ? T.day(m.leavingDate) : "",
         leavingPassed: !!(m.leavingDate && !m.leftDate && moment(m.leavingDate).tz(TZ).isBefore(todayIST())),
-        fromLead: !!m.fromEnquiry, kyc: m.kycStatus === "verified", money,
+        fromLead: !!m.fromEnquiry, kyc: kycOf(m), money,
       };
     });
     // Rent shown in the list: the tenant's own rent, else their bed's rent.
@@ -203,7 +208,10 @@ async function renderAdmit(req, res, { values = {}, errors = {}, status = 200 } 
     if (beds.some(b => b.value === want)) values.bed = want;
   }
   const step = errors._step || (Object.keys(errors).length ? 1 : 1);
+  // Phase 4: Aadhaar KYC of the mobile number in the form (the panel then follows what is typed).
+  const kycView = await require("./kycOwnerRoutes").viewFor(userId, values.mobileNo || "");
   res.status(status).render("tenants/admit.ejs", {
+    kycView,
     user, beds, totalBeds, lead, values, errors, step, today: ymd(new Date()),
     hostelName: res.locals.selectedHostel.hostelName || "", T, welcomeOn: T.welcomeOn(),
   });
@@ -219,7 +227,7 @@ router.get("/newmember", jwtAuthMiddleware, attachHostel, needHostel, async (req
 });
 
 // Which step each field is on, to open the form where the first problem is.
-const STEP_OF = { name: 1, mobileNo: 1, email: 1, gender: 1, dob: 1, guardianMobile: 1, bed: 2, joiningDate: 2, rent: 2, dueDay: 2, firstCharge: 2, earlier: 2, deposit: 2, depositMode: 2, firstPaid: 2, firstAmount: 2 };
+const STEP_OF = { kyc: 1, name: 1, mobileNo: 1, email: 1, gender: 1, dob: 1, guardianMobile: 1, bed: 2, joiningDate: 2, rent: 2, dueDay: 2, firstCharge: 2, earlier: 2, deposit: 2, depositMode: 2, firstPaid: 2, firstAmount: 2 };
 
 async function admitTenant(req, res) {
   const userId = req.user.id, hostel = H(res);
@@ -303,6 +311,15 @@ async function admitTenant(req, res) {
       // Anything else (later, or a different bed) is told the tenant already lives here.
       if (twin && twin.name === values.name && String(twin.assignedRoom_id) === String(values.bed.split(":")[0]) && Date.now() - twin._id.getTimestamp() < 15e3) return res.redirect(page(twin._id));
       if (twin) bad("mobileNo", `${twin.name} with this mobile number already lives here (room ${twin.assignedRoom || "—"}).`);
+    }
+
+    // Phase 4: when KYC is required (admin switch, and DigiLocker set up), only verified tenants are admitted.
+    if (!errors.mobileNo) {
+      const ks = await kyc.settings();
+      if (ks.enforced) {
+        const rec = await kyc.recordFor(values.mobileNo);
+        if (!kyc.verifiedFor(rec, userId)) bad("kyc", "Aadhaar KYC with DigiLocker is needed before admission. Send the KYC link, or verify on this phone.");
+      }
     }
 
     if (Object.keys(errors).length) {
@@ -440,10 +457,11 @@ router.get("/tenants/:id", jwtAuthMiddleware, attachHostel, async (req, res) => 
     const canUndo = !!(s && !s.undoneAt && m.leftDate && Date.now() - new Date(s.at) < 24 * 3600e3);
     const ownRent = typeof m.rent === "number";
     const leavingPassed = !!(m.leavingDate && !m.leftDate && moment(m.leavingDate).tz(TZ).isBefore(todayIST()));
+    const kycView = await require("./kycOwnerRoutes").viewFor(req.user.id, m.mobileNo);   // Phase 4
     res.render("tenants/profile.ejs", {
       user, m, tab, room, floor, hostel, sameHostel, status, living, moveTo, payments, history, settlement: s, canUndo,
       money: T.moneyOf(m), rent: tenantRent(m, room || { room_fees: 0, beds: [] }), bedRentNow: room ? bedRent(room, m.bedLabel) : null, ownRent,
-      dueDay: T.dueDayOf(m), leavingPassed, flash: flash(req), T, today: ymd(new Date()), slipWhatsApp: require("../utils/settlementPdf").slipOn(),
+      dueDay: T.dueDayOf(m), leavingPassed, kycView, flash: flash(req), T, today: ymd(new Date()), slipWhatsApp: require("../utils/settlementPdf").slipOn(),
     });
   } catch (err) {
     console.error("Tenant page error:", err.message);
@@ -476,6 +494,11 @@ router.post("/tenants/:id/person", jwtAuthMiddleware, attachHostel, async (req, 
     if (!m.leftDate && mobileNo !== m.mobileNo) {
       const twin = await Member.findOne({ _id: { $ne: m._id }, user: req.user.id, hostel: m.hostel, ...LIVING, mobileNo }, { name: 1 }).lean();
       if (twin) return fail(res, page(m._id), `${twin.name} already lives here with this mobile number.`);
+      // Phase 4: while KYC is required, a tenant's number can only change to a KYC-verified number.
+      if ((await kyc.settings()).enforced) {
+        const rec = await kyc.recordFor(mobileNo);
+        if (!kyc.verifiedFor(rec, req.user.id)) return fail(res, page(m._id), "KYC is required: the new mobile number must be verified with DigiLocker first (Ask to verify, then change it).");
+      }
     }
     const set = { name, mobileNo, email, gender: GENDERS.includes(b.gender) ? b.gender : "", dob, profession: clean(b.profession || "", 100),
       address: clean(b.address || "", 500), guardianName: clean(b.guardianName || "", 100), guardianMobile, emergencyContact: clean(b.emergencyContact || "", 120) };
@@ -701,6 +724,8 @@ async function undoMoveOut(req, res) {
     const beds = await ensureBeds(room);
     const bed = beds.find(b => b.label === m.bedLabel);
     if (!bed || bed.member || bed.blocked) return fail(res, page(m._id), `Bed ${room.room_number}-${m.bedLabel} is no longer free, so the move-out cannot be undone.`);
+    // Phase 4: while KYC is required, only a KYC-verified tenant can be living here again.
+    if ((await kyc.settings()).enforced && !kyc.verifiedFor(await kyc.recordFor(m.mobileNo), req.user.id)) return fail(res, page(m._id), "KYC is required: this tenant's mobile number is not verified with DigiLocker, so the move-out cannot be undone.");
     // Re-admitted as a new tenant in the meantime? Then undoing would make two living records for one person.
     const again = await Member.findOne({ _id: { $ne: m._id }, user: req.user.id, hostel: m.hostel, ...LIVING, mobileNo: m.mobileNo }, { name: 1, assignedRoom: 1 }).lean();
     if (again) return fail(res, page(m._id), `${again.name} with this mobile number is living here again (room ${again.assignedRoom || "—"}), so this move-out cannot be undone.`);

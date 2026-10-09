@@ -64,6 +64,8 @@
   .hn2l-stat.is-tenant b { color: #0a7d4c; }
   .hn2l-phone, .hn2l-phone:hover { display: inline-block; font-size: 12.5px; font-weight: 700; color: #0a7d4c; text-decoration: none; margin: 1px 0 3px; font-variant-numeric: tabular-nums; }
   .hn2l-phone:hover { text-decoration: underline; }
+  .hn2l-kyc { font-size: 11px; font-weight: 700; border-radius: 99px; padding: 2px 8px; white-space: nowrap; }
+  .hn2l-kyc.is-verified { color: #0a7d4c; background: #e8f9f0; } .hn2l-kyc.is-pending { color: #b45309; background: #fdf0d9; } .hn2l-kyc.is-none { color: #334155; background: #e9eef3; }
   .hn2l-became { font-size: 11px; font-weight: 700; color: #0a7d4c; background: #e8f9f0; border-radius: 99px; padding: 2px 8px; white-space: nowrap; }
   @media (max-width: 767px) { .hn2l-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
@@ -249,6 +251,7 @@
             <div class="hn2l-type-row">
               <span class="hn2l-type is-<%= e.contactType.key %>"><%- svg(TYPE_ICON[e.contactType.key] || TYPE_ICON.general, 12, 'currentColor', 2.2) %><%= e.contactType.label %></span>
               <span class="hn2l-meta"><%= e.when %></span>
+              <% if (L.kycReady && e.kyc && e.mobile) { %><span class="hn2l-kyc is-<%= e.kyc.key %>"><%= e.kyc.key === "verified" ? "KYC verified" : e.kyc.key === "pending" ? "KYC pending" : "KYC not verified" %></span><% } %>
               <% if (e.becameTenant) { %><% if (e.tenantHref) { %><a class="hn2l-became" href="<%= e.tenantHref %>" title="Open the tenant">Became tenant</a><% } else { %><span class="hn2l-became">Became tenant</span><% } %><% } %>
             </div>
           </div>
@@ -285,6 +288,9 @@
             </form>
           <% } else { %>
             <span class="hn2l-btn is-off" role="link" aria-disabled="true" title="This enquiry has no HostelNode account attached"><%- svg(CHAT, 13, 'currentColor', 2) %> Reply on HostelNode</span>
+          <% } %>
+          <% if (L.kycReady && e.canConvert && e.mobile && e.kyc && e.kyc.key !== "verified") { %>
+            <form method="POST" action="/user/kyc/request" target="_blank" style="margin:0"><input type="hidden" name="mobile" value="<%= e.mobile %>"><input type="hidden" name="name" value="<%= e.name %>"><button type="submit" class="hn2l-btn" title="Send <%= e.name %> the DigiLocker KYC link on WhatsApp">Ask to verify</button></form>
           <% } %>
           <% if (e.canConvert) { %>
             <a class="hn2l-btn is-green" href="/user/newmember?enquiry=<%= e.id %>" title="Admit as a tenant in <%= selName %>">Admit as tenant</a>

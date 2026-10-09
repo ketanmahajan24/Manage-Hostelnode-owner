@@ -275,7 +275,17 @@ async function buildLeadsPage(ownerId, q = {}, now = new Date()) {
     };
   });
 
+  // Phase 4: Aadhaar KYC (DigiLocker) badge for each enquirer, by mobile number. Never stops the page.
+  let kycReady = false;
+  try {
+    const kyc = require("./kyc");
+    kycReady = (await kyc.settings()).ready;
+    const recs = await kyc.recordsFor(items.map(i => i.mobile));
+    for (const i of items) i.kyc = kyc.badgeOf(recs.get(kyc.phoneOf(i.mobile)), ownerId);
+  } catch (err) { console.error("Leads KYC badges (non-fatal):", err.message); }
+
   return {
+    kycReady,
     filters: f,
     listings: listings.map(l => ({ id: String(l._id), title: l.title })),
     liveCount: listings.filter(l => !l.status || l.status === "Approved").length,

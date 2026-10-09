@@ -116,6 +116,7 @@ app.use(require("./Middlewares/planPopup"));    // Subscriptions: upgrade popup,
 app.use("/webhook",     waBot);
 app.use("/user",        require("./routes/roomsRoutes")); // Property Operations Phase 2 — rooms, beds, floors, listing link
 app.use("/user",        require("./routes/tenantsRoutes")); // Property Operations Phase 3 — tenants, admission, move-out
+app.use("/user",        require("./routes/kycOwnerRoutes")); // Property Operations Phase 4 — DigiLocker KYC (status, ask, verify on this phone)
 app.use("/user",        userRouter);
 app.use("/user",        ownerMessagesRouter); // Phase 4 — /user/messages, /user/messages/:conversationId
 app.use("/user",        require("./routes/leadsRoutes")); // Phase 3 (redesign) — /user/leads, /user/enquiries/:id/status
