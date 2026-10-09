@@ -76,6 +76,47 @@ const memberSchema = new mongoose.Schema({
         type: Number,
         default: null
     },
+    // ── Property Operations Phase 3: tenant record from admission to move-out ──
+    email:            { type: String, default: "" },
+    gender:           { type: String, default: "" },          // "Male", "Female", "Other" or empty
+    dob:              { type: Date, default: null },
+    guardianName:     { type: String, default: "" },
+    guardianMobile:   { type: String, default: "" },
+    emergencyContact: { type: String, default: "" },
+    // Rent due day (1–31). Empty = the day of the month they joined. 29–31 → last day in short months.
+    dueDay:           { type: Number, default: null },
+    // Security deposit agreed, and how much of it was received.
+    depositAmount:    { type: Number, default: null },
+    depositPaid:      { type: Number, default: 0 },
+    depositMode:      { type: String, default: "" },
+    depositPaidAt:    { type: Date, default: null },
+    // Notice: the tenant stays "living" until they are moved out.
+    leavingDate:      { type: Date, default: null },
+    noticeAt:         { type: Date, default: null },
+    noticeReason:     { type: String, default: "" },
+    // Admitted from this Leads & CRM enquiry (empty for walk-ins).
+    fromEnquiry:      { type: mongoose.Schema.Types.ObjectId, ref: "Enquiry", default: null },
+    // Files the owner uploaded (rent agreement, ID…). Kept privately; only this owner can open them.
+    documents: [{
+        name:       { type: String },
+        file:       { type: String },     // random file name in the private tenant-documents folder
+        mime:       { type: String },
+        size:       { type: Number },
+        uploadedAt: { type: Date, default: Date.now }
+    }],
+    // Deposit settlement made at move-out (the settlement slip).
+    settlement: {
+        at:          { type: Date },
+        slipNo:      { type: String },
+        depositHeld: { type: Number },
+        advance:     { type: Number },
+        dues:        { type: Number },
+        deductions:  [{ _id: false, label: String, amount: Number }],
+        net:         { type: Number },   // more than 0 = refund to the tenant; less than 0 = to collect
+        mode:        { type: String },
+        paymentIds:  [{ type: mongoose.Schema.Types.ObjectId }],   // ledger entries made by the settlement (removed on undo)
+        undoneAt:    { type: Date }
+    },
     payments: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "Payment"

@@ -110,4 +110,4 @@ async function sendPlanReceiptWhatsApp(details, api = live) {
   }
 }
 
-module.exports = { sendPlanReceiptWhatsApp, receiptValues, mobileOf, enabled };
+module.exports = { sendPlanReceiptWhatsApp, receiptValues, mobileOf, enabled, live };   // live: also used for the Phase 3 settlement slip

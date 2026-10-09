@@ -90,6 +90,17 @@ function dueDateIn(joiningDate, monthMoment) {
   return m.clone().date(Math.min(j.date(), m.daysInMonth())).startOf("day");
 }
 
+/**
+ * Phase 3: what a tenant's rent day is worked out from. A tenant with a chosen due day
+ * (1–31) uses that day; everyone else uses the day they joined, as before.
+ * Pass the result wherever a joining date was passed to dueDateIn() / nextDueDate().
+ */
+function dueAnchor(m) {
+  const d = Number(m && m.dueDay);
+  if (Number.isInteger(d) && d >= 1 && d <= 31) return moment.tz([2000, 0, d], TZ).toDate();   // January has 31 days
+  return m ? m.joiningDate : null;
+}
+
 /** Next rent day on or after `now` (India time). */
 function nextDueDate(joiningDate, now = new Date()) {
   if (!joiningDate || isNaN(new Date(joiningDate))) return null;
@@ -102,4 +113,4 @@ function nextDueDate(joiningDate, now = new Date()) {
 // A date for display, never crashing on a missing or bad value.
 const showDate = d => (d && !isNaN(new Date(d)) ? new Date(d).toLocaleDateString("en-GB", { timeZone: TZ }) : "—");
 
-module.exports = { TZ, LIVING, NOT_REMOVED, isId, escapeRegex, syncRoom, syncFloor, syncRoomAndFloor, money, dueDateIn, nextDueDate, showDate };
+module.exports = { TZ, LIVING, NOT_REMOVED, isId, escapeRegex, syncRoom, syncFloor, syncRoomAndFloor, money, dueDateIn, nextDueDate, dueAnchor, showDate };

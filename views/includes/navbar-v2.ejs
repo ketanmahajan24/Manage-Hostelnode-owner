@@ -156,9 +156,9 @@
         <span class="hn2-hide-rail"><%- svg('right', 12, '#5b6470', 2.4, 'hn2-chev') %></span>
       </button>
       <div class="hn2-sub" id="hn2SubTenants">
-        <a class="hn2-subitem" href="/user/members"      data-hn2-match="^/user/(members/?$|member-edit/|member/search)">All Tenants</a>
+        <a class="hn2-subitem" href="/user/members"      data-hn2-match="^/user/(members/?$|tenants/|member-edit/|member/search|activeMember)" data-hn2-query="^(?!.*tab=notice)">All Tenants</a>
         <a class="hn2-subitem" href="/user/newmember"    data-hn2-match="^/user/(newmember|newMember|newAdded)">Add Tenant</a>
-        <a class="hn2-subitem" href="/user/activeMember" data-hn2-match="^/user/activeMember">Active Tenants</a>
+        <a class="hn2-subitem" href="/user/members?tab=notice" data-hn2-match="^/user/members/?$" data-hn2-query="tab=notice">Moving Out</a>
       </div>
 
       <button type="button" class="hn2-item" data-hn2-sub="hn2SubPayments" aria-controls="hn2SubPayments" title="Payments" aria-expanded="false">

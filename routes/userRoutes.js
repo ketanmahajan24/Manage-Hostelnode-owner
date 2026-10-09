@@ -587,7 +587,7 @@ const SWITCH_RETURN_EXACT = new Set([
   "/user/editOwner", "/user/addnewhostel",
 ]);
 const SWITCH_RETURN_SECTION = [
-  [/^\/user\/(member-edit\/|member\/|activeMember\/|newAdded)/, "/user/members"],
+  [/^\/user\/(member-edit\/|member\/|activeMember\/|newAdded|tenants\/)/, "/user/members"],
   [/^\/user\/(members\/[^/]+\/addpayment|addpayment\/|payment-receipt\/|payment-history\/|searchfeesrecords)/, "/user/allfeesrecords"],
   [/^\/user\/(managerooms\/|manageroom\/)/, "/user/managerooms"],
   [/^\/user\/listing\//, "/user/my-listings"],
@@ -599,6 +599,9 @@ function switchReturnPath(next) {
   // Phase 3 — keep an in-progress "Convert enquiry to tenant" across a switch.
   const conv = next.match(/^\/user\/newmember\?enquiry=([a-f0-9]{24})$/i);
   if (conv) return `/user/newmember?enquiry=${conv[1]}`;
+  // Property Operations Phase 3 — open a tenant's page after switching to their property (the page checks ownership).
+  const tenant = next.match(/^\/user\/tenants\/([a-f0-9]{24})$/i);
+  if (tenant) return `/user/tenants/${tenant[1]}`;
   // Phase 3 — keep Leads & CRM filters (Leads is global; filters are harmless).
   if (p === "/user/leads") return /^\/user\/leads(\?[\w=&%.+-]*)?$/.test(next) ? next : "/user/leads";
   if (SWITCH_RETURN_EXACT.has(p)) return p;
@@ -693,7 +696,7 @@ router.post("/create-hostel", jwtAuthMiddleware, attachHostel, async (req, res) 
 //  • "Living here" = not moved out and not removed. Removing a tenant
 //    keeps the record and its payments, so reports stay correct.
 // ============================================================
-const { LIVING, NOT_REMOVED, isId, escapeRegex, syncRoomAndFloor, syncFloor, money, nextDueDate, TZ } = require("../utils/tenantOps");
+const { LIVING, NOT_REMOVED, isId, escapeRegex, syncRoomAndFloor, syncFloor, money, nextDueDate, dueAnchor, TZ } = require("../utils/tenantOps");
 
 // Money owed / collected for a list of tenants (removed tenants: what they paid still counts as collected; their unpaid rent does not).
 function withMoney(members) {
@@ -1387,7 +1390,7 @@ router.get("/upcomingPayments", jwtAuthMiddleware, attachHostel, async (req, res
     const last  = today.clone().add(5, "days");
     const members = await Member.find({ user: userId, hostel: selectedHostel, ...LIVING }).populate('payments');
     const upcoming = members
-      .map(m => ({ m, due: nextDueDate(m.joiningDate) }))
+      .map(m => ({ m, due: nextDueDate(dueAnchor(m)) }))   // Phase 3: own due day
       .filter(x => x.due && !x.due.isAfter(last))
       .sort((a, b) => a.due - b.due)
       .map(x => Object.assign(x.m, { nextDue: x.due.toDate() }));

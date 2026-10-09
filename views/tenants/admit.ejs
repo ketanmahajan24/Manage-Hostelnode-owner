@@ -1,0 +1,380 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Property Operations Phase 3 — Add tenant in 3 short steps: Person · Room and money · Check and confirm.
+    From a lead the person's details come filled in; the owner checks and edits them. %>
+<%- include("../account/_style.ejs") %>
+<%- include("_style.ejs") %>
+<%
+  const v = values || {};
+  const E = errors || {};
+  const err = function (k) { return E[k] ? '<div class="hn3-err" id="e-' + k + '">' + String(E[k]).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }) + '</div>' : ""; };
+  const inv = function (k) { return E[k] ? 'is-invalid" aria-invalid="true" aria-describedby="e-' + k : ''; };
+  const pre = function (k) { return lead && v[k] && !v._posted ? " hn3-pre" : ""; };
+  const floorsOf = [];
+  beds.forEach(function (b) { let g = floorsOf.find(function (x) { return x.name === b.floor; }); if (!g) { g = { name: b.floor, beds: [] }; floorsOf.push(g); } g.beds.push(b); });
+  const picked = beds.find(function (b) { return b.value === v.bed; }) || null;
+  const dpm = v.depositMode || "", fp = v.firstPaid || "", fm = v.firstMode || "cash";
+%>
+<style>
+  .hn3a .hn2a-inner { max-width: 840px; }
+  .hn3-steps { display: flex; gap: 6px; margin-bottom: 20px; list-style: none; padding: 0; }
+  .hn3-steps li { flex: 1; }
+  .hn3-steps i { display: block; height: 6px; border-radius: 99px; background: #dbe7e1; }
+  .hn3-steps li.is-done i, .hn3-steps li.is-on i { background: var(--hn-green); }
+  .hn3-steps span { display: block; font-size: 12.5px; font-weight: 700; color: var(--hn-soft); margin-top: 6px; }
+  .hn3-steps li.is-on span { color: var(--hn-ink); }
+  .hn3a fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .hn3a legend { font-size: 17px; font-weight: 800; margin-bottom: 14px; padding: 0; }
+  .hn3a .hn2a-field { margin-bottom: 14px; }
+  .hn3-sec { font-size: 15px; font-weight: 800; margin: 18px 0 10px; }
+  .hn3-pre { background: #f7fcf9; border-color: #bfe8d2; }
+  .hn3-opt { color: var(--hn-soft); font-weight: 500; }
+  .hn3-bed { display: flex; align-items: center; gap: 12px; border: 2px solid var(--hn-green); background: var(--hn-green-tint); border-radius: 14px; padding: 12px 14px; font-weight: 700; margin-bottom: 8px; }
+  .hn3-bed small { display: block; font-weight: 500; color: var(--hn-body); font-size: 12.5px; margin-top: 2px; }
+  .hn3-bed .hn3-ini { background: #fff; color: var(--hn-green); }
+  .hn3-tot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: #f5faf7; border-radius: 14px; padding: 14px 16px; margin-top: 8px; font-weight: 700; }
+  .hn3-tot b { font-size: 20px; color: var(--hn-green); }
+  .hn3-tot small { font-size: 12.5px; color: var(--hn-soft); font-weight: 600; margin-left: 6px; }
+  .hn3-foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  .hn3-check .hn3-rw a { color: var(--hn-green); font-weight: 700; font-size: 13px; }
+  .hn3-checkhead { display: flex; gap: 12px; align-items: center; margin-bottom: 6px; }
+  .hn3-checkhead b { font-size: 18px; }
+  .hn3-checkhead small { display: block; font-size: 13px; color: var(--hn-soft); font-weight: 500; }
+  .hn3-ctitle { display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; margin: 16px 0 2px; }
+  .hn3-ctitle button { background: none; border: 0; color: var(--hn-green); font-weight: 700; font-size: 13px; cursor: pointer; padding: 0; }
+  .js .hn3a fieldset:not(.is-on) { display: none; }
+  .hn3a legend:focus { outline: none; }
+  .hn3-foot .hn2a-btn { white-space: nowrap; }
+  .hn3-linkbtn { background: none; border: 0; padding: 0; color: var(--hn-green); font-weight: 700; font-size: 12.5px; cursor: pointer; text-decoration: underline; }
+  .no-js-only { display: none; }
+  @media (max-width: 640px) { .hn3-foot .hn2a-btn { flex: 1; } .hn3-steps span { font-size: 11.5px; } }
+</style>
+
+<div class="hn2a hn3 hn3a">
+  <div class="hn2a-inner">
+    <h1 class="hn2a-title">Add tenant</h1>
+    <div class="hn2a-sub"><%= hostelName %></div>
+
+    <% if (!totalBeds) { %>
+      <div class="hn2a-card" style="text-align:center;padding:40px 20px">
+        <div class="hn2a-card-title">Add your rooms first</div>
+        <div class="hn2a-card-sub">A tenant is admitted into a bed. Add floors and rooms, then come back.</div>
+        <a class="hn2a-btn" href="/user/newroom">+ Add rooms</a>
+      </div>
+    <% } else if (!beds.length) { %>
+      <div class="hn2a-card" style="text-align:center;padding:40px 20px">
+        <div class="hn2a-card-title">All beds are full</div>
+        <div class="hn2a-card-sub">There is no free bed right now. Add a bed or room, or move someone out first.</div>
+        <a class="hn2a-btn" href="/user/allrooms">Open Rooms &amp; beds</a>
+      </div>
+    <% } else { %>
+    <% if (E._form) { %><div class="hn2a-notice is-bad" role="alert"><%= E._form %></div><% } else if (Object.keys(E).filter(function (k) { return k[0] !== "_"; }).length) { %><div class="hn2a-notice is-bad" role="alert">Please check the highlighted fields.</div><% } %>
+
+    <form class="hn2a-card" method="POST" action="/user/newMember" id="hn3Admit" novalidate data-step="<%= step %>">
+      <% if (lead) { %><input type="hidden" name="enquiryId" value="<%= lead.id %>"><% } %>
+      <ol class="hn3-steps" aria-label="Steps">
+        <li data-s="1"><i></i><span>1 · Person</span></li>
+        <li data-s="2"><i></i><span>2 · Room and money</span></li>
+        <li data-s="3"><i></i><span>3 · Check and confirm</span></li>
+      </ol>
+
+      <!-- Step 1 -->
+      <fieldset data-step-panel="1">
+        <legend>Person</legend>
+        <% if (lead) { %><div class="hn3-callout t-violet"><span aria-hidden="true">✨</span><div>Filled in from <%= lead.name || "the" %>'s enquiry<% if (lead.listing) { %> on <b><%= lead.listing %></b><% } %><%= lead.roomType ? " (" + lead.roomType + ")" : "" %>. Check each field and change anything.</div></div><% } %>
+        <div class="hn2a-field"><label class="hn2a-label" for="f-name">Full name</label>
+          <input class="hn2a-input<%= pre('name') %> <%- inv('name') %>" id="f-name" name="member[name]" value="<%= v.name || '' %>" required maxlength="100" autocomplete="off"><%- err("name") %></div>
+        <div class="hn3-g2">
+          <div class="hn2a-field"><label class="hn2a-label" for="f-mob">Mobile</label>
+            <input class="hn2a-input<%= pre('mobileNo') %> <%- inv('mobileNo') %>" id="f-mob" name="member[mobileNo]" value="<%= v.mobileNo || '' %>" required inputmode="numeric" pattern="[6-9][0-9]{9}" maxlength="10" placeholder="10 digits"><%- err("mobileNo") %></div>
+          <div class="hn2a-field"><label class="hn2a-label" for="f-gen">Gender <span class="hn3-opt">(optional)</span></label>
+            <select class="hn2a-select<%= pre('gender') %>" id="f-gen" name="member[gender]"><option value="">Choose</option><% ["Male", "Female", "Other"].forEach(function (g) { %><option <%= v.gender === g ? "selected" : "" %>><%= g %></option><% }) %></select></div>
+        </div>
+        <div class="hn3-g2">
+          <div class="hn2a-field"><label class="hn2a-label" for="f-email">Email <span class="hn3-opt">(optional)</span></label>
+            <input class="hn2a-input<%= pre('email') %> <%- inv('email') %>" id="f-email" type="email" name="member[email]" value="<%= v.email || '' %>" maxlength="120"><%- err("email") %></div>
+          <div class="hn2a-field"><label class="hn2a-label" for="f-dob">Date of birth <span class="hn3-opt">(optional)</span></label>
+            <input class="hn2a-input<%= pre('dob') %> <%- inv('dob') %>" id="f-dob" type="date" name="member[dob]" value="<%= v.dob || '' %>" max="<%= today %>"><%- err("dob") %></div>
+        </div>
+        <div class="hn2a-field"><label class="hn2a-label" for="f-prof">College or occupation <span class="hn3-opt">(optional)</span></label>
+          <input class="hn2a-input<%= pre('profession') %>" id="f-prof" name="member[profession]" value="<%= v.profession || '' %>" maxlength="100" placeholder="e.g. DY Patil, B.Tech or Software engineer"></div>
+        <div class="hn2a-field"><label class="hn2a-label" for="f-addr">Permanent address <span class="hn3-opt">(optional)</span></label>
+          <textarea class="hn2a-input" id="f-addr" name="member[address]" maxlength="500" placeholder="House no., street, city, PIN"><%= v.address || '' %></textarea></div>
+        <div class="hn3-g2">
+          <div class="hn2a-field"><label class="hn2a-label" for="f-gname">Guardian name <span class="hn3-opt">(optional)</span></label>
+            <input class="hn2a-input" id="f-gname" name="member[guardianName]" value="<%= v.guardianName || '' %>" maxlength="100" placeholder="Father / mother"></div>
+          <div class="hn2a-field"><label class="hn2a-label" for="f-gmob">Guardian mobile <span class="hn3-opt">(optional)</span></label>
+            <input class="hn2a-input <%- inv('guardianMobile') %>" id="f-gmob" name="member[guardianMobile]" value="<%= v.guardianMobile || '' %>" inputmode="numeric" pattern="[6-9][0-9]{9}" maxlength="10" placeholder="10 digits"><%- err("guardianMobile") %></div>
+        </div>
+        <div class="hn2a-field"><label class="hn2a-label" for="f-emer">Emergency contact <span class="hn3-opt">(if not the guardian)</span></label>
+          <input class="hn2a-input" id="f-emer" name="member[emergencyContact]" value="<%= v.emergencyContact || '' %>" maxlength="120" placeholder="Name and mobile"></div>
+        <div class="hn3-callout t-amber"><span aria-hidden="true">🪪</span><div>Aadhaar KYC: <b>not done yet</b>. Allowed for now. When DigiLocker KYC is switched on (Phase 4), a tenant can only be admitted after KYC.</div></div>
+        <div class="hn3-foot"><a class="hn2a-btn is-ghost" href="<%= lead ? '/user/leads' : '/user/members' %>">Cancel</a><button type="button" class="hn2a-btn" data-next="2">Next: room and money →</button></div>
+      </fieldset>
+
+      <!-- Step 2 -->
+      <fieldset data-step-panel="2">
+        <legend>Room and money</legend>
+        <div class="hn3-sec" style="margin-top:0">Bed</div>
+        <div class="hn3-bed" data-bedcard <%= picked ? "" : "hidden" %>><span class="hn3-ini" data-bedletter><%= picked ? picked.label : "" %></span><div style="flex:1"><span data-bedtitle><%= picked ? ("Room " + picked.room + " · bed " + picked.label + " · " + picked.floor) : "" %></span><small data-bedsub><%= picked ? (picked.sharing + " sharing" + (picked.roomType ? " · " + picked.roomType : "") + " · " + T.inr(picked.rent) + " a month") : "" %></small></div><button type="button" class="hn2a-btn is-ghost is-sm" data-changebed>Change bed</button></div>
+        <div class="hn2a-field" data-bedpicker <%= picked ? "hidden" : "" %>>
+          <label class="hn2a-label" for="f-bed">Choose a free bed</label>
+          <select class="hn2a-select <%- inv('bed') %>" id="f-bed" name="member[bed]" required>
+            <option value="">Choose a free bed</option>
+            <% floorsOf.forEach(function (g) { %><optgroup label="<%= g.name %>"><% g.beds.forEach(function (b) { %>
+              <option value="<%= b.value %>" data-rent="<%= b.rent %>" data-label="<%= b.label %>" data-title="Room <%= b.room %> · bed <%= b.label %> · <%= b.floor %>" data-sub="<%= b.sharing %> sharing<%= b.roomType ? ' · ' + b.roomType : '' %> · <%= T.inr(b.rent) %> a month" <%= v.bed === b.value ? "selected" : "" %>>Room <%= b.room %> · bed <%= b.label %> — <%= T.inr(b.rent) %> (<%= b.sharing %> sharing<%= b.roomType ? ', ' + b.roomType : '' %>)</option>
+            <% }) %></optgroup><% }) %>
+          </select><%- err("bed") %>
+          <div class="hn2a-help"><%= beds.length %> free bed<%= beds.length === 1 ? "" : "s" %>. Blocked and taken beds are not shown.</div>
+        </div>
+
+        <div class="hn3-sec">Rent</div>
+        <div class="hn3-g3">
+          <div class="hn2a-field"><label class="hn2a-label" for="f-join">Joining date</label>
+            <input class="hn2a-input <%- inv('joiningDate') %>" id="f-join" type="date" name="member[joiningDate]" value="<%= v.joiningDate || today %>" required><%- err("joiningDate") %></div>
+          <div class="hn2a-field"><label class="hn2a-label" for="f-rent">Monthly rent</label>
+            <input class="hn2a-input hn3-pre <%- inv('rent') %>" id="f-rent" name="member[rent]" value="<%= v.rent !== undefined && v.rent !== '' ? v.rent : (picked ? picked.rent : '') %>" required inputmode="numeric" placeholder="₹" data-touched="<%= v._posted ? '1' : '' %>"><%- err("rent") %>
+            <div class="hn2a-help">From the bed. You can change it for this tenant.</div></div>
+          <div class="hn2a-field"><label class="hn2a-label" for="f-due">Rent due day</label>
+            <select class="hn2a-select hn3-pre <%- inv('dueDay') %>" id="f-due" name="member[dueDay]" data-touched="<%= v._posted ? '1' : '' %>">
+              <% for (let d = 1; d <= 31; d++) { %><option value="<%= d %>" <%= String(v.dueDay || '') === String(d) ? "selected" : "" %>><%= T.ordinal(d) %> of every month</option><% } %>
+            </select><%- err("dueDay") %>
+            <div class="hn2a-help">Same day as joining. 29–31 → last day in short months.</div></div>
+        </div>
+
+        <div class="hn2a-field" data-firstbox <%= E.firstCharge ? "" : "hidden" %>>
+          <label class="hn2a-label" for="f-fc" data-fc-label>Rent for the first period</label>
+          <input class="hn2a-input <%- inv('firstCharge') %>" id="f-fc" name="member[firstCharge]" value="<%= v.firstCharge || '' %>" inputmode="numeric" placeholder="₹" style="max-width:260px" data-touched="<%= v.firstCharge ? '1' : '' %>"><%- err("firstCharge") %>
+          <div class="hn2a-help"><span data-fc-help></span> <button type="button" class="hn3-linkbtn" data-fc-use hidden></button></div>
+        </div>
+        <div class="hn3-callout t-blue" data-earlierbox <%= E.earlier ? "" : "hidden" %> style="display:block">
+          <div style="font-weight:700" data-earlier-text><%= E.earlier ? "Joined before this month." : "" %></div>
+          <div class="hn3-seg" role="radiogroup" aria-label="Rent for the earlier months" style="margin-top:10px">
+            <label><input type="radio" name="member[earlier]" value="paid" <%= v.earlier === 'paid' ? 'checked' : '' %>><span>Already paid</span></label>
+            <label><input type="radio" name="member[earlier]" value="due" <%= v.earlier === 'due' ? 'checked' : '' %>><span data-earlier-due>Add to dues</span></label>
+          </div><%- err("earlier") %>
+          <div class="hn2a-help" style="color:inherit;opacity:.85">Adding an existing tenant? Choose "Already paid" if you collected that rent before HostelNode.</div>
+        </div>
+
+        <div class="hn3-sec">Security deposit</div>
+        <div class="hn3-g2">
+          <div class="hn2a-field"><label class="hn2a-label" for="f-dep">Deposit amount</label>
+            <input class="hn2a-input hn3-pre <%- inv('deposit') %>" id="f-dep" name="member[deposit]" value="<%= v.deposit !== undefined ? v.deposit : '' %>" inputmode="numeric" placeholder="₹" data-touched="<%= v._posted ? '1' : '' %>"><%- err("deposit") %>
+            <div class="hn2a-help">Suggested: one month's rent. Any amount, or 0.</div></div>
+          <div class="hn2a-field"><span class="hn2a-label">Deposit paid now?</span>
+            <div class="hn3-seg" role="radiogroup" aria-label="Deposit paid now">
+              <label><input type="radio" name="member[depositMode]" value="cash" required <%= dpm === 'cash' ? 'checked' : '' %>><span>Cash</span></label>
+              <label><input type="radio" name="member[depositMode]" value="upi" <%= dpm === 'upi' ? 'checked' : '' %>><span>UPI</span></label>
+              <label><input type="radio" name="member[depositMode]" value="later" <%= dpm === 'later' ? 'checked' : '' %>><span>Later</span></label>
+            </div><%- err("depositMode") %></div>
+        </div>
+
+        <div class="hn3-sec" data-first-title>First month's rent</div>
+        <div class="hn3-g2">
+          <div class="hn2a-field"><span class="hn2a-label">Paid now?</span>
+            <div class="hn3-seg" role="radiogroup" aria-label="First month's rent paid now">
+              <label><input type="radio" name="member[firstPaid]" value="full" required <%= fp === 'full' ? 'checked' : '' %>><span>Yes, full</span></label>
+              <label><input type="radio" name="member[firstPaid]" value="part" <%= fp === 'part' ? 'checked' : '' %>><span>Part</span></label>
+              <label><input type="radio" name="member[firstPaid]" value="none" <%= fp === 'none' ? 'checked' : '' %>><span>Not yet</span></label>
+            </div><%- err("firstPaid") %></div>
+          <div data-paidbox>
+            <div class="hn2a-field" data-partbox <%= fp === 'part' ? '' : 'hidden' %>><label class="hn2a-label" for="f-first">Amount paid now</label>
+              <input class="hn2a-input <%- inv('firstAmount') %>" id="f-first" name="member[firstAmount]" value="<%= v.firstAmount || '' %>" inputmode="numeric" placeholder="₹"><%- err("firstAmount") %>
+              <div class="hn2a-help" data-rest></div></div>
+            <div class="hn2a-field" data-modebox <%= fp === 'full' || fp === 'part' ? '' : 'hidden' %>><span class="hn2a-label">Rent paid by</span>
+              <div class="hn3-seg" role="radiogroup" aria-label="Rent paid by">
+                <label><input type="radio" name="member[firstMode]" value="cash" <%= fm === 'cash' ? 'checked' : '' %>><span>Cash</span></label>
+                <label><input type="radio" name="member[firstMode]" value="upi" <%= fm === 'upi' ? 'checked' : '' %>><span>UPI</span></label>
+              </div></div>
+          </div>
+        </div>
+        <div class="hn3-tot" aria-live="polite"><span>Collecting today</span><span><b data-total>₹0</b><small data-totalsub></small></span></div>
+        <div class="hn3-foot"><button type="button" class="hn2a-btn is-ghost" data-next="1">← Back</button><button type="button" class="hn2a-btn" data-next="3">Next: check and confirm →</button></div>
+      </fieldset>
+
+      <!-- Step 3 -->
+      <fieldset data-step-panel="3" class="hn3-check">
+        <legend>Check and confirm</legend>
+        <div class="hn3-checkhead"><span class="hn3-ini c-violet" data-c="ini"></span><div><b data-c="name"></b><small data-c="who"></small></div></div>
+        <div class="hn3-ctitle"><span>Room and rent</span><button type="button" data-next="2">Change</button></div>
+        <div class="hn3-rw"><span>Bed</span><span data-c="bed"></span></div>
+        <div class="hn3-rw"><span>Joining</span><span data-c="join"></span></div>
+        <div class="hn3-rw"><span>Rent</span><span data-c="rent"></span></div>
+        <div class="hn3-rw" data-c-firstrow hidden><span>First charge</span><span data-c="firstcharge"></span></div>
+        <div class="hn3-rw" data-c-earlierrow hidden><span>Earlier months</span><span data-c="earlier"></span></div>
+        <div class="hn3-ctitle"><span>Money today</span><button type="button" data-next="2">Change</button></div>
+        <div class="hn3-rw"><span>Deposit</span><span data-c="dep"></span></div>
+        <div class="hn3-rw"><span data-c="firstlabel">First month's rent</span><span data-c="first"></span></div>
+        <div class="hn3-rw"><span>KYC</span><span><span class="hn3-pill t-warn">Not done yet</span></span></div>
+        <% if (welcomeOn) { %><div class="hn3-callout t-green" style="margin-top:14px"><span aria-hidden="true">💬</span><div data-c="welcome">The tenant gets a WhatsApp welcome with their room, bed, rent and due day.</div></div><% } %>
+        <div class="hn3-foot"><button type="button" class="hn2a-btn is-ghost" data-next="2">← Back</button><button type="submit" class="hn2a-btn" style="min-width:200px;min-height:48px;font-size:15px" data-submit>Admit tenant</button></div>
+      </fieldset>
+      <div class="no-js-only"><button type="submit" class="hn2a-btn">Admit tenant</button></div>
+    </form>
+    <% } %>
+  </div>
+</div>
+
+<script>
+(function () {
+  var f = document.getElementById('hn3Admit'); if (!f) return;
+  document.documentElement.classList.add('js');
+  var $ = function (s) { return f.querySelector(s); }, $$ = function (s) { return Array.prototype.slice.call(f.querySelectorAll(s)); };
+  var inr = function (n) { return '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN'); };
+  var num = function (v) { var n = Number(String(v || '').replace(/[,₹\s]/g, '')); return isFinite(n) ? n : 0; };
+  var ord = function (n) { var s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+  // A field's value; for a choice (radio buttons) only the one picked, or '' when none is picked yet.
+  var val = function (n) {
+    var first = f.querySelector('[name="member[' + n + ']"]'); if (!first) return '';
+    if (first.type === 'radio') { var on = f.querySelector('[name="member[' + n + ']"]:checked'); return on ? on.value : ''; }
+    return first.value;
+  };
+  var bed = $('#f-bed'), rent = $('#f-rent'), dep = $('#f-dep'), join = $('#f-join'), due = $('#f-due'), fc = $('#f-fc');
+  var TODAY = <%- JSON.stringify(today) %>;
+  // Which months are charged now — the same rule as the server (utils/tenants.js rentPlan).
+  var dim = function (y, m) { return new Date(Date.UTC(y, m + 1, 0)).getUTCDate(); };
+  var dueOf = function (y, m, dd) { return Date.UTC(y, m, Math.min(dd, dim(y, m))); };
+  var mon = function (y, m, long) { return new Date(Date.UTC(y, m, 1)).toLocaleDateString('en-IN', { month: long ? 'long' : 'short', year: 'numeric', timeZone: 'UTC' }); };
+  var dshort = function (t) { return new Date(t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' }); };
+  function planOf() {
+    var p = String(join.value || '').split('-').map(Number), dd = Number(due.value) || 1, t = TODAY.split('-').map(Number);
+    if (p.length < 3 || !p[0]) return null;
+    var jy = p[0], jm = p[1] - 1, jd = p[2], ty = t[0], tm = t[1] - 1, td = t[2];
+    var py = jy, pm = jm;
+    if (jy * 12 + jm < ty * 12 + tm) {
+      if (Date.UTC(ty, tm, td) >= dueOf(ty, tm, dd)) { py = ty; pm = tm; } else { py = tm === 0 ? ty - 1 : ty; pm = tm === 0 ? 11 : tm - 1; }
+      if (py * 12 + pm < jy * 12 + jm) { py = jy; pm = jm; }
+    }
+    var earlier = [], y = jy, m = jm;
+    while (y * 12 + m < py * 12 + pm && earlier.length < 24) { earlier.push([y, m]); m++; if (m > 11) { m = 0; y++; } }
+    var joinMonth = py === jy && pm === jm;
+    var joinsOnRentDay = jd === Math.min(dd, dim(jy, jm));
+    var jny = jm === 11 ? jy + 1 : jy, jnm = (jm + 1) % 12, J = Date.UTC(jy, jm, jd);
+    var jDays = Math.max(1, Math.round((dueOf(jny, jnm, dd) - J) / 864e5)), jFull = Math.round((Date.UTC(jny, jnm, Math.min(jd, dim(jny, jnm))) - J) / 864e5);
+    var start = joinMonth ? Date.UTC(jy, jm, jd) : dueOf(py, pm, dd);
+    var next = dueOf(pm === 11 ? py + 1 : py, pm === 11 ? 0 : pm + 1, dd);
+    var days = Math.max(1, Math.round((next - start) / 864e5));
+    var sd = new Date(start), ny = sd.getUTCMonth() === 11 ? sd.getUTCFullYear() + 1 : sd.getUTCFullYear(), nm = (sd.getUTCMonth() + 1) % 12;
+    var full = Math.round((Date.UTC(ny, nm, Math.min(sd.getUTCDate(), dim(ny, nm))) - start) / 864e5);
+    var r = num(rent.value);
+    var earlierTotal = earlier.length ? (joinsOnRentDay ? r : Math.round(r * jDays / jFull)) + r * (earlier.length - 1) : 0;
+    return { py: py, pm: pm, earlier: earlier, earlierTotal: earlierTotal, joinPartial: !joinsOnRentDay, start: start, end: next - 864e5, days: days, full: full, fullMonth: !joinMonth || joinsOnRentDay || days === full };
+  }
+
+  var started = false;
+  function show(n) {
+    $$('[data-step-panel]').forEach(function (p) { p.classList.toggle('is-on', p.getAttribute('data-step-panel') === String(n)); });
+    $$('.hn3-steps li').forEach(function (li) { var s = Number(li.getAttribute('data-s')); li.classList.toggle('is-on', s === n); li.classList.toggle('is-done', s < n); if (s === n) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current'); });
+    if (n === 3) summary();
+    var top = f.getBoundingClientRect().top + window.scrollY - 80; if (window.scrollY > top) window.scrollTo({ top: top });
+    var first = f.querySelector('[data-step-panel="' + n + '"] .is-invalid, [data-step-panel="' + n + '"] legend');
+    var focusIt = started || f.querySelector('.is-invalid'); started = true;
+    if (first && first.focus && focusIt) { if (first.tagName === 'LEGEND') { first.setAttribute('tabindex', '-1'); } first.focus({ preventScroll: true }); }
+  }
+  // A step's fields must be fine before moving on.
+  function ok(n) {
+    var bad = null;
+    $$('[data-step-panel="' + n + '"] input, [data-step-panel="' + n + '"] select').forEach(function (el) {
+      if (bad || el.disabled || el.closest('[hidden]')) return;
+      if (!el.checkValidity()) bad = el;
+    });
+    if (n === 2 && !bad && val('firstPaid') === 'part') { var a = num($('#f-first').value); if (!(a > 0 && a <= totals().charge)) { $('#f-first').setCustomValidity('Enter the amount paid now, up to ' + inr(totals().charge) + '.'); bad = $('#f-first'); } else $('#f-first').setCustomValidity(''); }
+    if (bad) { if (bad.closest('[data-bedpicker]')) { $('[data-bedpicker]').hidden = false; } bad.reportValidity(); bad.focus(); return false; }
+    return true;
+  }
+  $$('[data-next]').forEach(function (b) { b.addEventListener('click', function () { var to = Number(b.getAttribute('data-next')); var cur = Number((f.querySelector('fieldset.is-on') || {}).getAttribute ? f.querySelector('fieldset.is-on').getAttribute('data-step-panel') : 1); if (to > cur && !ok(cur)) return; show(to); }); });
+
+  function pickBed(fromUser) {
+    var o = bed.options[bed.selectedIndex];
+    var card = $('[data-bedcard]');
+    if (!o || !o.value) { card.hidden = true; return; }
+    card.hidden = false; $('[data-bedpicker]').hidden = true;
+    $('[data-bedletter]').textContent = o.getAttribute('data-label');
+    $('[data-bedtitle]').textContent = o.getAttribute('data-title');
+    $('[data-bedsub]').textContent = o.getAttribute('data-sub');
+    if (fromUser && rent.getAttribute('data-touched') !== '1') { rent.value = o.getAttribute('data-rent'); if (dep.getAttribute('data-touched') !== '1') dep.value = rent.value; }
+    totals();
+  }
+  bed.addEventListener('change', function () { pickBed(true); });
+  $('[data-changebed]').addEventListener('click', function () { $('[data-bedpicker]').hidden = false; bed.focus(); });
+  rent.addEventListener('input', function () { rent.setAttribute('data-touched', '1'); if (dep.getAttribute('data-touched') !== '1') dep.value = rent.value; totals(); });
+  dep.addEventListener('input', function () { dep.setAttribute('data-touched', '1'); totals(); });
+  due.addEventListener('change', function () { due.setAttribute('data-touched', '1'); });
+  join.addEventListener('change', function () { if (due.getAttribute('data-touched') !== '1' && join.value) { var d = Number(join.value.slice(8, 10)); if (d) due.value = String(d); } });
+  $$('[name="member[firstPaid]"], [name="member[depositMode]"], [name="member[firstMode]"], [name="member[earlier]"]').forEach(function (r) { r.addEventListener('change', totals); });
+  $('#f-first').addEventListener('input', totals);
+
+  function planUI() {
+    var pl = planOf(), r = num(rent.value);
+    var fb = $('[data-firstbox]'), eb = $('[data-earlierbox]');
+    if (!pl) { fb.hidden = true; eb.hidden = true; return null; }
+    // First charge: shown when it is not a full month (due day differs from the joining day).
+    fb.hidden = pl.fullMonth && !fb.querySelector('.is-invalid');
+    var pro = Math.round(r * pl.days / pl.full);
+    $('[data-fc-label]').textContent = 'Rent for ' + dshort(pl.start) + ' – ' + dshort(pl.end) + ' (' + pl.days + (pl.days === 1 ? ' day)' : ' days)');
+    $('[data-fc-help]').textContent = pl.fullMonth ? '' : 'Rent is due on the ' + ord(Number(due.value) || 1) + ', so the first charge covers ' + pl.days + ' days. Pro-rata: ' + inr(pro) + '.';
+    var use = $('[data-fc-use]'); use.hidden = pl.fullMonth || !r; use.textContent = 'Use ' + inr(pro); use.setAttribute('data-v', pro);
+    if (pl.fullMonth) fc.value = ''; else if (fc.getAttribute('data-touched') !== '1') fc.value = r || '';
+    // Earlier months (an existing tenant who joined before this rent period).
+    eb.hidden = !pl.earlier.length;
+    var er = f.querySelector('[name="member[earlier]"]'); if (er) er.required = !!pl.earlier.length;
+    if (pl.earlier.length) {
+      var a = pl.earlier[0], z = pl.earlier[pl.earlier.length - 1], n = pl.earlier.length;
+      $('[data-earlier-text]').textContent = 'Joined before this rent period. Rent for ' + mon(a[0], a[1]) + (n > 1 ? ' – ' + mon(z[0], z[1]) : '') + ' (' + n + (n === 1 ? ' month' : ' months') + (pl.joinPartial ? ', the first one pro-rata' : '') + ', ' + inr(pl.earlierTotal) + '):';
+      $('[data-earlier-due]').textContent = 'Add ' + inr(pl.earlierTotal) + ' to dues';
+    }
+    $('[data-first-title]').textContent = 'Rent for ' + mon(pl.py, pl.pm, true);
+    return pl;
+  }
+  $('[data-fc-use]').addEventListener('click', function () { fc.value = this.getAttribute('data-v'); fc.setAttribute('data-touched', '1'); totals(); });
+  fc.addEventListener('input', function () { fc.setAttribute('data-touched', '1'); totals(); });
+  join.addEventListener('change', function () { planUI(); totals(); });
+  due.addEventListener('change', function () { planUI(); totals(); });
+  rent.addEventListener('input', function () { planUI(); totals(); });
+
+  function totals() {
+    var pl = planOf();
+    var r = num(rent.value), d = num(dep.value), fp = val('firstPaid'), dm = val('depositMode');
+    var charge = pl && !pl.fullMonth && fc.value !== '' ? num(fc.value) : r;
+    $('[data-partbox]').hidden = fp !== 'part'; $('[data-modebox]').hidden = !(fp === 'full' || fp === 'part');
+    // Deposit 0: no need to say how it was paid.
+    var dr = f.querySelector('[name="member[depositMode]"]'); if (dr) dr.required = d > 0;
+    var first = fp === 'full' ? charge : fp === 'part' ? Math.min(num($('#f-first').value), charge) : 0;
+    var depNow = dm === 'cash' || dm === 'upi' ? d : 0;
+    $('[data-rest]').textContent = fp === 'part' && charge ? inr(Math.max(0, charge - first)) + ' will show in Dues.' : '';
+    $('[data-total]').textContent = inr(depNow + first);
+    var parts = []; if (depNow) parts.push('deposit ' + inr(depNow)); if (first) parts.push('rent ' + inr(first));
+    $('[data-totalsub]').textContent = parts.join(' + ');
+    return { r: r, d: d, first: first, depNow: depNow, fp: fp, dm: dm, charge: charge, pl: pl };
+  }
+  function summary() {
+    var t = totals(), o = bed.options[bed.selectedIndex], name = val('name');
+    var set = function (k, s) { var el = f.querySelector('[data-c="' + k + '"]'); if (el) el.textContent = s; };
+    set('ini', name.trim().split(/\s+/).slice(0, 2).map(function (w) { return w[0] || ''; }).join('').toUpperCase());
+    set('name', name);
+    set('who', [val('mobileNo'), val('gender'), val('profession')].filter(Boolean).join(' · '));
+    set('bed', o && o.value ? o.getAttribute('data-title') : '—');
+    set('join', join.value ? new Date(join.value + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+    set('rent', inr(t.r) + ' on the ' + ord(Number(due.value) || 1) + ' of the month');
+    set('dep', t.d ? inr(t.d) + (t.dm === 'cash' ? ' · cash' : t.dm === 'upi' ? ' · UPI' : ' · to be paid') : 'None');
+    set('first', !t.fp ? '—' : t.fp === 'full' ? inr(t.first) + ' paid' : t.fp === 'part' ? inr(t.first) + ' paid · ' + inr(Math.max(0, t.charge - t.first)) + ' due' : 'Not paid yet · ' + inr(t.charge) + ' due');
+    var pl = t.pl;
+    if (pl) set('firstlabel', 'Rent for ' + mon(pl.py, pl.pm, true));
+    var fr = f.querySelector('[data-c-firstrow]'), er = f.querySelector('[data-c-earlierrow]');
+    fr.hidden = !(pl && !pl.fullMonth); if (!fr.hidden) set('firstcharge', inr(t.charge) + ' for ' + dshort(pl.start) + ' – ' + dshort(pl.end));
+    er.hidden = !(pl && pl.earlier.length); if (!er.hidden) { var ev = val('earlier'); set('earlier', pl.earlier.length + (pl.earlier.length === 1 ? ' month · ' : ' months · ') + (ev === 'due' ? inr(pl.earlierTotal) + ' added to dues' : ev === 'paid' ? 'already paid' : '—')); }
+  }
+  f.addEventListener('submit', function (e) {
+    if (!ok(1)) { e.preventDefault(); show(1); return; }
+    if (!ok(2)) { e.preventDefault(); show(2); return; }
+    var b = $('[data-submit]'); setTimeout(function () { b.disabled = true; b.textContent = 'Saving…'; }, 0);
+  });
+  // Start: due day from the joining date (unless chosen), totals, the step with the first problem.
+  if (!due.value || due.getAttribute('data-touched') !== '1') { var jd = join.value ? Number(join.value.slice(8, 10)) : 0; if (jd && f.querySelector('#f-due option[selected]') === null) due.value = String(jd); }
+  if (!dep.value && rent.value && dep.getAttribute('data-touched') !== '1') dep.value = rent.value;
+  pickBed(false); planUI(); totals();
+  show(Number(f.getAttribute('data-step')) || 1);
+  // A restored draft fills the fields after load: refresh what depends on them.
+  window.addEventListener('load', function () { setTimeout(function () { pickBed(false); planUI(); totals(); }, 50); });
+})();
+</script>
+<noscript><style>.no-js-only { display: block !important; margin-top: 16px; } [data-next] { display: none !important; } [data-bedpicker] { display: block !important; }</style></noscript>

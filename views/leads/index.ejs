@@ -249,7 +249,7 @@
             <div class="hn2l-type-row">
               <span class="hn2l-type is-<%= e.contactType.key %>"><%- svg(TYPE_ICON[e.contactType.key] || TYPE_ICON.general, 12, 'currentColor', 2.2) %><%= e.contactType.label %></span>
               <span class="hn2l-meta"><%= e.when %></span>
-              <% if (e.becameTenant) { %><span class="hn2l-became">Became tenant</span><% } %>
+              <% if (e.becameTenant) { %><% if (e.tenantHref) { %><a class="hn2l-became" href="<%= e.tenantHref %>" title="Open the tenant">Became tenant</a><% } else { %><span class="hn2l-became">Became tenant</span><% } %><% } %>
             </div>
           </div>
         </div>
@@ -287,9 +287,9 @@
             <span class="hn2l-btn is-off" role="link" aria-disabled="true" title="This enquiry has no HostelNode account attached"><%- svg(CHAT, 13, 'currentColor', 2) %> Reply on HostelNode</span>
           <% } %>
           <% if (e.canConvert) { %>
-            <a class="hn2l-btn is-green" href="/user/newmember?enquiry=<%= e.id %>" title="Add as a tenant in <%= selName %>">Convert</a>
+            <a class="hn2l-btn is-green" href="/user/newmember?enquiry=<%= e.id %>" title="Admit as a tenant in <%= selName %>">Admit as tenant</a>
           <% } else { %>
-            <span class="hn2l-btn is-off" role="link" aria-disabled="true" title="This enquiry is closed">Convert</span>
+            <span class="hn2l-btn is-off" role="link" aria-disabled="true" title="This enquiry is closed">Admit as tenant</span>
           <% } %>
         </div>
       </div>

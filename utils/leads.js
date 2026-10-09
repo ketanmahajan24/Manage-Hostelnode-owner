@@ -64,7 +64,7 @@ async function loadOwnedEnquiry(enquiryId, ownerId) {
   if (!isId(enquiryId) || !ownerId) return null;
   const e = await Enquiry.findById(enquiryId)
     .populate("listing", "owner title")
-    .populate("student", "firstName lastName phone")
+    .populate("student", "firstName lastName phone email gender dob collegeName course")   // Phase 3: fills in "Add tenant"
     .lean();
   if (!e || !e.listing || String(e.listing.owner) !== String(ownerId)) return null;
   return e;
@@ -270,6 +270,7 @@ async function buildLeadsPage(ownerId, q = {}, now = new Date()) {
       replyWhatsApp,
       canConvert: e.status !== "Closed",
       becameTenant: !!e.convertedAt,
+      tenantHref: e.convertedMember ? `/user/tenants/${e.convertedMember}` : "",   // Phase 3: open the tenant made from this lead
       roomType: e.roomType || "",
     };
   });

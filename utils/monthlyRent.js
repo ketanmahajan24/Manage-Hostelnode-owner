@@ -22,7 +22,7 @@
 ============================================================ */
 
 const moment = require("moment-timezone");
-const { TZ, LIVING, dueDateIn } = require("./tenantOps");
+const { TZ, LIVING, dueDateIn, dueAnchor } = require("./tenantOps");
 
 let indexTried = false;
 async function ensureIndex(Payment) {
@@ -53,13 +53,16 @@ async function runMonthlyRent(now = new Date()) {
     const key = monthStart.format("YYYY-MM");
 
     const members = await Member.find({ ...LIVING, joiningDate: { $lt: monthStart.toDate() } },
-      { _id: 1, name: 1, user: 1, joiningDate: 1, assignedRoom_id: 1, bedLabel: 1, rent: 1 }).lean();
+      { _id: 1, name: 1, user: 1, joiningDate: 1, assignedRoom_id: 1, bedLabel: 1, rent: 1, dueDay: 1, leavingDate: 1 }).lean();
 
     for (const m of members) {
       out.checked++;
       try {
         if (!m.joiningDate || isNaN(new Date(m.joiningDate))) { out.skipped++; continue; }
-        if (today.isBefore(dueDateIn(m.joiningDate, today))) { out.skipped++; continue; }   // rent day not reached yet
+        const dueOn = dueDateIn(dueAnchor(m), today);   // Phase 3: the tenant's own due day, else their joining day
+        if (today.isBefore(dueOn)) { out.skipped++; continue; }   // rent day not reached yet
+        // Phase 3: a tenant leaving on or before this month's rent day is not charged for a new month.
+        if (m.leavingDate && !isNaN(new Date(m.leavingDate)) && !moment(m.leavingDate).tz(TZ).startOf("day").isAfter(dueOn)) { out.skipped++; continue; }
 
         // Already charged this month? (by this job, or by the old one before this was installed)
         const already = await Payment.exists({
@@ -81,7 +84,7 @@ async function runMonthlyRent(now = new Date()) {
           pay = await Payment.create({
             user: m.user, memberId: m._id, roomId: room._id,
             roomFees: fee, totalFees: fee, advancedPaid: 0, amountPaid: 0, dueAmount: fee,
-            status: "Due", paymentDate: dueDateIn(m.joiningDate, today).toDate(), payableDate: dueDateIn(m.joiningDate, today).toDate(),
+            status: "Due", paymentDate: dueOn.toDate(), payableDate: dueOn.toDate(),
             chargeMonth: key,
           });
         } catch (e) {

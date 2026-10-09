@@ -264,7 +264,7 @@
         var moveRow = el('div', { cls: 'a hn2r-more' }, [form('/user/members/' + encodeURIComponent(b.member.id) + '/move', {}, [freeBedOptions(r.id), btn('Move', false)])]);
         var moveBtn = el('button', { type: 'button', cls: 'hn2a-btn is-ghost hn2r-sm', text: 'Move to another bed' });
         moveBtn.addEventListener('click', function () { moveRow.classList.toggle('is-open'); });
-        box.appendChild(el('div', { cls: 'a' }, [link('Open tenant', '/user/member-edit/' + encodeURIComponent(b.member.id) + '/edit', true), moveBtn]));
+        box.appendChild(el('div', { cls: 'a' }, [link('Open tenant', '/user/tenants/' + encodeURIComponent(b.member.id), true), moveBtn]));
         box.appendChild(moveRow);
         if (typeof b.member.rent === 'number' && b.member.rent !== b.rent) {
           box.appendChild(el('div', { cls: 'a' }, [form('/user/members/' + encodeURIComponent(b.member.id) + '/rent-reset', {}, [btn('Charge this bed’s rent (' + inr(b.rent) + ') from next month', true)])]));

@@ -304,17 +304,19 @@ router.post("/rooms/:id/beds/add", jwtAuthMiddleware, attachHostel, needHostel, 
 });
 
 // Move a tenant who lives here to another free bed (same property).
-router.post("/members/:id/move", jwtAuthMiddleware, attachHostel, needHostel, async (req, res) => {
+async function moveTenant(req, res) {
+  // Phase 3: the tenant page sends back=tenant, to return there.
+  const done = isId(String(req.params.id)) && req.body.back === "tenant" ? `/user/tenants/${req.params.id}` : "/user/allrooms";
   try {
     if (!isId(req.params.id)) return res.status(404).send("Tenant not found.");
     const member = await Member.findOne({ _id: req.params.id, user: req.user.id, hostel: H(res), ...LIVING });
     if (!member) return res.status(404).send("Tenant not found.");
     const [roomId, label] = String(req.body.to || "").split(":");
     const target = await myRoom(req, res, roomId);
-    if (!target) return fail(res, "/user/allrooms", "Choose a free bed to move to.");
+    if (!target) return fail(res, done, "Choose a free bed to move to.");
     const beds = await ensureBeds(target.toObject());
     const bed = beds.find(b => b.label === String(label || ""));
-    if (!bed || bed.member || bed.blocked) return fail(res, "/user/allrooms", "That bed is not free any more. Please choose another.");
+    if (!bed || bed.member || bed.blocked) return fail(res, done, "That bed is not free any more. Please choose another.");
     const from = member.assignedRoom_id;
     const before = { assignedRoom_id: member.assignedRoom_id, assignedRoom: member.assignedRoom, bedLabel: member.bedLabel, rent: member.rent === undefined ? null : member.rent };
     const set = { assignedRoom_id: target._id, assignedRoom: target.room_number, bedLabel: bed.label };
@@ -323,19 +325,39 @@ router.post("/members/:id/move", jwtAuthMiddleware, attachHostel, needHostel, as
     const oldRoom = from ? await Room.findById(from, { room_fees: 1, beds: 1 }).lean() : null;
     const pays = oldRoom ? tenantRent(member, oldRoom) : (typeof member.rent === "number" ? member.rent : null);
     if (pays !== null) set.rent = pays === bed.rent ? null : pays;
+    // Phase 3: "Charge the new bed's rent" ticked on the tenant page.
+    const newRent = req.body.useNewRent === "1";
+    if (newRent) set.rent = null;
     await Member.updateOne({ _id: member._id }, { $set: set });
     // Someone else took this bed at the same moment? Put this tenant back and say so.
     const sharing = await Member.countDocuments({ assignedRoom_id: target._id, bedLabel: bed.label, ...LIVING });
     if (sharing > 1) {
       await Member.updateOne({ _id: member._id }, { $set: before });
-      return fail(res, "/user/allrooms", "That bed was just taken. Please choose another.");
+      return fail(res, done, "That bed was just taken. Please choose another.");
     }
     await syncRoomAndFloor(target._id);
     if (from && String(from) !== String(target._id)) await syncRoomAndFloor(from);
-    back(res, "/user/allrooms", `${member.name} moved to room ${target.room_number}, bed ${bed.label}. Their rent stays the same.`);
+    const T = require("../utils/tenants");
+    const nowPays = newRent ? bed.rent : (pays !== null ? pays : bed.rent);
+    await T.logEvent(req, member, "moved", `Moved from ${member.assignedRoom || "—"} · ${member.bedLabel || "—"} to ${target.room_number} · ${bed.label}`,
+      newRent && pays !== null && pays !== bed.rent ? `rent ${T.inr(pays)} → ${T.inr(bed.rent)} from the next rent` : `rent stays ${T.inr(nowPays)}`);
+    back(res, done, `${member.name} moved to room ${target.room_number}, bed ${bed.label}. ${newRent && pays !== null && pays !== bed.rent ? `Rent is now ${T.inr(bed.rent)} from the next rent.` : "Their rent stays the same."}`);
   } catch (err) {
     console.error("Move tenant error:", err.message);
-    fail(res, "/user/allrooms", "The move could not be saved. Please try again.");
+    fail(res, done, "The move could not be saved. Please try again.");
+  }
+}
+router.post("/members/:id/move", jwtAuthMiddleware, attachHostel, needHostel, async (req, res) => {
+  try {
+    for (let i = 0; i < 20; i++) {
+      const r = await require("../utils/locks").withLocks([isId(String(req.body.to || "").split(":")[0]) ? `room:${String(req.body.to).split(":")[0]}` : ""], () => moveTenant(req, res));
+      if (!r.busy) return;
+      await new Promise(z => setTimeout(z, 250));
+    }
+    res.redirect((req.body.back === "tenant" && isId(String(req.params.id)) ? `/user/tenants/${req.params.id}` : "/user/allrooms") + "?err=" + encodeURIComponent("Someone else is changing that room right now. Please try again."));
+  } catch (err) {
+    console.error("moveTenant (lock) error:", err.message);
+    if (!res.headersSent) res.status(500).send("That could not be saved. Please try again.");
   }
 });
 
@@ -347,7 +369,8 @@ router.post("/members/:id/rent-reset", jwtAuthMiddleware, attachHostel, needHost
     if (!member) return res.status(404).send("Tenant not found.");
     const room = member.assignedRoom_id ? await Room.findById(member.assignedRoom_id, { room_fees: 1, beds: 1 }).lean() : null;
     await Member.updateOne({ _id: member._id }, { $set: { rent: null } });
-    back(res, "/user/allrooms", `${member.name} now pays the bed's rent${room ? ` (₹${bedRent(room, member.bedLabel).toLocaleString("en-IN")} a month)` : ""}, from the next rent.`);
+    if (room) { const T = require("../utils/tenants"); await T.logEvent(req, member, "rent", `Rent changed ${T.inr(member.rent)} → ${T.inr(bedRent(room, member.bedLabel))}`, "now pays the bed's rent, from the next rent"); }
+    back(res, req.body.back === "tenant" ? `/user/tenants/${member._id}` : "/user/allrooms", `${member.name} now pays the bed's rent${room ? ` (₹${bedRent(room, member.bedLabel).toLocaleString("en-IN")} a month)` : ""}, from the next rent.`);
   } catch (err) {
     console.error("Rent reset error:", err.message);
     fail(res, "/user/allrooms", "That change could not be saved. Please try again.");
