@@ -181,10 +181,10 @@
         <span class="hn2-hide-rail"><%- svg('right', 12, '#5b6470', 2.4, 'hn2-chev') %></span>
       </button>
       <div class="hn2-sub" id="hn2SubRooms">
-        <a class="hn2-subitem" href="/user/allrooms"    data-hn2-match="^/user/allrooms">All Rooms</a>
-        <a class="hn2-subitem" href="/user/managerooms" data-hn2-match="^/user/(managerooms|manageroom/|newroom)">Manage Rooms</a>
-        <a class="hn2-subitem" href="/user/floors"      data-hn2-match="^/user/floors">All Floors</a>
-        <a class="hn2-subitem" href="/user/managefloor" data-hn2-match="^/user/(managefloor|newfloor)">Manage Floors</a>
+        <%# Property Operations Phase 2: three pages instead of four (old addresses still open the new pages). %>
+        <a class="hn2-subitem" href="/user/allrooms" data-hn2-match="^/user/(allrooms|managerooms|manageroom/)">Rooms &amp; beds</a>
+        <a class="hn2-subitem" href="/user/floors"   data-hn2-match="^/user/(floors|managefloor|newfloor)">Floors</a>
+        <a class="hn2-subitem" href="/user/newroom"  data-hn2-match="^/user/(newroom|rooms/bulk)">Add rooms</a>
       </div>
 
       <a class="hn2-item" href="/user/revenue" data-hn2-match="^/user/revenue" title="Reports">

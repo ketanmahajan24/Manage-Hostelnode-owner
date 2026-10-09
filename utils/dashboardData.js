@@ -89,10 +89,11 @@ async function buildDashboard(ownerId, hostels, now = new Date()) {
   for (const r of rooms) {
     const cap = Number(r.sharing_capacity) || 0;
     const occ = Number(r.occupied_beds) || 0;
+    const blockedBeds = (r.beds || []).filter(b => b && b.blocked).length;   // Phase 2: blocked beds are not free
     totalBeds    += cap;
     occupiedBeds += occ;
     if (occ > 0) bookedRooms++;
-    const free = Math.max(0, cap - occ);
+    const free = Math.max(0, cap - occ - blockedBeds);
     if (free > 0) {
       const key = String(r.hostel);
       const v = vacantByHostel.get(key) || { beds: 0, rooms: [] };

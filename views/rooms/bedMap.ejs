@@ -1,0 +1,317 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Property Operations Phase 2 — Rooms & beds: every floor, room and bed of the selected property.
+    Tapping a room opens its details (beds, block a bed, a bed's own rent, move a tenant, edit, delete). %>
+<%- include("../account/_style.ejs") %>
+<%
+  const inr = n => "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(n) || 0);
+  const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
+  const hasRooms = map.rooms.length > 0;
+%>
+<style>
+  .hn2r .hn2a-inner { max-width: 1240px; }
+  .hn2r-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .hn2r-head .hn2a-sub { margin-bottom: 18px; }
+  .hn2r-acts { display: flex; gap: 10px; flex-wrap: wrap; }
+  .hn2r-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
+  .hn2r-st { border-radius: 18px; padding: 16px 18px; border: 1px solid var(--hn-line); background: #fff; }
+  .hn2r-st b { display: block; font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .hn2r-st span { display: block; font-size: 13px; font-weight: 600; margin-top: 8px; color: var(--hn-soft); }
+  .hn2r-st.is-free { background: var(--hn-green); border-color: var(--hn-green); color: #fff; box-shadow: 0 14px 26px -20px var(--hn-green); }
+  .hn2r-st.is-free span { color: rgba(255,255,255,0.92); }
+  .hn2r-st.is-block b { color: var(--hn-slate); }
+  .hn2r-occ { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; font-size: 13px; font-weight: 600; color: var(--hn-body); }
+  .hn2r-occ .bar { flex: 1; height: 10px; border-radius: 99px; background: #fff; border: 1px solid var(--hn-line); overflow: hidden; }
+  .hn2r-occ .bar i { display: block; height: 100%; background: #94a3b8; border-radius: 99px; }
+  .hn2r-filters { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .hn2r-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hn2r-chip { font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 99px; background: #fff; border: 1px solid var(--hn-line); color: var(--hn-body); cursor: pointer; }
+  .hn2r-chip[aria-pressed="true"] { background: var(--hn-ink); color: #fff; border-color: var(--hn-ink); }
+  .hn2r-chip:focus-visible { outline: 3px solid rgba(14,169,104,0.35); outline-offset: 2px; }
+  .hn2r-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; font-weight: 600; color: var(--hn-body); }
+  .hn2r-legend span { display: flex; align-items: center; gap: 6px; }
+  .hn2r-legend i { width: 14px; height: 14px; border-radius: 5px; display: inline-block; }
+  .lg-o { background: var(--hn-slate-tint); border: 1px solid #cbd5e1; } .lg-f { background: #fff; border: 2px dashed var(--hn-green-bright); }
+  .lg-x { background: repeating-linear-gradient(45deg, #e5e7eb 0 3px, #f3f4f6 3px 6px); border: 1px solid #d1d5db; }
+  .hn2r-floor { margin-bottom: 24px; }
+  .hn2r-fh { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .hn2r-fh h2 { font-size: 17px; font-weight: 800; margin: 0; color: var(--hn-ink); }
+  .hn2r-fh span { font-size: 13px; color: var(--hn-soft); font-weight: 600; }
+  .hn2r-fh .is-free { color: var(--hn-green); }
+  .hn2r-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+  .hn2r-room { display: block; width: 100%; text-align: left; background: #fff; border: 1px solid var(--hn-line); border-top: 4px solid #94a3b8; border-radius: 16px; padding: 14px; cursor: pointer; color: inherit; font: inherit; }
+  .hn2r-room.has-free { border-top-color: var(--hn-green-bright); }
+  .hn2r-room:hover { box-shadow: 0 10px 22px -18px rgba(16,35,27,0.5); }
+  .hn2r-room:focus-visible { outline: 3px solid rgba(14,169,104,0.35); outline-offset: 2px; }
+  .hn2r-rh { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .hn2r-rh b { font-size: 18px; font-weight: 800; overflow-wrap: anywhere; }
+  .hn2r-rh span { font-size: 13px; font-weight: 700; color: var(--hn-ink); white-space: nowrap; }
+  .hn2r-tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 12px; }
+  .hn2r-tag { font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 7px; background: #f2f6f4; color: var(--hn-body); }
+  .hn2r-tag.is-warn { background: var(--hn-coral-tint); color: var(--hn-coral); }
+  .hn2r-beds { display: grid; gap: 6px; }
+  .hn2r-bed { display: flex; align-items: center; gap: 8px; border-radius: 10px; padding: 7px 9px; font-size: 13px; font-weight: 600; min-height: 36px; }
+  .hn2r-bed .l { width: 22px; height: 22px; flex-shrink: 0; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 800; background: #fff; }
+  .hn2r-bed .who { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hn2r-bed small { font-size: 11.5px; font-weight: 600; opacity: .9; white-space: nowrap; }
+  .hn2r-bed.is-o { background: var(--hn-slate-tint); color: var(--hn-slate); }
+  .hn2r-bed.is-f { background: #fff; border: 2px dashed var(--hn-green-bright); color: var(--hn-green); }
+  .hn2r-bed.is-f .go { font-size: 12px; font-weight: 700; background: var(--hn-green); color: #fff; padding: 3px 9px; border-radius: 7px; }
+  .hn2r-bed.is-x { background: repeating-linear-gradient(45deg, #eef0f2 0 4px, #f7f8f9 4px 8px); color: #5b6470; }
+  .hn2r-empty { text-align: center; padding: 48px 20px; }
+  .hn2r-empty b { display: block; font-size: 18px; margin-bottom: 6px; }
+  .hn2r-empty p { color: var(--hn-soft); font-size: 14px; margin: 0 0 16px; }
+  .hn2r-none { display: none; padding: 26px; text-align: center; color: var(--hn-soft); font-weight: 600; }
+
+  /* room details panel */
+  .hn2r-dim { position: fixed; inset: 0; z-index: 1900; background: rgba(8,40,26,0.45); display: none; }
+  .hn2r-dim.is-open { display: block; }
+  .hn2r-drawer { position: fixed; z-index: 1901; top: 0; right: 0; bottom: 0; width: min(460px, 100vw); background: #fff; box-shadow: -20px 0 50px -20px rgba(0,0,0,0.4); padding: 22px 22px 30px; overflow-y: auto; transform: translateX(105%); transition: transform .2s ease; outline: none; }
+  .hn2r-drawer.is-open { transform: none; }
+  @media (prefers-reduced-motion: reduce) { .hn2r-drawer { transition: none; } }
+  .hn2r-dh { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .hn2a .hn2r-dh h2 { font-size: 24px; font-weight: 800; margin: 0; }
+  .hn2r-x { width: 36px; height: 36px; border-radius: 50%; border: 0; background: #f2f4f7; font-size: 20px; line-height: 1; cursor: pointer; color: var(--hn-body); flex-shrink: 0; }
+  .hn2r-kv { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0 6px; }
+  .hn2r-kv div { background: #f5faf7; border-radius: 12px; padding: 10px 12px; font-size: 12.5px; color: var(--hn-soft); font-weight: 600; }
+  .hn2r-kv b { display: block; font-size: 15px; color: var(--hn-ink); margin-top: 3px; }
+  .hn2r-h3 { font-size: 14px; font-weight: 700; margin: 18px 0 10px; color: var(--hn-ink); }
+  .hn2r-bl { border: 1px solid var(--hn-line); border-radius: 14px; padding: 12px; margin-bottom: 10px; }
+  .hn2r-bl.is-free { border: 2px dashed var(--hn-green-bright); }
+  .hn2r-bl .t { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; }
+  .hn2r-bl .m { font-size: 12.5px; color: var(--hn-soft); font-weight: 500; margin-top: 4px; }
+  .hn2r-bl .a { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+  .hn2r-bl form { margin: 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .hn2r-pill { font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
+  .hn2r-sm, .hn2r-sm:hover { min-height: 36px !important; padding: 6px 12px !important; font-size: 13px !important; border-radius: 10px !important; }
+  .hn2r-in { height: 36px; border: 1px solid #cfdcd5; border-radius: 10px; padding: 0 10px; font-size: 13px; width: 120px; }
+  .hn2r-sel { height: 36px; border: 1px solid #cfdcd5; border-radius: 10px; padding: 0 8px; font-size: 13px; max-width: 220px; }
+  .hn2r-more { display: none; width: 100%; }
+  .hn2r-more.is-open { display: flex; }
+  .hn2r-danger, .hn2r-danger:hover { color: var(--hn-coral) !important; }
+
+  @media (max-width: 767px) {
+    .hn2r-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hn2r-legend { display: none; }
+    .hn2r-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+    .hn2r-chip { white-space: nowrap; }
+    .hn2r-grid { grid-template-columns: minmax(0, 1fr); }
+    .hn2r-acts { width: 100%; } .hn2r-acts .hn2a-btn { flex: 1; }
+  }
+</style>
+
+<div class="hn2a hn2r">
+  <div class="hn2a-inner">
+    <div class="hn2r-head">
+      <div>
+        <h1 class="hn2a-title">Rooms &amp; beds</h1>
+        <div class="hn2a-sub"><%= hostelName %> · <%= plural(map.floors.length, "floor") %> · <%= plural(map.rooms.length, "room") %> · <%= plural(map.total, "bed") %></div>
+      </div>
+      <div class="hn2r-acts">
+        <a class="hn2a-btn is-ghost" href="/user/floors">Floors</a>
+        <a class="hn2a-btn" href="/user/newroom">+ Add rooms</a>
+      </div>
+    </div>
+
+    <% if (flash.msg) { %><div class="hn2a-notice is-ok" role="status"><%= flash.msg %></div><% } %>
+    <% if (flash.err) { %><div class="hn2a-notice is-bad" role="alert"><%= flash.err %></div><% } %>
+
+    <% if (!hasRooms) { %>
+      <div class="hn2a-card hn2r-empty">
+        <% if (!map.floors.length) { %>
+          <b>Add your first floor</b><p>Start with the floors of this property (Ground, 1, 2… or Block A). Then add its rooms.</p>
+          <a class="hn2a-btn" href="/user/floors#add">+ Add a floor</a>
+        <% } else { %>
+          <b>Add your rooms</b><p>Add one room, or many at once (for example rooms 101 to 110, 3 beds each).</p>
+          <a class="hn2a-btn" href="/user/newroom">+ Add rooms</a>
+        <% } %>
+      </div>
+    <% } else { %>
+      <div class="hn2r-stats">
+        <div class="hn2r-st"><b><%= map.total %></b><span>Beds in total</span></div>
+        <div class="hn2r-st"><b><%= map.occupied %></b><span>Occupied</span></div>
+        <div class="hn2r-st is-free"><b><%= map.free %></b><span>Free now</span></div>
+        <div class="hn2r-st is-block"><b><%= map.blocked %></b><span>Blocked</span></div>
+      </div>
+      <div class="hn2r-occ"><span><%= map.percent %>% full</span><div class="bar" role="img" aria-label="<%= map.percent %> percent of beds occupied"><i style="width:<%= map.percent %>%"></i></div></div>
+
+      <div class="hn2r-filters">
+        <div class="hn2r-chips" role="group" aria-label="Filter rooms">
+          <button type="button" class="hn2r-chip" data-floor="" aria-pressed="true">All floors</button>
+          <% map.floors.forEach(function (f) { %><button type="button" class="hn2r-chip" data-floor="<%= f.id %>" aria-pressed="false"><%= f.name %></button><% }) %>
+          <button type="button" class="hn2r-chip" data-free="1" aria-pressed="false">Free beds only</button>
+          <button type="button" class="hn2r-chip" data-type="AC" aria-pressed="false">AC</button>
+          <button type="button" class="hn2r-chip" data-type="Non-AC" aria-pressed="false">Non-AC</button>
+        </div>
+        <div class="hn2r-legend"><span><i class="lg-o"></i>Occupied</span><span><i class="lg-f"></i>Free</span><span><i class="lg-x"></i>Blocked</span></div>
+      </div>
+
+      <% map.floors.forEach(function (f) { %>
+        <section class="hn2r-floor" id="<%= f.id || "other" %>" data-floor-sec="<%= f.id %>">
+          <div class="hn2r-fh"><h2><%= f.name %></h2><span><%= plural(f.rooms.length, "room") %></span><span class="<%= f.free ? 'is-free' : '' %>"><%= f.free ? plural(f.free, "free bed") : "No free beds" %></span></div>
+          <% if (!f.rooms.length) { %>
+            <div class="hn2a-card" style="padding:16px;margin:0;font-size:13.5px;color:var(--hn-soft);font-weight:500">No rooms on this floor yet. <a href="/user/newroom?floor=<%= f.id %>" style="color:var(--hn-green);font-weight:700">Add rooms</a></div>
+          <% } else { %>
+          <div class="hn2r-grid">
+            <% f.rooms.forEach(function (r) { %>
+              <button type="button" class="hn2r-room <%= r.free ? 'has-free' : '' %>" data-room="<%= r.id %>" data-free="<%= r.free %>" data-type="<%= r.roomType %>" aria-label="Room <%= r.number %>: <%= r.free ? plural(r.free, 'free bed') : 'no free beds' %>. Open details">
+                <span class="hn2r-rh"><b><%= r.number %></b><span><%= inr(r.rent) %> / bed</span></span>
+                <span class="hn2r-tags"><span class="hn2r-tag"><%= r.capacity %> sharing</span><% if (r.roomType) { %><span class="hn2r-tag"><%= r.roomType %></span><% } %><% r.amenities.slice(0, 2).forEach(function (a) { %><span class="hn2r-tag"><%= a %></span><% }) %><% if (r.over) { %><span class="hn2r-tag is-warn"><%= r.over %> more tenant<%= r.over === 1 ? "" : "s" %> than beds</span><% } %></span>
+                <span class="hn2r-beds">
+                  <% r.beds.forEach(function (b) { %>
+                    <% if (b.member) { %>
+                      <span class="hn2r-bed is-o"><span class="l"><%= b.label %></span><span class="who"><%= b.member.name %></span></span>
+                    <% } else if (b.blocked) { %>
+                      <span class="hn2r-bed is-x"><span class="l"><%= b.label %></span><span class="who">Blocked</span><% if (b.blockNote) { %><small><%= b.blockNote %></small><% } %></span>
+                    <% } else { %>
+                      <span class="hn2r-bed is-f"><span class="l"><%= b.label %></span><span class="who">Free<% if (b.ownRent) { %> · <%= inr(b.rent) %><% } %></span><span class="go">Admit tenant</span></span>
+                    <% } %>
+                  <% }) %>
+                </span>
+              </button>
+            <% }) %>
+          </div>
+          <% } %>
+        </section>
+      <% }) %>
+      <div class="hn2a-card hn2r-none" id="hn2rNone">No rooms match these filters.</div>
+    <% } %>
+  </div>
+
+  <div class="hn2r-dim" id="hn2rDim"></div>
+  <aside class="hn2r-drawer" id="hn2rDrawer" role="dialog" aria-modal="true" aria-labelledby="hn2rDTitle" tabindex="-1" aria-hidden="true"></aside>
+</div>
+
+<script type="application/json" id="hn2rData"><%- JSON.stringify({ rooms: map.rooms.map(function (r) { return { id: r.id, number: r.number, rent: r.rent, capacity: r.capacity, roomType: r.roomType, amenities: r.amenities, free: r.free, occupied: r.occupied, floor: (map.floors.find(function (f) { return f.id === r.floorId; }) || { name: "" }).name, beds: r.beds.map(function (b) { return { label: b.label, rent: b.rent, ownRent: b.ownRent, blocked: b.blocked, blockNote: b.blockNote, note: b.note, member: b.member ? { id: b.member.id, name: b.member.name, since: b.member.since, rent: b.member.rent } : null }; }) }; }) }).replace(/</g, "\\u003c") %></script>
+<script>
+(function () {
+  var data = JSON.parse(document.getElementById('hn2rData').textContent);
+  var rooms = {}; data.rooms.forEach(function (r) { rooms[r.id] = r; });
+  var inr = function (n) { return '₹' + Number(n || 0).toLocaleString('en-IN'); };
+
+  /* filters */
+  var state = { floor: '', free: false, type: '' };
+  function apply() {
+    var shown = 0;
+    document.querySelectorAll('[data-floor-sec]').forEach(function (sec) {
+      var any = 0;
+      sec.querySelectorAll('[data-room]').forEach(function (el) {
+        var ok = (!state.free || Number(el.getAttribute('data-free')) > 0) && (!state.type || el.getAttribute('data-type') === state.type);
+        el.style.display = ok ? '' : 'none'; if (ok) any++;
+      });
+      var showSec = (!state.floor || sec.getAttribute('data-floor-sec') === state.floor) && (any > 0 || (!state.free && !state.type));
+      sec.style.display = showSec ? '' : 'none'; if (showSec) shown++;
+    });
+    var none = document.getElementById('hn2rNone'); if (none) none.style.display = shown ? 'none' : 'block';
+  }
+  document.querySelectorAll('.hn2r-chip').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (b.hasAttribute('data-floor')) { state.floor = b.getAttribute('data-floor'); document.querySelectorAll('.hn2r-chip[data-floor]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); }
+      if (b.hasAttribute('data-free')) { state.free = !state.free; b.setAttribute('aria-pressed', state.free ? 'true' : 'false'); }
+      if (b.hasAttribute('data-type')) { var t = b.getAttribute('data-type'); state.type = state.type === t ? '' : t; document.querySelectorAll('.hn2r-chip[data-type]').forEach(function (x) { x.setAttribute('aria-pressed', x.getAttribute('data-type') === state.type ? 'true' : 'false'); }); }
+      apply();
+    });
+  });
+
+  /* room details panel, built with text only (no HTML from data) */
+  var drawer = document.getElementById('hn2rDrawer'), dim = document.getElementById('hn2rDim'), lastFocus = null;
+  function el(tag, attrs, kids) {
+    var e = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'cls') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); });
+    (kids || []).forEach(function (c) { if (c) e.appendChild(c); });
+    return e;
+  }
+  function form(action, fields, kids, confirmText) {
+    var f = el('form', { method: 'POST', action: action });
+    Object.keys(fields || {}).forEach(function (k) { f.appendChild(el('input', { type: 'hidden', name: k, value: fields[k] })); });
+    (kids || []).forEach(function (c) { f.appendChild(c); });
+    if (confirmText) f.addEventListener('submit', function (ev) { if (!confirm(confirmText)) ev.preventDefault(); });
+    return f;
+  }
+  var btn = function (text, ghost, extra) { return el('button', Object.assign({ type: 'submit', cls: 'hn2a-btn hn2r-sm' + (ghost ? ' is-ghost' : '') + (extra || ''), text: text })); };
+  var link = function (text, href, ghost) { return el('a', { href: href, cls: 'hn2a-btn hn2r-sm' + (ghost ? ' is-ghost' : ''), text: text }); };
+  function freeBedOptions(exceptRoom) {
+    var sel = el('select', { name: 'to', cls: 'hn2r-sel', 'aria-label': 'Move to bed', required: 'required' }, [el('option', { value: '', text: 'Choose a free bed' })]);
+    data.rooms.forEach(function (r) { r.beds.forEach(function (b) { if (!b.member && !b.blocked) sel.appendChild(el('option', { value: r.id + ':' + b.label, text: 'Room ' + r.number + ' · bed ' + b.label + (r.floor ? ' · ' + r.floor : '') })); }); });
+    return sel;
+  }
+  function open(id) {
+    var r = rooms[id]; if (!r) return;
+    drawer.textContent = '';
+    var base = '/user/rooms/' + encodeURIComponent(r.id) + '/beds/';
+    drawer.appendChild(el('div', { cls: 'hn2r-dh' }, [
+      el('div', {}, [el('h2', { id: 'hn2rDTitle', text: 'Room ' + r.number }), el('div', { cls: 'hn2a-sub', style: 'margin:4px 0 0', text: [r.floor, r.capacity + ' sharing', r.roomType].filter(Boolean).join(' · ') })]),
+      (function () { var x = el('button', { type: 'button', cls: 'hn2r-x', 'aria-label': 'Close', text: '×' }); x.addEventListener('click', close); return x; })()
+    ]));
+    drawer.appendChild(el('div', { cls: 'hn2r-kv' }, [
+      el('div', {}, [document.createTextNode('Rent per bed'), el('b', { text: inr(r.rent) })]),
+      el('div', {}, [document.createTextNode('Beds'), el('b', { text: r.occupied + ' occupied · ' + r.free + ' free' })])
+    ]));
+    if (r.amenities && r.amenities.length) drawer.appendChild(el('div', { cls: 'hn2a-help', text: 'Includes: ' + r.amenities.join(', ') }));
+    drawer.appendChild(el('div', { cls: 'hn2r-h3', text: 'Beds' }));
+    r.beds.forEach(function (b) {
+      var box = el('div', { cls: 'hn2r-bl' + (!b.member && !b.blocked ? ' is-free' : '') });
+      var title = 'Bed ' + b.label + (b.note ? ' · ' + b.note : '') + (b.member ? ' · ' + b.member.name : '');
+      var pill = b.member ? el('span', { cls: 'hn2r-pill', style: 'background:var(--hn-slate-tint);color:var(--hn-slate)', text: 'Occupied' })
+        : b.blocked ? el('span', { cls: 'hn2r-pill', style: 'background:#eef0f2;color:#5b6470', text: 'Blocked' })
+        : el('span', { cls: 'hn2r-pill', style: 'background:var(--hn-green-tint);color:var(--hn-green)', text: 'Free' });
+      box.appendChild(el('div', { cls: 't' }, [el('span', { text: title }), pill]));
+      var rentLine = (b.member && typeof b.member.rent === 'number')
+        ? 'Pays ' + inr(b.member.rent) + ' (kept from their earlier bed)'
+        : 'Rent ' + inr(b.rent) + (b.ownRent ? ' (this bed’s own rent)' : ' (room rent)');
+      if (b.member) {
+        var since = b.member.since ? new Date(b.member.since).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }) : '';
+        box.appendChild(el('div', { cls: 'm', text: (since ? 'Since ' + since + ' · ' : '') + rentLine }));
+        var moveRow = el('div', { cls: 'a hn2r-more' }, [form('/user/members/' + encodeURIComponent(b.member.id) + '/move', {}, [freeBedOptions(r.id), btn('Move', false)])]);
+        var moveBtn = el('button', { type: 'button', cls: 'hn2a-btn is-ghost hn2r-sm', text: 'Move to another bed' });
+        moveBtn.addEventListener('click', function () { moveRow.classList.toggle('is-open'); });
+        box.appendChild(el('div', { cls: 'a' }, [link('Open tenant', '/user/member-edit/' + encodeURIComponent(b.member.id) + '/edit', true), moveBtn]));
+        box.appendChild(moveRow);
+        if (typeof b.member.rent === 'number' && b.member.rent !== b.rent) {
+          box.appendChild(el('div', { cls: 'a' }, [form('/user/members/' + encodeURIComponent(b.member.id) + '/rent-reset', {}, [btn('Charge this bed’s rent (' + inr(b.rent) + ') from next month', true)])]));
+        }
+      } else if (b.blocked) {
+        box.appendChild(el('div', { cls: 'm', text: b.blockNote ? 'Reason: ' + b.blockNote : 'Not available for now.' }));
+        box.appendChild(el('div', { cls: 'a' }, [form(base + encodeURIComponent(b.label) + '/block', { unblock: '1' }, [btn('Make it free again', true)])]));
+      } else {
+        box.appendChild(el('div', { cls: 'm', text: rentLine }));
+        var blockRow = el('div', { cls: 'a hn2r-more' }, [form(base + encodeURIComponent(b.label) + '/block', {}, [el('input', { name: 'note', cls: 'hn2r-in', placeholder: 'Reason (optional)', maxlength: '60', style: 'width:170px' }), btn('Block bed', false)])]);
+        var rentRow = el('div', { cls: 'a hn2r-more' }, [form(base + encodeURIComponent(b.label) + '/rent', {}, [
+          el('input', { name: 'rent', cls: 'hn2r-in', inputmode: 'numeric', placeholder: 'Rent ₹', value: b.ownRent ? String(b.rent) : '', 'aria-label': 'This bed’s rent' }),
+          el('input', { name: 'note', cls: 'hn2r-in', placeholder: 'e.g. window', maxlength: '40', value: b.note || '', 'aria-label': 'Note' }), btn('Save', false)])]);
+        var bb = el('button', { type: 'button', cls: 'hn2a-btn is-ghost hn2r-sm', text: 'Block bed' }); bb.addEventListener('click', function () { blockRow.classList.toggle('is-open'); rentRow.classList.remove('is-open'); });
+        var rb = el('button', { type: 'button', cls: 'hn2a-btn is-ghost hn2r-sm', text: 'Set different rent' }); rb.addEventListener('click', function () { rentRow.classList.toggle('is-open'); blockRow.classList.remove('is-open'); });
+        box.appendChild(el('div', { cls: 'a' }, [link('Admit tenant here', '/user/newmember?room=' + encodeURIComponent(r.id) + '&bed=' + encodeURIComponent(b.label), false), bb, rb]));
+        box.appendChild(blockRow); box.appendChild(rentRow);
+      }
+      drawer.appendChild(box);
+    });
+    drawer.appendChild(el('div', { cls: 'hn2r-h3', text: 'Room' }));
+    drawer.appendChild(el('div', { cls: 'hn2r-bl', style: 'border:0;padding:0' }, [el('div', { cls: 'a', style: 'margin:0' }, [
+      link('Edit room', '/user/managerooms/' + encodeURIComponent(r.id) + '/edit', true),
+      form('/user/rooms/' + encodeURIComponent(r.id) + '/beds/add', {}, [btn('Add a bed', true)]),
+      form('/user/managerooms/' + encodeURIComponent(r.id) + '?_method=DELETE', {}, [btn('Delete room', true, ' hn2r-danger')], 'Delete room ' + r.number + '? This cannot be undone.')
+    ])]));
+    drawer.appendChild(el('div', { cls: 'hn2a-help', text: 'A room can be deleted only when nobody lives in it.' }));
+    lastFocus = document.activeElement;
+    dim.classList.add('is-open'); drawer.classList.add('is-open'); drawer.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    drawer.focus();
+  }
+  function close() {
+    dim.classList.remove('is-open'); drawer.classList.remove('is-open'); drawer.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  document.querySelectorAll('[data-room]').forEach(function (b) { b.addEventListener('click', function () { open(b.getAttribute('data-room')); }); });
+  dim.addEventListener('click', close);
+  document.addEventListener('keydown', function (e) {
+    if (!drawer.classList.contains('is-open')) return;
+    if (e.key === 'Escape') return close();
+    if (e.key !== 'Tab') return;
+    var f = drawer.querySelectorAll('button, a[href], input, select'); if (!f.length) return;
+    var first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === drawer)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+})();
+</script>

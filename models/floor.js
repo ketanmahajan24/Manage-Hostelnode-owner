@@ -46,6 +46,11 @@ const floorSchema = new Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User", // This references the User collection
         required: true,
+    },
+    // Property Operations Phase 2: the order floors are shown in (owner can move them up/down).
+    sortOrder: {
+        type: Number,
+        default: 0
     }
 
 });

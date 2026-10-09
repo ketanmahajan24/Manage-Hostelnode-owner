@@ -65,6 +65,17 @@ const memberSchema = new mongoose.Schema({
         type: Date,
         default: null
     },
+    // Property Operations Phase 2: the bed in the room ("A", "B", …).
+    bedLabel: {
+        type: String,
+        default: null
+    },
+    // Phase 2: this tenant's own monthly rent, fixed when they were moved to a
+    // bed with a different rent. Empty = they pay their bed's (room's) rent.
+    rent: {
+        type: Number,
+        default: null
+    },
     payments: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "Payment"

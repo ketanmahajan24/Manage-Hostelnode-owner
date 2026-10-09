@@ -1119,7 +1119,22 @@ router.get("/newmember", jwtAuthMiddleware, attachHostel, async (req, res) => {
         };
       }
     }
-    safeRender(res, "showPage/memberData/newmember.ejs", { rooms, floors, user, prefill });
+    // Phase 2: each room with its floor, rent and free beds (from the bed map); a bed picked there comes pre-selected.
+    let roomChoices = null, bedPick = null;
+    if (selectedHostel) {
+      try {
+        const map = await require("../utils/beds").buildBedMap(userId, selectedHostel);
+        const wantRoom = String(req.query.room || ""), wantBed = String(req.query.bed || "");
+        roomChoices = [];
+        for (const f of map.floors) for (const r of f.rooms) {
+          roomChoices.push({ id: r.id, free: r.free, selected: r.id === wantRoom && r.free > 0,
+            label: `${r.number} · ${f.name} · ₹${r.rent.toLocaleString("en-IN")}/bed · ${r.free ? (r.free === 1 ? "1 bed free" : r.free + " beds free") : "full"}` });
+          const bed = r.id === wantRoom ? r.beds.find(b => b.label === wantBed && !b.member && !b.blocked) : null;
+          if (bed) bedPick = { label: bed.label, room: r.number, roomId: r.id };
+        }
+      } catch (e) { console.error("newmember rooms (non-fatal):", e.message); roomChoices = null; }
+    }
+    safeRender(res, "showPage/memberData/newmember.ejs", { rooms, floors, user, prefill, roomChoices, bedPick });
   } catch (err) {
     console.error("newmember GET error:", err.message);
     res.status(500).send("Server Error.");
@@ -1148,8 +1163,13 @@ router.post("/newMember", jwtAuthMiddleware, attachHostel, async (req, res) => {
     // The room must be this owner's, in the property they are working in.
     const room = await Room.findOne({ _id: assignedRoom_id, user: userId, hostel: selectedHostel });
     if (!room) return res.status(404).send("Room not found.");
-    const living = await Member.countDocuments({ assignedRoom_id: room._id, ...LIVING });
-    if (living >= (Number(room.sharing_capacity) || 0)) return res.status(400).send("This room is full. Please choose another room.");
+    // Phase 2: a free (not blocked) bed — the one picked on the bed map if it is still free, else the first free one.
+    const { ensureBeds, bedRent } = require("../utils/beds");
+    const beds = await ensureBeds(room.toObject());
+    const freeBeds = beds.filter(b => !b.member && !b.blocked);
+    if (!freeBeds.length) return res.status(400).send("This room is full. Please choose another room.");
+    const bed = freeBeds.find(b => b.label === String(m.bedLabel || "")) || freeBeds[0];
+    const rent = bedRent(room, bed.label);
 
     // A new tenant lives here from today: "Active". (Unpaid rent shows as dues, not as a different status.)
     const newMember = new Member({
@@ -1157,13 +1177,13 @@ router.post("/newMember", jwtAuthMiddleware, attachHostel, async (req, res) => {
       assignedRoom_id: room._id, name: clean(name, 100), fatherName: clean(fatherName || "", 100),
       mobileNo: String(mobileNo), aadharNo: clean(aadharNo || "", 20), address: clean(address || "", 500),
       profession: clean(profession || "", 100), joiningDate,
-      assignedRoom: room.room_number, status: "Active"
+      assignedRoom: room.room_number, bedLabel: bed.label, status: "Active"
     });
     await newMember.validate();   // check everything before saving anything, so no half-saved records
 
     // The joining month's rent, dated on the joining day and marked with its month, so the
     // monthly job (utils/monthlyRent.js) charges the following months and never this one again.
-    const newPayment = new Payment({ user: userId, memberId: newMember._id, roomId: room._id, roomFees: room.room_fees, totalFees: room.room_fees, dueAmount: room.room_fees,
+    const newPayment = new Payment({ user: userId, memberId: newMember._id, roomId: room._id, roomFees: rent, totalFees: rent, dueAmount: rent,
       paymentDate: joiningDate, payableDate: joiningDate, chargeMonth: moment(joiningDate).tz(TZ).format("YYYY-MM") });
     await newPayment.save();
     newMember.payments.push(newPayment._id);
@@ -1173,6 +1193,8 @@ router.post("/newMember", jwtAuthMiddleware, attachHostel, async (req, res) => {
       await Payment.deleteOne({ _id: newPayment._id }).catch(() => {});
       throw e;
     }
+    // Two admissions into the same bed at the same moment: the later one gets the next free bed.
+    await ensureBeds((await Room.findById(room._id).lean()) || room.toObject()).catch(() => {});
     await syncRoomAndFloor(room._id);
 
     // Phase 3 — tenant added from an enquiry ("Convert"): close that enquiry.
@@ -1833,13 +1855,21 @@ router.post('/listing/:id/edit', jwtAuthMiddleware, listingUploadMiddleware, asy
 
     // Rooms
     try {
-      listing.rooms = Object.values(req.body.rooms || {}).map(r => ({
-        type:      clean(r.type || ""),
-        price:     toNum(r.price),
-        deposit:   toNum(r.deposit),
-        features:  (Array.isArray(r.features) ? r.features : r.features ? [r.features] : []).map(f => clean(f)),
-        available: r.available === "true" || r.available === true
-      })).filter(r => r.type).slice(0, 20);
+      // Phase 2: a room type keeps its link to the property's rooms (picked rooms, free beds) when the listing is edited.
+      const oldTypes = new Map((listing.rooms || []).map(r => [String(r.type || "").trim().toLowerCase(), r]));
+      listing.rooms = Object.values(req.body.rooms || {}).map(r => {
+        const type = clean(r.type || "");
+        const was = oldTypes.get(type.trim().toLowerCase());
+        return {
+          type,
+          price:     toNum(r.price),
+          deposit:   toNum(r.deposit),
+          features:  (Array.isArray(r.features) ? r.features : r.features ? [r.features] : []).map(f => clean(f)),
+          available: r.available === "true" || r.available === true,
+          roomIds:   was && was.roomIds ? Array.from(was.roomIds) : [],
+          freeBeds:  was && typeof was.freeBeds === "number" ? was.freeBeds : null
+        };
+      }).filter(r => r.type).slice(0, 20);
     } catch (_) { /* keep existing rooms */ }
 
     // Amenities / Rules
@@ -1869,6 +1899,7 @@ router.post('/listing/:id/edit', jwtAuthMiddleware, listingUploadMiddleware, asy
 
     listing.status = listing.planHold ? "Pending" : "Approved";   // a hidden draft stays hidden when edited
     await listing.save();
+    if (listing.linkedHostel) await require("../utils/beds").refreshListings(listing.linkedHostel);   // Phase 2: free beds for any renamed/new room type
     res.redirect("/user/my-listings");
 
   } catch (err) {

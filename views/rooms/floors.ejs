@@ -1,0 +1,91 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Property Operations Phase 2 — Floors: add, rename, reorder, delete (only when empty). %>
+<%- include("../account/_style.ejs") %>
+<style>
+  .hn2f .hn2a-inner { max-width: 1120px; }
+  .hn2f-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+  .hn2f-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+  .hn2f-card { background: #fff; border: 1px solid var(--hn-line); border-radius: 18px; padding: 18px; box-shadow: 0 8px 24px -20px rgba(16,35,27,0.35); }
+  .hn2f-card h2 { font-size: 18px; font-weight: 800; margin: 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--hn-ink); overflow-wrap: anywhere; }
+  .hn2f-order { display: flex; gap: 4px; }
+  .hn2f-order button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--hn-line); background: #fff; cursor: pointer; color: var(--hn-body); font-size: 14px; }
+  .hn2f-order button:disabled { opacity: .35; cursor: default; }
+  .hn2f-nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+  .hn2f-nums div { background: #f5faf7; border-radius: 12px; padding: 10px; font-size: 12px; color: var(--hn-soft); font-weight: 600; }
+  .hn2f-nums b { display: block; font-size: 20px; color: var(--hn-ink); font-weight: 800; }
+  .hn2f-nums .is-free b { color: var(--hn-green); }
+  .hn2f-bar { height: 8px; border-radius: 99px; background: #eef4f1; overflow: hidden; }
+  .hn2f-bar i { display: block; height: 100%; background: var(--hn-green); border-radius: 99px; }
+  .hn2f-cap { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; color: var(--hn-soft); margin-top: 6px; }
+  .hn2f-acts { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+  .hn2f-acts form { margin: 0; }
+  .hn2f-sm, .hn2f-sm:hover { min-height: 36px !important; padding: 6px 12px !important; font-size: 13px !important; border-radius: 10px !important; }
+  .hn2f-ren { display: none; gap: 8px; margin-top: 10px; }
+  .hn2f-ren.is-open { display: flex; }
+  .hn2f-ren input { flex: 1; height: 36px; border: 1px solid #cfdcd5; border-radius: 10px; padding: 0 10px; font-size: 13.5px; min-width: 0; }
+  .hn2f-add { border: 2px dashed #bfe8d2; border-radius: 18px; padding: 18px; background: rgba(255,255,255,0.6); }
+  .hn2f-add form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .hn2f-add input { flex: 1; min-width: 140px; height: 42px; border: 1px solid #cfdcd5; border-radius: 11px; padding: 0 12px; font-size: 14px; }
+  .hn2f-sugg { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .hn2f-sugg button { font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--hn-line); background: #fff; color: var(--hn-body); cursor: pointer; }
+  .hn2f-danger, .hn2f-danger:hover { color: var(--hn-coral) !important; }
+</style>
+<div class="hn2a hn2f">
+  <div class="hn2a-inner">
+    <div class="hn2f-head">
+      <div><h1 class="hn2a-title">Floors</h1><div class="hn2a-sub"><%= hostelName %> · <%= map.floors.filter(function (f) { return f.id; }).length %> floor<%= map.floors.filter(function (f) { return f.id; }).length === 1 ? "" : "s" %></div></div>
+      <a class="hn2a-btn is-ghost" href="/user/allrooms">Rooms &amp; beds</a>
+    </div>
+    <% if (flash.msg) { %><div class="hn2a-notice is-ok" role="status"><%= flash.msg %></div><% } %>
+    <% if (flash.err) { %><div class="hn2a-notice is-bad" role="alert"><%= flash.err %></div><% } %>
+    <% const real = map.floors.filter(function (f) { return f.id; }); %>
+    <div class="hn2f-grid">
+      <% real.forEach(function (f, i) { const pct = f.beds ? Math.round(f.occupied / f.beds * 100) : 0; %>
+        <div class="hn2f-card">
+          <h2><span><%= f.name %></span>
+            <span class="hn2f-order">
+              <form method="POST" action="/user/floors/<%= f.id %>/move"><input type="hidden" name="dir" value="up"><button type="submit" aria-label="Move <%= f.name %> up" <%= i === 0 ? "disabled" : "" %>>↑</button></form>
+              <form method="POST" action="/user/floors/<%= f.id %>/move"><input type="hidden" name="dir" value="down"><button type="submit" aria-label="Move <%= f.name %> down" <%= i === real.length - 1 ? "disabled" : "" %>>↓</button></form>
+            </span></h2>
+          <div class="hn2f-nums"><div>Rooms<b><%= f.rooms.length %></b></div><div>Beds<b><%= f.beds %></b></div><div class="is-free">Free<b><%= f.free %></b></div></div>
+          <% if (f.beds) { %>
+            <div class="hn2f-bar" role="img" aria-label="<%= pct %> percent full"><i style="width:<%= pct %>%"></i></div>
+            <div class="hn2f-cap"><span><%= pct %>% full</span><span><%= f.occupied %> of <%= f.beds %> beds</span></div>
+          <% } else { %><div class="hn2a-help">No rooms yet.</div><% } %>
+          <div class="hn2f-acts">
+            <% if (f.rooms.length) { %><a class="hn2a-btn is-ghost hn2f-sm" href="/user/allrooms#<%= f.id %>">View beds</a><% } %>
+            <a class="hn2a-btn hn2f-sm <%= f.rooms.length ? 'is-ghost' : '' %>" href="/user/newroom?floor=<%= f.id %>">+ Add rooms</a>
+            <button type="button" class="hn2a-btn is-ghost hn2f-sm" data-ren="<%= f.id %>">Rename</button>
+            <% if (!f.rooms.length) { %>
+              <form method="POST" action="/user/managefloor/<%= f.id %>?_method=DELETE" data-confirm="Delete floor <%= f.name %>?"><button type="submit" class="hn2a-btn is-ghost hn2f-sm hn2f-danger">Delete</button></form>
+            <% } %>
+          </div>
+          <form class="hn2f-ren" id="ren-<%= f.id %>" method="POST" action="/user/floors/<%= f.id %>/rename">
+            <input name="floor_name" value="<%= f.name %>" maxlength="40" required aria-label="New name for <%= f.name %>">
+            <button type="submit" class="hn2a-btn hn2f-sm">Save</button>
+          </form>
+        </div>
+      <% }) %>
+      <div class="hn2f-add" id="add">
+        <div class="hn2a-card-title">Add a floor</div>
+        <div class="hn2a-help">Any name: Basement, Ground, 1–20, Block A, Wing B.</div>
+        <form method="POST" action="/user/newfloor">
+          <input name="floor[floor_name]" id="newFloorName" maxlength="40" required placeholder="e.g. Floor 2" aria-label="Floor name">
+          <button type="submit" class="hn2a-btn">+ Add floor</button>
+        </form>
+        <div class="hn2f-sugg">
+          <% ["Basement", "Ground", "Floor 1", "Floor 2", "Floor 3", "Block A"].filter(function (n) { return !real.some(function (f) { return f.name.toLowerCase() === n.toLowerCase(); }); }).forEach(function (n) { %><button type="button" data-sugg="<%= n %>"><%= n %></button><% }) %>
+        </div>
+      </div>
+    </div>
+    <div class="hn2a-help" style="margin-top:16px">A floor can be deleted only when it has no rooms.</div>
+  </div>
+</div>
+<script>
+(function () {
+  document.querySelectorAll('[data-ren]').forEach(function (b) { b.addEventListener('click', function () { var f = document.getElementById('ren-' + b.getAttribute('data-ren')); f.classList.toggle('is-open'); if (f.classList.contains('is-open')) f.querySelector('input').focus(); }); });
+  document.querySelectorAll('[data-confirm]').forEach(function (f) { f.addEventListener('submit', function (e) { if (!confirm(f.getAttribute('data-confirm'))) e.preventDefault(); }); });
+  document.querySelectorAll('[data-sugg]').forEach(function (b) { b.addEventListener('click', function () { var i = document.getElementById('newFloorName'); i.value = b.getAttribute('data-sugg'); i.focus(); }); });
+  if (location.hash === '#add') { var i = document.getElementById('newFloorName'); if (i) i.focus(); }
+})();
+</script>

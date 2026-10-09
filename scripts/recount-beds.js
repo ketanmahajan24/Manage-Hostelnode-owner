@@ -64,6 +64,19 @@ const mongoose = require("mongoose");
   if (APPLY) for (const f of floors) await syncFloor(f._id);
   console.log(`Floors ${APPLY ? "recounted" : "to recount"}: ${floors.length}`);
 
+  // 4. (Phase 2) Beds A, B, C… in every room, and a bed for every tenant who lives there.
+  //    The Rooms & beds page also does this by itself the first time it opens; this just does it for everyone now.
+  if (APPLY) {
+    const { ensureBeds, refreshListings } = require("../utils/beds");
+    const all = await Room.find({}).lean();
+    for (const r of all) await ensureBeds(r);
+    const hostels = [...new Set(all.map(r => String(r.hostel)))];
+    for (const h of hostels) await refreshListings(h);
+    console.log(`Beds set up in ${all.length} rooms; linked listings updated.`);
+  } else {
+    console.log("Beds: each room's beds (A, B, C…) will be set up with --apply.");
+  }
+
   await mongoose.disconnect();
   console.log(APPLY ? "\nDone." : "\nNothing was changed.");
 })().catch(err => { console.error("Recount failed:", err.message); process.exit(1); });

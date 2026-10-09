@@ -63,6 +63,8 @@ async function syncRoomAndFloor(roomId) {
   try {
     const room = await syncRoom(roomId);
     if (room && room.floor_id) await syncFloor(room.floor_id);
+    // Phase 2: keep "beds free" on linked hostelnode.com listings up to date (never throws).
+    if (room && room.hostel) await require("./beds").refreshListings(room.hostel);
     return room;
   } catch (err) {
     console.error("Bed count sync (non-fatal):", err.message);

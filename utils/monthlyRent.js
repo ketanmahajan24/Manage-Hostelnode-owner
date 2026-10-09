@@ -53,7 +53,7 @@ async function runMonthlyRent(now = new Date()) {
     const key = monthStart.format("YYYY-MM");
 
     const members = await Member.find({ ...LIVING, joiningDate: { $lt: monthStart.toDate() } },
-      { _id: 1, name: 1, user: 1, joiningDate: 1, assignedRoom_id: 1 }).lean();
+      { _id: 1, name: 1, user: 1, joiningDate: 1, assignedRoom_id: 1, bedLabel: 1, rent: 1 }).lean();
 
     for (const m of members) {
       out.checked++;
@@ -71,9 +71,9 @@ async function runMonthlyRent(now = new Date()) {
         });
         if (already) { out.skipped++; continue; }
 
-        const room = m.assignedRoom_id ? await Room.findById(m.assignedRoom_id, { room_fees: 1 }).lean() : null;
+        const room = m.assignedRoom_id ? await Room.findById(m.assignedRoom_id, { room_fees: 1, beds: 1 }).lean() : null;
         if (!room) { out.skipped++; console.error(`Monthly rent: ${m.name} has no room, not charged`); continue; }
-        const fee = Math.max(0, Number(room.room_fees) || 0);
+        const fee = Math.max(0, require("./beds").tenantRent(m, room));   // Phase 2: bed rent, or the tenant's own fixed rent
         if (!fee) { out.skipped++; continue; }
 
         let pay;
