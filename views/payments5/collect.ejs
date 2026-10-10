@@ -1,0 +1,14 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Property Operations Phase 5 — Collect payment as its own page (when the slide-in drawer cannot open). %>
+<%- include("../account/_style.ejs") %>
+<%- include("../tenants/_style.ejs") %>
+<%- include("_style.ejs") %>
+<div class="hn2a hn3 hn5">
+  <div class="hn2a-inner" style="max-width:560px">
+    <a class="hn3-back" href="<%= back %>">← Back</a>
+    <div class="hn2a-card" style="padding:22px 24px">
+      <%- include("_collectPanel.ejs") %>
+    </div>
+  </div>
+  <%- include("_drawer.ejs", { paid: null, flash: { msg: "" }, self: "" }) %>
+</div>

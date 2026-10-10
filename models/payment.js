@@ -64,7 +64,38 @@ const paymentSchema = new mongoose.Schema({
     type: String, 
     enum: ["Paid", "Due","Advanced"], 
     default: "Due" 
-    }
+    },
+
+  // ── Property Operations Phase 5: rent ledger and cash payments ──
+  // All optional: entries made before Phase 5 simply leave them empty, and the
+  // ledger works out what they are (a charge has roomFees, a payment has amountPaid).
+  // kind: "rent" | "extra" | "payment" | "deduction" | "refund" | "depositAdjust"
+  kind:      { type: String, default: undefined },
+  // The month an extra charge belongs to ("2026-10"). Rent charges use chargeMonth.
+  month:     { type: String, default: undefined },
+  // Extra charges: electricity, food, laundry, damage, lateFee, other.
+  category:  { type: String, default: undefined },
+  note:      { type: String, default: undefined },
+  // Payments: UPI / bank reference, the receipt number, and who recorded it.
+  reference: { type: String, default: undefined },
+  receiptNo: { type: String, default: undefined },
+  recordedBy: {
+    _id: false,
+    id:   { type: mongoose.Schema.Types.ObjectId },
+    name: { type: String },
+    role: { type: String }        // "owner" (wardens / managers later); "tenant" for online payments (Phase 7)
+  },
+  // What this payment paid for when it was recorded (shown on its receipt), and what was still due after it.
+  appliedTo: [{ _id: false, label: String, amount: Number }],
+  dueAfter:  { type: Number, default: undefined },
+  // A wrong entry is cancelled, never deleted: it stays in the ledger, crossed out, with the reason.
+  cancelledAt:  { type: Date, default: undefined },
+  cancelReason: { type: String, default: undefined },
+  cancelledBy: {
+    _id: false,
+    id:   { type: mongoose.Schema.Types.ObjectId },
+    name: { type: String }
+  }
 
 });
 

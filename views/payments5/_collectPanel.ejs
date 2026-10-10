@@ -1,0 +1,41 @@
+<%# Property Operations Phase 5 — Collect payment (in the slide-in drawer, or as its own page). %>
+<%
+  const first = String(m.name || "").trim().split(/\s+/)[0] || m.name;
+  const roomLine = m.leftDate ? "Moved out " + T.day(m.leftDate) : ["Room " + (m.assignedRoom || "—"), m.bedLabel].filter(Boolean).join(" · ");
+%>
+<div class="hn5-panel" data-hn5-panel>
+  <div class="hn2a-row" style="justify-content:space-between;align-items:flex-start;margin:0">
+    <div><h2 id="hn5-collect-title">Collect payment</h2><div class="hn5-mut" style="margin-top:4px"><%= m.name %> · <%= roomLine %></div></div>
+    <% if (partial) { %><button type="button" class="hn5-x" data-hn5-close aria-label="Close">✕</button><% } %>
+  </div>
+  <% if (flash && flash.err) { %><div class="hn2a-notice is-bad" role="alert" style="margin:14px 0 0"><%= flash.err %></div><% } %>
+  <% if (lg.due > 0) { %>
+  <div class="hn5-duebox"><small><%= lg.notYetDue ? "To pay" : "Due now" %></small><b><%= T.inr(lg.due) %></b>
+    <% lg.owing.slice(0, 6).forEach(function (o) { %><div class="ln"><span><%= o.label %></span><span><%= T.inr(o.amount) %></span></div><% }) %>
+    <% if (lg.owing.length > 6) { %><div class="ln"><span>and <%= lg.owing.length - 6 %> more months</span><span></span></div><% } %>
+  </div>
+  <% } else { %>
+  <div class="hn5-duebox is-clear"><small>Nothing due now</small><b><%= lg.advance > 0 ? T.inr(lg.advance) + " in advance" : "All paid ✓" %></b><div class="ln" style="color:#0a5c38"><span>A payment now is kept as advance for the next rent.</span></div></div>
+  <% } %>
+  <form method="POST" action="/user/tenants/<%= m._id %>/payments" data-hn5-collect>
+    <input type="hidden" name="back" value="<%= back %>">
+    <div class="hn5-f"><label for="hn5-amt">Amount received</label>
+      <div class="hn2a-row" style="margin:0;gap:8px;flex-wrap:nowrap"><input id="hn5-amt" class="hn2a-input" name="amount" inputmode="numeric" autocomplete="off" required placeholder="₹" value="<%= lg.due > 0 ? lg.due : '' %>" style="flex:1;font-weight:800;font-size:16px;max-width:none">
+        <% if (lg.due > 0) { %><button type="button" class="hn5-fill" data-hn5-fill="<%= lg.due %>">Full due <%= T.inr(lg.due) %></button><% } %></div>
+      <div class="hn5-help" style="margin-top:6px">Goes to the oldest unpaid month first. More than the due is kept as advance.</div></div>
+    <div class="hn5-f"><span class="lb" id="hn5-mode-l">How was it paid?</span>
+      <div class="hn3-seg" role="radiogroup" aria-labelledby="hn5-mode-l">
+        <label><input type="radio" name="mode" value="cash" checked><span>💵 Cash</span></label>
+        <label><input type="radio" name="mode" value="upi"><span>📱 UPI to you</span></label>
+        <label><input type="radio" name="mode" value="bank"><span>🏦 Bank</span></label>
+      </div></div>
+    <div class="hn5-f hn5-g2">
+      <div><label for="hn5-ref">UPI / bank reference <span class="hn5-mut">(optional)</span></label><input id="hn5-ref" class="hn2a-input" name="reference" maxlength="60" autocomplete="off"></div>
+      <div><label for="hn5-date">Date received</label><input id="hn5-date" class="hn2a-input" type="date" name="date" value="<%= today %>" max="<%= today %>" required></div>
+    </div>
+    <div class="hn5-f"><label for="hn5-note">Note <span class="hn5-mut">(optional)</span></label><input id="hn5-note" class="hn2a-input" name="note" maxlength="200" placeholder="e.g. paid by his father" autocomplete="off"></div>
+    <% if (waOn) { %><label class="hn5-chk"><input type="checkbox" name="sendWa" value="1" checked> Send the receipt to <%= first %> on WhatsApp</label><% } %>
+    <button type="submit" class="hn2a-btn hn5-go" data-hn5-go>Record payment</button>
+    <div class="hn5-help" style="text-align:center">Recorded by you<%= ownerName ? " (" + ownerName + ")" : "" %> · a receipt number is made automatically</div>
+  </form>
+</div>

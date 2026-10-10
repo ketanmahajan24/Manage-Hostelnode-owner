@@ -42,6 +42,9 @@ const initials = name => String(name || "?").trim().split(/\s+/).slice(0, 2).map
 const TONES = ["green", "blue", "amber", "violet", "slate"];
 const toneOf = id => TONES[parseInt(String(id || "0").slice(-2), 16) % TONES.length];
 
+// Phase 5: charges that are not the monthly rent (an extra charge does not mean this month's rent was charged).
+const NOT_RENT = ["extra", "deduction", "refund"];
+
 /** The day of the month rent is due (1–31), from the tenant's own due day or their joining day. */
 function dueDayOf(m) {
   const d = Number(m.dueDay);
@@ -55,14 +58,14 @@ function dueDayOf(m) {
  */
 function moneyOf(m, now = new Date()) {
   const base = money(m);
-  const pays = Array.isArray(m.payments) ? m.payments.filter(p => p && typeof p === "object") : [];
+  const pays = Array.isArray(m.payments) ? m.payments.filter(p => p && typeof p === "object" && !p.cancelledAt) : [];   // Phase 5: cancelled entries do not count
   const charges = pays.filter(p => Number(p.roomFees) > 0).sort((a, b) => new Date(a.paymentDate || 0) - new Date(b.paymentDate || 0));
   let paid = base.paid, since = null;
   for (const c of charges) { if (paid >= c.roomFees) { paid -= c.roomFees; continue; } since = c.paymentDate || null; break; }
   const today = moment(now).tz(TZ).startOf("day");
   const daysLate = base.due > 0 && since ? Math.max(0, today.diff(moment(since).tz(TZ).startOf("day"), "days")) : 0;
   const key = today.format("YYYY-MM");
-  const chargedThisMonth = charges.some(c => c.chargeMonth === key || (!c.chargeMonth && moment(c.paymentDate).tz(TZ).format("YYYY-MM") === key));
+  const chargedThisMonth = charges.some(c => c.chargeMonth === key || (!c.chargeMonth && !NOT_RENT.includes(c.kind) && moment(c.paymentDate).tz(TZ).format("YYYY-MM") === key));
   const next = m.leftDate ? null : nextDueDate(dueAnchor(m), now);
   // One short line for the list: "₹6,500 due", "Paid ✓", "Due 20 Oct".
   let state;
@@ -140,13 +143,14 @@ async function historyOf(member, viewerId, limit = 200) {
   const Payment = require("../models/payment");
   const [events, pays] = await Promise.all([
     TenantEvent.find({ member: member._id, owner: member.user }).sort({ at: -1 }).limit(limit).lean(),
-    Payment.find({ _id: { $in: (member.payments || []).filter(Boolean).map(p => p._id || p) }, memberId: member._id, amountPaid: { $gt: 0 } }, { amountPaid: 1, paymentMode: 1, paymentDate: 1 }).sort({ paymentDate: -1 }).limit(limit).lean(),
+    Payment.find({ _id: { $in: (member.payments || []).filter(Boolean).map(p => p._id || p) }, memberId: member._id, amountPaid: { $gt: 0 } }, { amountPaid: 1, paymentMode: 1, paymentDate: 1, receiptNo: 1, recordedBy: 1, cancelledAt: 1 }).sort({ paymentDate: -1 }).limit(limit).lean(),
   ]);
   const rows = events.map(e => ({
     at: e.at, kind: e.kind, text: e.text, note: e.note,
     by: e.by && e.by.id && String(e.by.id) === String(viewerId) ? "you" : (e.by && e.by.name) || "",
   })).concat(pays.map(p => ({
-    at: p.paymentDate, kind: "payment", text: `Paid ${inr(p.amountPaid)}${p.paymentMode ? " · " + p.paymentMode : ""}`, note: "", by: "", paymentId: String(p._id),
+    at: p.paymentDate, kind: "payment", text: `Paid ${inr(p.amountPaid)}${p.paymentMode ? " · " + p.paymentMode : ""}${p.cancelledAt ? " (cancelled)" : ""}`, note: p.receiptNo ? "receipt " + p.receiptNo : "",
+    by: p.recordedBy && p.recordedBy.id ? (String(p.recordedBy.id) === String(viewerId) ? "you" : p.recordedBy.name || "") : "", paymentId: String(p._id),
   })));
   rows.sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
   return rows.slice(0, limit);

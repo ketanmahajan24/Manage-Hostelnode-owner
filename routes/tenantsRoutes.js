@@ -347,7 +347,7 @@ async function admitTenant(req, res) {
     const made = [];
     const charge = async (amount, date, key) => {
       const c = await new Payment({ user: userId, memberId: newMember._id, roomId: room._id, roomFees: amount, totalFees: amount, dueAmount: amount,
-        paymentDate: date, payableDate: date, chargeMonth: key }).save();
+        paymentDate: date, payableDate: date, chargeMonth: key, kind: "rent" }).save();
       made.push(c._id);
     };
     try {
@@ -357,8 +357,11 @@ async function admitTenant(req, res) {
       }
       if (firstCharge > 0) await charge(firstCharge, plan.first.date, plan.first.key);
       if (firstAmount > 0) {
+        // Phase 5: with a receipt number and who recorded it, like every payment.
+        const P5 = require("../utils/payments");
+        const byName = (await Owner.findById(userId, { name: 1 }).lean())?.name || "";
         const paid = await new Payment({ user: userId, memberId: newMember._id, amountPaid: firstAmount, paymentMode: MODES[values.firstMode],
-          paymentDate: new Date(), status: "Paid" }).save();
+          paymentDate: new Date(), status: "Paid", kind: "payment", receiptNo: await P5.nextReceiptNo(userId, new Date()), recordedBy: { id: userId, name: byName, role: "owner" } }).save();
         made.push(paid._id);
       }
       newMember.payments.push(...made);
@@ -458,7 +461,13 @@ router.get("/tenants/:id", jwtAuthMiddleware, attachHostel, async (req, res) => 
     const ownRent = typeof m.rent === "number";
     const leavingPassed = !!(m.leavingDate && !m.leftDate && moment(m.leavingDate).tz(TZ).isBefore(todayIST()));
     const kycView = await require("./kycOwnerRoutes").viewFor(req.user.id, m.mobileNo);   // Phase 4
+    // Phase 5: the month-by-month ledger, and the "recorded" toast after collecting.
+    const ledgerOn = require("../utils/payments").ledgerOn();
+    const L = require("../utils/ledger");
+    const ledger = ledgerOn && tab === "payments" ? L.ledgerOf(m) : null;
+    const paid = ledgerOn ? await require("./paymentsRoutes").paidToast(req) : null;
     res.render("tenants/profile.ejs", {
+      ledgerOn, ledger, L, chargeMonths: ledgerOn ? L.chargeMonths(m) : [], viewerId: req.user.id, paid, self: req.originalUrl,
       user, m, tab, room, floor, hostel, sameHostel, status, living, moveTo, payments, history, settlement: s, canUndo,
       money: T.moneyOf(m), rent: tenantRent(m, room || { room_fees: 0, beds: [] }), bedRentNow: room ? bedRent(room, m.bedLabel) : null, ownRent,
       dueDay: T.dueDayOf(m), leavingPassed, kycView, flash: flash(req), T, today: ymd(new Date()), slipWhatsApp: require("../utils/settlementPdf").slipOn(),
@@ -657,13 +666,13 @@ router.post("/tenants/:id/move-out", jwtAuthMiddleware, attachHostel, async (req
       const pay = async doc => { const p = await new Payment({ user: req.user.id, memberId: m._id, paymentDate: leftOn, ...doc }).save(); made.push(p._id); };
       let left = n.depositHeld;
       const forDues = Math.min(left, n.dues); left -= forDues;
-      if (forDues > 0) await pay({ amountPaid: forDues, paymentMode: "Deposit adjusted", status: "Paid" });
+      if (forDues > 0) await pay({ amountPaid: forDues, paymentMode: "Deposit adjusted", status: "Paid", kind: "depositAdjust" });
       if (n.dedTotal > 0) {
-        await pay({ roomId: m.assignedRoom_id, roomFees: n.dedTotal, totalFees: n.dedTotal, dueAmount: n.dedTotal, status: "Due", paymentMode: "Move-out deductions" });
+        await pay({ roomId: m.assignedRoom_id, roomFees: n.dedTotal, totalFees: n.dedTotal, dueAmount: n.dedTotal, status: "Due", paymentMode: "Move-out deductions", kind: "deduction", note: deductions.map(d => d.label).join(", ").slice(0, 120) });
         const forDed = Math.min(left, n.dedTotal); left -= forDed;
-        if (forDed > 0) await pay({ amountPaid: forDed, paymentMode: "Deposit adjusted", status: "Paid" });
+        if (forDed > 0) await pay({ amountPaid: forDed, paymentMode: "Deposit adjusted", status: "Paid", kind: "depositAdjust" });
       }
-      if (n.advance > 0 && n.net > 0) await pay({ roomFees: Math.min(n.advance, n.net), totalFees: Math.min(n.advance, n.net), status: "Paid", paymentMode: "Advance refunded" });
+      if (n.advance > 0 && n.net > 0) await pay({ roomFees: Math.min(n.advance, n.net), totalFees: Math.min(n.advance, n.net), status: "Paid", paymentMode: "Advance refunded", kind: "refund" });
     } catch (e) {
       await Payment.deleteMany({ _id: { $in: made } }).catch(() => {});
       throw e;

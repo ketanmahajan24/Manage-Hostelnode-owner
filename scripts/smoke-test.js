@@ -37,9 +37,10 @@ const PAGES = [
   "/user/members?tab=out",
   "/user/newmember",
   "/user/newAdded/successfully",
-  "/user/allfeesrecords",
-  "/user/upcomingPayments",
-  "/user/deureports",
+  "/user/payments",                 // Property Operations Phase 5 (Collect Payment)
+  "/user/payments?tab=collected",
+  "/user/payments/upcoming",
+  "/user/dues",
   "/user/revenue",
   "/user/list-property",
   "/user/my-listings",
@@ -55,7 +56,7 @@ const PAGES = [
 ];
 
 const { SMOKE_MEMBER_ID: M, SMOKE_ROOM_ID: R, SMOKE_LISTING_ID: L } = process.env;
-if (M) PAGES.push(`/user/tenants/${M}`, `/user/tenants/${M}?tab=payments`, `/user/tenants/${M}?tab=documents`, `/user/tenants/${M}?tab=history`, `/user/members/${M}/addpayment`, `/user/payment-history/${M}`);
+if (M) PAGES.push(`/user/tenants/${M}`, `/user/tenants/${M}?tab=payments`, `/user/tenants/${M}?tab=documents`, `/user/tenants/${M}?tab=history`, `/user/tenants/${M}/collect`);
 if (R) PAGES.push(`/user/managerooms/${R}/edit`);
 if (L) PAGES.push(`/user/listing/${L}/edit`);
 if (process.env.SMOKE_ENQUIRY_ID) PAGES.push(`/user/newmember?enquiry=${process.env.SMOKE_ENQUIRY_ID}`);

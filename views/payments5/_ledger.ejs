@@ -1,0 +1,120 @@
+<%# Property Operations Phase 5 — the tenant's Payments tab: month-by-month ledger, deposit, add charge, cancel entry.
+    Needs: m, lg (ledger), living, settlement, T, L (utils/ledger), months (for Add charge), viewerId, self. %>
+<%
+  const TONE = { bad: "t-bad", warn: "t-warn", ok: "t-ok", blue: "t-blue", slate: "t-slate" };
+  const mid = String(m._id);
+  const byWho = function (e) { return e.recordedBy && e.recordedBy.id ? (String(e.recordedBy.id) === String(viewerId) ? "you" : (e.recordedBy.name || "")) : ""; };
+  const ICON = function (c) { return c.kind === "rent" ? "🧾" : c.kind === "extra" ? (L.CATEGORIES[c.entry.category] || L.CATEGORIES.other).icon : c.kind === "deduction" ? "🔧" : "↩️"; };
+  const afterCancel = function (e) {
+    if (L.isPayment(e)) return Math.max(0, lg.charged - (lg.paid + lg.advance - Number(e.amountPaid)));
+    return Math.max(0, (lg.charged - Number(e.roomFees)) - (lg.paid + lg.advance));
+  };
+  const cancelBtn = function (e, what) {
+    if (!L.cancellable(m, e)) return "";
+    const attrs = { action: "/user/tenants/" + mid + "/entries/" + e._id + "/cancel", what: what, receipt: e.receiptNo || "—", when: T.day(e.paymentDate) + (byWho(e) ? " · by " + byWho(e) : ""), after: T.inr(afterCancel(e)) };
+    return '<button type="button" class="hn5-lnk is-red" data-hn5-open="hn5-cancel"' + Object.keys(attrs).map(function (k) { return ' data-set-' + k + '="' + String(attrs[k]).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;") + '"'; }).join("") + '>' + (L.isPayment(e) ? "Cancel entry" : "Cancel") + '</button>';
+  };
+  const dep = Number(m.depositPaid) || 0, depAgreed = Number(m.depositAmount) || 0;
+  const settled = settlement && !settlement.undoneAt;
+  const latestKey = lg.months.length ? lg.months[0].key : "";
+%>
+<section aria-labelledby="h-pay">
+  <h2 id="h-pay" style="position:absolute;left:-9999px">Payments</h2>
+  <div class="hn3-head" style="align-items:center;margin-bottom:14px">
+    <div class="hn5-totals"><span>Charged <b><%= T.inr(lg.charged) %></b></span><span class="t-ok-text">Paid <%= T.inr(lg.paid + lg.advance) %></span>
+      <% if (lg.due > 0) { %><span class="t-bad-text">Due <%= T.inr(lg.due) %></span><% } else if (lg.advance > 0) { %><span class="t-ok-text">In advance <%= T.inr(lg.advance) %></span><% } else { %><span class="t-ok-text">All paid ✓</span><% } %></div>
+    <div class="hn2a-row" style="margin:0;gap:8px;flex-wrap:wrap">
+      <% if (living) { %><button type="button" class="hn2a-btn is-ghost is-sm" data-hn5-open="hn5-charge">+ Add charge</button><% } %>
+      <a class="hn2a-btn is-ghost is-sm" href="/user/tenants/<%= mid %>/statement.pdf" target="_blank" rel="noopener">⬇ Statement PDF</a>
+      <a class="hn2a-btn is-sm" data-collect href="/user/tenants/<%= mid %>/collect?back=<%= encodeURIComponent('/user/tenants/' + mid + '?tab=payments') %>"><%= lg.due > 0 ? "Collect " + T.inr(lg.due) : "Record a payment" %></a>
+    </div>
+  </div>
+
+  <div class="hn2a-card hn5-dep">
+    <span style="font-weight:800">🔒 Security deposit</span>
+    <% if (!depAgreed && !dep) { %><span class="hn5-mut">None set. Set it in Overview → Stay.</span>
+    <% } else { %>
+      <span><span class="hn5-mut">Agreed</span> <%= T.inr(depAgreed || dep) %></span>
+      <span><span class="hn5-mut">Collected</span> <%= T.inr(dep) %><%= dep && m.depositMode ? " · " + m.depositMode.toLowerCase() : "" %><%= dep && m.depositPaidAt ? ", " + T.day(m.depositPaidAt) : "" %></span>
+      <% if (settled) { %><span><span class="hn5-mut">At move-out</span> <b><%= settlement.net > 0 ? T.inr(settlement.net) + " refunded" : settlement.net < 0 ? "used, " + T.inr(-settlement.net) + " to collect" : "used for dues" %></b></span>
+      <% } else { %><span><span class="hn5-mut">Held now</span> <b><%= T.inr(dep) %></b></span><% if (depAgreed > dep && living) { %><span class="hn3-pill t-warn"><%= T.inr(depAgreed - dep) %> not received yet</span><% } %><% } %>
+      <span class="hn5-mut" style="margin-left:auto"><%= settled ? "Settlement slip " + (settlement.slipNo || "") : "Refunded or adjusted at move-out" %></span>
+    <% } %>
+  </div>
+
+  <% if (lg.advance > 0) { %><div class="hn3-callout t-green">💰 <div><b><%= T.inr(lg.advance) %> paid in advance.</b> It is used by the next rent automatically.</div></div>
+  <div class="hn5-mon"><div class="d" style="border-top:0">
+    <% lg.advanceFrom.forEach(function (a) { const e = a.entry; %>
+      <div class="hn5-li"><span aria-hidden="true">💰</span><span><%= a.amount !== a.total ? T.inr(a.amount) + " of " + T.inr(a.total) : T.inr(a.total) %> in advance<%= e.paymentMode ? " · " + e.paymentMode : "" %><%= e.reference ? " · ref " + e.reference : "" %></span>
+        <small><%= T.day(e.paymentDate) %><%= e.receiptNo ? " · " + e.receiptNo : "" %><%= byWho(e) ? " · recorded by " + byWho(e) : "" %><%= e.note ? " · " + e.note : "" %></small>
+        <span class="x"><a class="hn5-lnk" href="/user/payments/<%= e._id %>/receipt.pdf" target="_blank" rel="noopener">Receipt</a><%- cancelBtn(e, "Payment " + T.inr(a.total) + (e.paymentMode ? " · " + e.paymentMode : "")) %></span></div>
+    <% }) %>
+  </div></div><% } %>
+
+  <% if (!lg.months.length) { %><div class="hn2a-card"><div class="hn2a-empty">No rent or payments yet.</div></div><% } else { %>
+  <div class="hn5-mon is-head" aria-hidden="true"><div class="h"><span>Month</span><span>Charged</span><span>Paid</span><span>Balance</span><span class="st">Status</span></div></div>
+  <% lg.months.forEach(function (mo) {
+       const extras = mo.charges.filter(function (c) { return c.kind !== "rent"; });
+       const rent = mo.charges.filter(function (c) { return c.kind === "rent"; }).reduce(function (s, c) { return s + c.amount; }, 0);
+       const open = mo.balance > 0 || mo.key === latestKey || mo.cancelled.length > 0; %>
+  <details class="hn5-mon" <%= open ? "open" : "" %>>
+    <summary class="h">
+      <b><%= mo.label %></b>
+      <span class="c-ch"><span class="hn5-lbl">Charged</span><%= extras.length && rent ? T.inr(rent) + " + " + T.inr(mo.charged - rent) : T.inr(mo.charged) %><% if (extras.length) { %><div class="hn5-mut" style="font-size:12px"><%= [rent ? "rent" : ""].concat(extras.map(function (c) { return (c.kind === "extra" ? (L.CATEGORIES[c.entry.category] || L.CATEGORIES.other).label : c.label).toLowerCase(); })).filter(Boolean).join(" · ") %></div><% } %></span>
+      <span class="c-pd"><span class="hn5-lbl">Paid</span><%= mo.paid ? T.inr(mo.paid) : "—" %></span>
+      <span class="c-bl"><span class="hn5-lbl">Balance</span><b class="<%= mo.balance > 0 ? 't-bad-text' : '' %>" style="font-size:14px"><%= T.inr(mo.balance) %></b></span>
+      <span class="st"><span class="hn3-pill <%= TONE[mo.status.tone] || 't-slate' %>"><%= mo.status.label %></span></span>
+    </summary>
+    <div class="d">
+      <% mo.charges.forEach(function (c) { const e = c.entry; %>
+        <div class="hn5-li"><span aria-hidden="true"><%= ICON(c) %></span><span><%= c.kind === "rent" ? "Rent for " + mo.label.split(" ")[0] : c.label %></span>
+          <small><%= c.kind === "rent" ? "due " + T.day(e.paymentDate) : (byWho(e) ? "added " + T.day(e.createdAt || e.paymentDate) + " by " + byWho(e) : T.day(e.paymentDate)) %></small>
+          <span class="x"><span><%= T.inr(c.amount) %></span><%- cancelBtn(e, c.label + " " + T.inr(c.amount)) %></span></div>
+      <% }) %>
+      <% mo.applied.forEach(function (a) { const e = a.entry; %>
+        <div class="hn5-li"><span aria-hidden="true">✅</span><span><%= a.amount !== a.total ? T.inr(a.amount) + " of " + T.inr(a.total) : T.inr(a.total) %> <%= a.kind === "depositAdjust" ? "from the deposit" : "paid" %><%= e.paymentMode && a.kind !== "depositAdjust" ? " · " + e.paymentMode : "" %><%= e.reference ? " · ref " + e.reference : "" %></span>
+          <small><%= T.day(e.paymentDate) %><%= e.receiptNo ? " · " + e.receiptNo : "" %><%= byWho(e) ? " · recorded by " + byWho(e) : "" %><%= e.note ? " · " + e.note : "" %></small>
+          <span class="x"><% if (a.kind === "payment") { %><a class="hn5-lnk" href="/user/payments/<%= e._id %>/receipt.pdf" target="_blank" rel="noopener">Receipt</a><% } %><%- cancelBtn(e, "Payment " + T.inr(a.total) + (e.paymentMode ? " · " + e.paymentMode : "")) %></span></div>
+      <% }) %>
+      <% mo.cancelled.forEach(function (c) { const e = c.entry; %>
+        <div class="hn5-li"><span class="hn5-strike"><%= L.isPayment(e) ? T.inr(e.amountPaid) + " paid" + (e.paymentMode ? " · " + e.paymentMode : "") + (e.receiptNo ? " · " + e.receiptNo : "") : c.label + " " + T.inr(c.amount) %></span>
+          <small>Cancelled <%= T.day(e.cancelledAt) %><%= e.cancelledBy && e.cancelledBy.id ? " by " + (String(e.cancelledBy.id) === String(viewerId) ? "you" : e.cancelledBy.name || "") : "" %>: “<%= e.cancelReason || "" %>”</small></div>
+      <% }) %>
+      <% if (!mo.charges.length && !mo.applied.length && !mo.cancelled.length) { %><div class="hn5-li hn5-mut">Nothing in this month.</div><% } %>
+    </div>
+  </details>
+  <% }) %>
+  <div class="hn5-help">Payments go to the oldest unpaid month first. A cancelled entry stays here, crossed out, with the reason.</div>
+  <% } %>
+</section>
+
+<% if (living) { %>
+<dialog class="hn5-dlg" id="hn5-charge" aria-labelledby="hn5-charge-t">
+  <form method="POST" action="/user/tenants/<%= mid %>/charges">
+    <input type="hidden" name="back" value="/user/tenants/<%= mid %>?tab=payments">
+    <h2 id="hn5-charge-t" style="font-size:20px;font-weight:800;margin:0">Add a charge</h2>
+    <div class="hn5-mut" style="margin:4px 0 16px"><%= m.name %> · Room <%= m.assignedRoom || "—" %><%= m.bedLabel ? " · " + m.bedLabel : "" %></div>
+    <div class="hn5-f"><span class="lb" id="hn5-cat-l">What for</span>
+      <div class="hn5-cats" role="radiogroup" aria-labelledby="hn5-cat-l">
+        <% Object.keys(L.CATEGORIES).forEach(function (k, i) { %><label><input type="radio" name="category" value="<%= k %>" <%= i === 0 ? "checked" : "" %> required><span><%= L.CATEGORIES[k].icon %> <%= L.CATEGORIES[k].label %></span></label><% if (k === "lateFee") { %><label><input type="radio" name="category" value="rent"><span>🧾 Rent</span></label><% } %><% }) %>
+      </div></div>
+    <div class="hn5-f hn5-g2">
+      <div><label for="hn5-ch-amt">Amount</label><input id="hn5-ch-amt" class="hn2a-input" name="amount" inputmode="numeric" placeholder="₹" required autocomplete="off"></div>
+      <div><label for="hn5-ch-mon">For month</label><select id="hn5-ch-mon" class="hn2a-select" name="month"><% months.forEach(function (x) { %><option value="<%= x.key %>"><%= x.label %></option><% }) %></select></div>
+    </div>
+    <div class="hn5-f"><label for="hn5-ch-note">Note <span class="hn5-mut">(shown on the statement; needed for “Other”)</span></label><input id="hn5-ch-note" class="hn2a-input" name="note" maxlength="120" placeholder="e.g. Sep meter 312→346 units" autocomplete="off"></div>
+    <div class="hn2a-row" style="justify-content:flex-end;margin:0;gap:8px"><button type="button" class="hn2a-btn is-ghost" data-hn5-dlg-close>Close</button><button type="submit" class="hn2a-btn">Add charge</button></div>
+    <div class="hn5-help" style="text-align:right">Added to what <%= String(m.name || "").split(" ")[0] %> owes. Shows in History.</div>
+  </form>
+</dialog>
+<% } %>
+<dialog class="hn5-dlg" id="hn5-cancel" aria-labelledby="hn5-cancel-t">
+  <form method="POST" action="#" data-k="action">
+    <input type="hidden" name="back" value="/user/tenants/<%= mid %>?tab=payments">
+    <h2 id="hn5-cancel-t" style="font-size:20px;font-weight:800;margin:0">Cancel this entry?</h2>
+    <div class="hn5-kv"><div>Entry<b data-k="what"></b></div><div>Receipt<b data-k="receipt"></b></div><div>Date<b data-k="when"></b></div><div>Due after cancelling<b class="t-bad-text" data-k="after"></b></div></div>
+    <div class="hn5-f"><label for="hn5-reason">Why? <span class="hn5-mut">(required, kept in History)</span></label><input id="hn5-reason" class="hn2a-input" name="reason" minlength="3" maxlength="200" required placeholder="e.g. typed the wrong amount" autocomplete="off"></div>
+    <div class="hn3-callout t-amber">It stays in the ledger, crossed out, with your reason. Nothing is deleted.</div>
+    <div class="hn2a-row" style="justify-content:flex-end;margin:0;gap:8px"><button type="button" class="hn2a-btn is-ghost" data-hn5-dlg-close>Keep it</button><button type="submit" class="hn2a-btn" style="background:var(--hn-coral)">Cancel entry</button></div>
+  </form>
+</dialog>

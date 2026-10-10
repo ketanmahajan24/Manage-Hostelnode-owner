@@ -72,9 +72,9 @@ async function syncRoomAndFloor(roomId) {
   }
 }
 
-/** Charges, paid, due and advance for one tenant (payments populated). */
+/** Charges, paid, due and advance for one tenant (payments populated). Cancelled entries (Phase 5) do not count. */
 function money(member) {
-  const pays = Array.isArray(member && member.payments) ? member.payments.filter(p => p && typeof p === "object") : [];
+  const pays = Array.isArray(member && member.payments) ? member.payments.filter(p => p && typeof p === "object" && !p.cancelledAt) : [];
   const fees = pays.reduce((s, p) => s + (Number(p.roomFees) || 0), 0);
   const paid = pays.reduce((s, p) => s + (Number(p.amountPaid) || 0), 0);
   return { fees, paid, due: Math.max(0, fees - paid), advance: Math.max(0, paid - fees) };

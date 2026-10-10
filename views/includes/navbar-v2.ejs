@@ -167,12 +167,13 @@
         <span class="hn2-hide-rail"><%- svg('right', 12, '#5b6470', 2.4, 'hn2-chev') %></span>
       </button>
       <div class="hn2-sub" id="hn2SubPayments">
-        <a class="hn2-subitem is-accent" href="/user/allfeesrecords"
-           data-hn2-match="^/user/(allfeesrecords|searchfeesrecords|members/[^/]+/addpayment|addpayment/|payment-receipt/|payment-history/)">
+        <% const hnL5 = typeof hnLedger === "undefined" ? true : hnLedger; /* Property Operations Phase 5: the new Payments pages */ %>
+        <a class="hn2-subitem is-accent" href="<%= hnL5 ? '/user/payments' : '/user/allfeesrecords' %>"
+           data-hn2-match="^/user/(payments/?$|tenants/[^/]+/collect|allfeesrecords|searchfeesrecords|members/[^/]+/addpayment|addpayment/|payment-receipt/|payment-history/)">
           Collect Payment <span class="hn2-pill-new">NEW</span>
         </a>
-        <a class="hn2-subitem" href="/user/upcomingPayments" data-hn2-match="^/user/upcomingPayments">Upcoming</a>
-        <a class="hn2-subitem" href="/user/deureports"       data-hn2-match="^/user/deureports">Dues</a>
+        <a class="hn2-subitem" href="<%= hnL5 ? '/user/payments/upcoming' : '/user/upcomingPayments' %>" data-hn2-match="^/user/(upcomingPayments|payments/upcoming)">Upcoming</a>
+        <a class="hn2-subitem" href="<%= hnL5 ? '/user/dues' : '/user/deureports' %>"       data-hn2-match="^/user/(deureports|dues)">Dues</a>
       </div>
 
       <button type="button" class="hn2-item" data-hn2-sub="hn2SubRooms" aria-controls="hn2SubRooms" title="Rooms &amp; Floors" aria-expanded="false">
@@ -276,7 +277,7 @@
         </button>
         <div class="hn2-menu" id="hn2QuickMenu">
           <a class="hn2-menu-item" href="/user/newmember"><%- svg('tenants', 15, '#667085', 2) %> Add tenant</a>
-          <a class="hn2-menu-item" href="/user/allfeesrecords"><%- svg('rupee', 15, '#667085', 2) %> Collect payment</a>
+          <a class="hn2-menu-item" href="<%= (typeof hnLedger === "undefined" || hnLedger) ? '/user/payments' : '/user/allfeesrecords' %>"><%- svg('rupee', 15, '#667085', 2) %> Collect payment</a>
           <a class="hn2-menu-item" href="/user/newroom"><%- svg('bed', 15, '#667085', 2) %> Add room</a>
           <a class="hn2-menu-item" href="/user/newfloor"><%- svg('layers', 15, '#667085', 2) %> Add floor</a>
           <a class="hn2-menu-item" href="/user/list-property"><%- svg('home', 15, '#667085', 2) %> List a property</a>

@@ -1,0 +1,75 @@
+<%# Property Operations Phase 5 — the slide-in Collect drawer, the "recorded" toast, and the small dialogs.
+    Needs: paid (null | { pid, memberId, undo }), flash, self (this page's address). %>
+<%
+  const selfClean = String(self || "").replace(/([?&])(msg|err|paid)=[^&]*/g, "$1").replace(/[?&]+$/, "").replace(/\?&+/, "?");
+%>
+<div class="hn5-shade" data-hn5-shade hidden></div>
+<div class="hn5-drawer" data-hn5-drawer role="dialog" aria-modal="true" aria-labelledby="hn5-collect-title" hidden></div>
+<% if (paid && flash.msg) { %>
+<div class="hn5-toast" role="status" data-hn5-toast>
+  <span>✓ <%= flash.msg %></span>
+  <a href="/user/payments/<%= paid.pid %>/receipt.pdf" target="_blank" rel="noopener">View receipt</a>
+  <% if (paid.undo) { %><form method="POST" action="/user/tenants/<%= paid.memberId %>/entries/<%= paid.pid %>/cancel" style="margin:0"><input type="hidden" name="reason" value="Undone right after recording"><input type="hidden" name="back" value="<%= selfClean %>"><button type="submit">Undo</button></form><% } %>
+  <button type="button" class="close" data-hn5-toast-close aria-label="Close">✕</button>
+</div>
+<% } %>
+<script>
+(function () {
+  var drawer = document.querySelector('[data-hn5-drawer]'), shade = document.querySelector('[data-hn5-shade]'), opener = null;
+  function close() { if (!drawer || drawer.hidden) return; drawer.hidden = true; shade.hidden = true; drawer.innerHTML = ''; document.body.style.overflow = ''; if (opener) opener.focus(); }
+  function inr(n) { return '₹' + Math.round(n).toLocaleString('en-IN'); }
+  function label(form) {
+    var go = form.querySelector('[data-hn5-go]'); if (!go) return;
+    var a = Number(String(form.amount.value || '').replace(/[,₹\s]/g, '')), m = form.querySelector('input[name=mode]:checked');
+    var mode = m ? { cash: 'cash', upi: 'UPI', bank: 'bank transfer' }[m.value] : '';
+    go.textContent = a > 0 ? 'Record ' + inr(a) + (mode ? ' · ' + mode : '') : 'Record payment';
+  }
+  document.querySelectorAll('[data-hn5-collect]').forEach(label);
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('a[data-collect]');
+    if (a && drawer && window.fetch && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault(); opener = a;
+      fetch(a.getAttribute('href') + (a.getAttribute('href').indexOf('?') >= 0 ? '&' : '?') + 'partial=1', { credentials: 'same-origin', headers: { accept: 'text/html' } })
+        .then(function (r) { if (!r.ok || r.redirected) throw new Error('x'); return r.text(); })
+        .then(function (html) {
+          drawer.innerHTML = html; drawer.hidden = false; shade.hidden = false; document.body.style.overflow = 'hidden';
+          var f = drawer.querySelector('[data-hn5-collect]'); if (f) label(f);
+          var amt = drawer.querySelector('#hn5-amt'); if (amt) { amt.focus(); amt.select(); }
+        })
+        .catch(function () { window.location.href = a.getAttribute('href'); });
+      return;
+    }
+    if (e.target.closest('[data-hn5-close]') || e.target === shade) { close(); return; }
+    var fill = e.target.closest('[data-hn5-fill]');
+    if (fill) { var form = fill.closest('form'); form.amount.value = fill.getAttribute('data-hn5-fill'); label(form); form.amount.focus(); return; }
+    var op = e.target.closest('[data-hn5-open]');
+    if (op) {
+      var d = document.getElementById(op.getAttribute('data-hn5-open'));
+      if (d) {
+        // Fill the dialog from the button (cancel entry: which entry, what it is).
+        Array.prototype.forEach.call(op.attributes, function (at) {
+          if (at.name.indexOf('data-set-') !== 0) return;
+          var k = at.name.slice(9), el = d.querySelector('[data-k="' + k + '"]');
+          if (!el) return;
+          if (el.tagName === 'FORM') el.action = at.value; else if (el.tagName === 'INPUT') el.value = at.value; else el.textContent = at.value;
+        });
+        if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+        var fi = d.querySelector('input:not([type=hidden]):not([type=radio]), select'); if (fi) fi.focus();
+      }
+      return;
+    }
+    var dc = e.target.closest('[data-hn5-dlg-close]');
+    if (dc) { var dl = dc.closest('dialog'); if (dl.close) dl.close(); else dl.removeAttribute('open'); return; }
+    if (e.target.closest('[data-hn5-toast-close]')) { var t = document.querySelector('[data-hn5-toast]'); if (t) t.remove(); }
+  });
+  document.addEventListener('input', function (e) { var f = e.target.closest('[data-hn5-collect]'); if (f) label(f); });
+  document.addEventListener('change', function (e) { var f = e.target.closest('[data-hn5-collect]'); if (f) label(f); });
+  document.addEventListener('submit', function (e) {
+    if (e.defaultPrevented) return;
+    var b = e.target.querySelector('button[type=submit]'); if (b) setTimeout(function () { b.disabled = true; }, 0);
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+  var toast = document.querySelector('[data-hn5-toast]');
+  if (toast) setTimeout(function () { if (toast.parentNode && !toast.matches(':hover') && !toast.contains(document.activeElement)) toast.remove(); }, 15000);
+})();
+</script>

@@ -35,6 +35,8 @@ const RULES = [
   { method: "POST", re: /^\/user\/new-list-property\/?$/i,                  limit: "maxListings", kind: "listing", form: "/user/list-property" },
   { method: "GET",  re: /^\/user\/revenue\/?$/i,                            feature: "reports", back: "/user" },
   { method: "GET",  re: /^\/user\/(deureports|upcomingPayments)\/?$/i,      feature: "duesReport", back: "/user" },
+  // Property Operations Phase 5: the new Dues page and the Upcoming tab (Collect and Collected stay open to every plan).
+  { method: "GET",  re: /^\/user\/(dues|payments\/upcoming)\/?$/i,          feature: "duesReport", back: "/user/payments" },
   { method: "POST", re: new RegExp(`^/user/enquiries/${ID}/status/?$`, "i"), feature: "leadStatus", back: "/user/leads" },
   { method: "POST", re: new RegExp(`^/user/enquiries/${ID}/chat/?$`, "i"),   feature: "chatReply", back: "/user/leads" },
 ];

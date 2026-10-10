@@ -1293,6 +1293,7 @@ router.get("/payment-receipt/:paymentId", jwtAuthMiddleware, attachHostel, async
     if (!isId(req.params.paymentId)) return res.status(404).send("Payment not found.");
     const payment = await Payment.findById(req.params.paymentId);
     if (!payment) return res.status(404).send("Payment not found.");
+    if (payment.cancelledAt) return res.status(404).send("This payment was cancelled" + (payment.cancelReason ? ": " + String(payment.cancelReason).replace(/[<>&"]/g, "") : "") + ".");   // Phase 5
 
     // Only the owner of that tenant may see the receipt.
     const member = await Member.findOne({ _id: payment.memberId, user: req.user.id });
@@ -1377,7 +1378,7 @@ router.get('/payment-history/:memberId', jwtAuthMiddleware, attachHostel, async 
     if (!isId(req.params.memberId)) return res.status(404).send("Member not found.");
     const member   = await Member.findOne({ _id: req.params.memberId, user: req.user.id });
     if (!member) return res.status(404).send("Member not found.");
-    const payments = await Payment.find({ memberId: member._id }).sort({ paymentDate: -1 });
+    const payments = await Payment.find({ memberId: member._id, cancelledAt: { $exists: false } }).sort({ paymentDate: -1 });   // (Phase 5: cancelled entries left out)
     safeRender(res, 'payments/PaymentHistoryOfOne.ejs', { member, payments, user });
   } catch (err) {
     console.error("payment-history error:", err.message);
@@ -1423,7 +1424,7 @@ router.get("/deureports", jwtAuthMiddleware, attachHostel, async (req, res) => {
       .sort((a, b) => b.dueAmount - a.dueAmount)
       .map(m => {
         // The oldest month not yet covered by payments (charges paid oldest first).
-        const charges = (m.payments || []).filter(p => p && Number(p.roomFees) > 0)
+        const charges = (m.payments || []).filter(p => p && Number(p.roomFees) > 0 && !p.cancelledAt)   // (Phase 5: cancelled entries do not count)
           .sort((a, b) => new Date(a.paymentDate || 0) - new Date(b.paymentDate || 0));
         let paid = m.amountPaid, since = null;
         for (const c of charges) { if (paid >= c.roomFees) { paid -= c.roomFees; continue; } since = c.paymentDate || null; break; }

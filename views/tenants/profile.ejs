@@ -2,6 +2,7 @@
 <%# Property Operations Phase 3 — one tenant: header, then Overview / Payments / Documents / History. %>
 <%- include("../account/_style.ejs") %>
 <%- include("_style.ejs") %>
+<% if (ledgerOn) { %><%- include("../payments5/_style.ejs") %><% } %>
 <%
   const PHONE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>';
   const CHAT = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>';
@@ -70,7 +71,7 @@
 <div class="hn2a hn3 hn3p">
   <div class="hn2a-inner">
     <a class="hn3-back" href="/user/members<%= living ? '' : '?tab=out' %>">← Tenants</a>
-    <% if (flash.msg) { %><div class="hn2a-notice is-ok" role="status"><%= flash.msg %></div><% } %>
+    <% if (flash.msg && !paid) { %><div class="hn2a-notice is-ok" role="status"><%= flash.msg %></div><% } %>
     <% if (flash.err) { %><div class="hn2a-notice is-bad" role="alert"><%= flash.err %></div><% } %>
     <% if (!sameHostel) { %><div class="hn3-callout t-blue"><span aria-hidden="true">🏠</span><div><%= m.name %> lives in <b><%= hostel ? hostel.hostelName : "another property" %></b>. <a href="/user/hostel/<%= m.hostel %>?next=<%= encodeURIComponent(base) %>" style="font-weight:800;color:inherit;text-decoration:underline">Switch to it</a> to make changes.</div></div><% } %>
 
@@ -84,12 +85,13 @@
         <a class="hn2a-btn is-ghost" href="tel:+91<%= m.mobileNo %>"><%- PHONE %> Call</a>
         <a class="hn2a-btn is-ghost" href="https://wa.me/91<%= m.mobileNo %>" target="_blank" rel="noopener"><%- CHAT %> WhatsApp</a>
         <% if (living && kycView.ready && !(kb.key === "verified" && kycView.shared)) { %><form method="POST" action="/user/kyc/request" target="_blank" style="margin:0"><input type="hidden" name="mobile" value="<%= m.mobileNo %>"><input type="hidden" name="name" value="<%= m.name %>"><button type="submit" class="hn2a-btn is-ghost"><%= kb.key === "verified" ? "💬 Ask to share KYC details" : kb.key === "pending" ? "💬 Ask again to verify KYC" : "💬 Ask to verify KYC" %></button></form><% } %>
-        <% if (money.due > 0) { %><a class="hn2a-btn is-collect" href="/user/members/<%= id %>/addpayment">Collect <%= T.inr(money.due) %></a>
-        <% } else if (living) { %><a class="hn2a-btn is-ghost is-collect" href="/user/members/<%= id %>/addpayment">Record a payment</a><% } %>
+        <% const collectHref = ledgerOn ? base + "/collect?back=" + encodeURIComponent(base + (tab === "overview" ? "" : "?tab=" + tab)) : "/user/members/" + id + "/addpayment"; %>
+        <% if (money.due > 0) { %><a class="hn2a-btn is-collect" <%- ledgerOn ? "data-collect" : "" %> href="<%= collectHref %>">Collect <%= T.inr(money.due) %></a>
+        <% } else if (living) { %><a class="hn2a-btn is-ghost is-collect" <%- ledgerOn ? "data-collect" : "" %> href="<%= collectHref %>">Record a payment</a><% } %>
         <details class="hn3-more">
           <summary class="hn2a-btn is-ghost" aria-label="More actions">⋯</summary>
           <div class="menu">
-            <a href="/user/payment-history/<%= id %>">Payment history (old view)</a>
+            <% if (!ledgerOn) { %><a href="/user/payment-history/<%= id %>">Payment history (old view)</a><% } else { %><a href="<%= base %>/statement.pdf" target="_blank" rel="noopener">Statement PDF</a><% } %>
             <% if (sameHostel) { %><form method="POST" action="/user/member/<%= id %>?_method=DELETE" data-confirm="Remove <%= confirmName %>? They are hidden from your lists and their bed is freed. Their payments stay in your reports."><button type="submit" class="is-danger">Remove tenant</button></form><% } %>
           </div>
         </details>
@@ -237,6 +239,9 @@
       </section>
     </div></div>
 
+    <% } else if (tab === "payments" && ledgerOn) { %>
+    <%- include("../payments5/_ledger.ejs", { lg: ledger, L: L, months: chargeMonths, viewerId: viewerId, settlement: settlement }) %>
+
     <% } else if (tab === "payments") { %>
     <section class="hn2a-card" aria-labelledby="h-pay">
       <div class="hn2a-row" style="margin-bottom:12px"><h2 id="h-pay" class="hn2a-card-title" style="margin:0">Payments</h2>
@@ -286,6 +291,7 @@
     </section>
     <% } %>
   </div>
+  <% if (ledgerOn) { %><%- include("../payments5/_drawer.ejs", { paid: paid, flash: flash, self: self }) %><% } %>
 </div>
 <script>
 (function () {

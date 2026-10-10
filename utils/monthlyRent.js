@@ -69,7 +69,8 @@ async function runMonthlyRent(now = new Date()) {
           memberId: m._id, roomFees: { $gt: 0 },
           $or: [
             { chargeMonth: key },
-            { chargeMonth: { $exists: false }, paymentDate: { $gte: monthStart.toDate(), $lt: nextMonth.toDate() } },
+            // (an extra charge, move-out deduction or refund in this month is not the rent: Phase 5)
+            { chargeMonth: { $exists: false }, kind: { $nin: ["extra", "deduction", "refund"] }, paymentDate: { $gte: monthStart.toDate(), $lt: nextMonth.toDate() } },
           ],
         });
         if (already) { out.skipped++; continue; }
@@ -85,7 +86,7 @@ async function runMonthlyRent(now = new Date()) {
             user: m.user, memberId: m._id, roomId: room._id,
             roomFees: fee, totalFees: fee, advancedPaid: 0, amountPaid: 0, dueAmount: fee,
             status: "Due", paymentDate: dueOn.toDate(), payableDate: dueOn.toDate(),
-            chargeMonth: key,
+            chargeMonth: key, kind: "rent",
           });
         } catch (e) {
           if (e && e.code === 11000) { out.skipped++; continue; }   // another run made it a moment ago
