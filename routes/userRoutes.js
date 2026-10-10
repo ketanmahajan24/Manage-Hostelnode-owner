@@ -599,6 +599,11 @@ function switchReturnPath(next) {
   // Phase 3 — keep an in-progress "Convert enquiry to tenant" across a switch.
   const conv = next.match(/^\/user\/newmember\?enquiry=([a-f0-9]{24})$/i);
   if (conv) return `/user/newmember?enquiry=${conv[1]}`;
+  // Property Operations Phase 8 — Admit from a booking in the other property, and the Bookings page.
+  const fromBooking = next.match(/^\/user\/newmember\?booking=([a-f0-9]{24})$/i);
+  if (fromBooking) return `/user/newmember?booking=${fromBooking[1]}`;
+  const bookingsPage = next.match(/^\/user\/bookings(\?tab=(requested|accepted|moved|closed)(&open=[a-f0-9]{24})?)?$/i);
+  if (bookingsPage) return next;
   // Property Operations Phase 3 — open a tenant's page after switching to their property (the page checks ownership).
   const tenant = next.match(/^\/user\/tenants\/([a-f0-9]{24})$/i);
   if (tenant) return `/user/tenants/${tenant[1]}`;

@@ -1,0 +1,53 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Property Operations Phase 9 — automatic rent reminder settings (Payments → Dues → Reminder settings). %>
+<%- include("../account/_style.ejs") %>
+<%- include("../tenants/_style.ejs") %>
+<%- include("../payments5/_style.ejs") %>
+<style>
+  .hn9r .hn2a-card { padding: 18px 20px; }
+  .hn9r h3 { font-size: 16px; font-weight: 800; margin: 0; color: var(--hn-ink); }
+  .hn9r-sw { position: relative; display: inline-flex; align-items: center; cursor: pointer; flex: none; }
+  .hn9r-sw input { position: absolute; opacity: 0; width: 44px; height: 24px; margin: 0; cursor: pointer; }
+  .hn9r-sw i { width: 44px; height: 24px; border-radius: 99px; background: #cfdcd5; position: relative; display: inline-block; transition: background .15s; }
+  .hn9r-sw i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .15s; }
+  .hn9r-sw input:checked + i { background: var(--hn-green-bright); }
+  .hn9r-sw input:checked + i::after { left: 23px; }
+  .hn9r-sw input:focus-visible + i { outline: 3px solid rgba(14,169,104,.35); outline-offset: 2px; }
+  .hn9r-day { display: flex; gap: 10px; align-items: center; padding: 11px 0; border-bottom: 1px solid #eef4f1; font-size: 14px; font-weight: 600; color: var(--hn-ink); flex-wrap: wrap; }
+  .hn9r-day input[type=number] { width: 64px; height: 38px; border: 1px solid #cfdcd5; border-radius: 10px; text-align: center; font-size: 14px; font-weight: 700; }
+  .hn9r-day input[type=checkbox], .hn9r-prop input { width: 18px; height: 18px; accent-color: var(--hn-green-bright); margin: 0; }
+  .hn9r-prop { display: flex; gap: 10px; align-items: center; padding: 8px 0; font-size: 14px; font-weight: 600; color: var(--hn-ink); }
+  .hn9r-st { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid #eef4f1; font-size: 13.5px; font-weight: 600; }
+  .hn9r-st:last-child { border-bottom: 0; }
+  @media (prefers-reduced-motion: reduce) { .hn9r-sw i, .hn9r-sw i::after { transition: none; } }
+</style>
+<div class="hn2a hn3 hn5 hn9r">
+  <div class="hn2a-inner" style="max-width:660px">
+    <a class="hn3-back" href="/user/dues">← Dues</a>
+    <h1 class="hn2a-title">Rent reminders</h1>
+    <div class="hn2a-sub">Sent to your tenants from HostelNode's WhatsApp number and by email, with the amount and a “Pay now” link to My PG on hostelnode.com. Never to tenants who moved out or have nothing due.</div>
+    <% if (flash.err) { %><div class="hn2a-notice is-bad" role="alert"><%= flash.err %></div><% } %>
+    <% if (flash.msg) { %><div class="hn2a-notice is-ok" role="status"><%= flash.msg %></div><% } %>
+
+    <form method="POST" action="/user/dues/reminders" class="hn2a-card">
+      <div class="hn2a-row"><h3 id="h9r-on">Automatic rent reminders</h3>
+        <label class="hn9r-sw"><input type="checkbox" name="on" value="1" <%= s.on ? "checked" : "" %> aria-labelledby="h9r-on"><i aria-hidden="true"></i></label></div>
+      <div class="hn2a-help" style="margin:4px 0 8px">Each reminder is sent once, at 10 am. A tenant gets at most one reminder a day.</div>
+      <div class="hn9r-day"><input type="checkbox" name="beforeOn" value="1" <%= s.before > 0 ? "checked" : "" %> aria-label="Send before the due day"><input type="number" name="before" min="1" max="<%= RR.MAX_BEFORE %>" value="<%= s.before > 0 ? s.before : 3 %>" aria-label="Days before the due day"> days before the due day</div>
+      <label class="hn9r-day"><input type="checkbox" name="onDay" value="1" <%= s.onDay ? "checked" : "" %>> On the due day</label>
+      <div class="hn9r-day"><input type="checkbox" name="afterOn" value="1" <%= s.after > 0 ? "checked" : "" %> aria-label="Send after the due day"><input type="number" name="after" min="1" max="<%= RR.MAX_AFTER %>" value="<%= s.after > 0 ? s.after : 3 %>" aria-label="Days after the due day"> days after, if still unpaid</div>
+      <% if (hostels.length) { %>
+      <div style="margin-top:14px"><span class="hn2a-label">Properties</span>
+        <% hostels.forEach(function (h) { %><label class="hn9r-prop"><input type="checkbox" name="hostelOn" value="<%= h._id %>" <%= s.offHostels.includes(String(h._id)) ? "" : "checked" %>> <%= h.hostelName %></label><% }) %>
+      </div><% } %>
+      <button type="submit" class="hn2a-btn" style="margin-top:14px">Save settings</button>
+    </form>
+
+    <section class="hn2a-card" aria-labelledby="h9r-how">
+      <h3 id="h9r-how" style="margin-bottom:8px">How they reach tenants</h3>
+      <div class="hn9r-st"><span>WhatsApp from HostelNode</span><span><% if (channels.wa.due || channels.wa.reminder) { %><span class="hn3-pill t-ok">On</span><% } else { %><span class="hn3-pill t-slate">Being set up by HostelNode</span><% } %></span></div>
+      <div class="hn9r-st"><span>Email</span><span><% if (channels.email) { %><span class="hn3-pill t-ok">On</span> <span class="hn5-mut"><%= counts.email %> of <%= counts.tenants %> tenants have an email address</span><% } else { %><span class="hn3-pill t-slate">Off</span><% } %></span></div>
+      <div class="hn2a-help">The “Pay now” button shows when the property takes rent online (Receive payments). Add a tenant's email on their page to send email reminders too.</div>
+    </section>
+  </div>
+</div>

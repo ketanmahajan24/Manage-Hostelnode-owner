@@ -117,6 +117,16 @@ const memberSchema = new mongoose.Schema({
         paymentIds:  [{ type: mongoose.Schema.Types.ObjectId }],   // ledger entries made by the settlement (removed on undo)
         undoneAt:    { type: Date }
     },
+    // Property Operations Phase 7: a leaving date the tenant asked for on hostelnode.com (My PG).
+    // The owner accepts it (it becomes leavingDate above) or declines it. Empty until asked.
+    noticeRequest: {
+        date:      { type: Date },
+        reason:    { type: String },
+        at:        { type: Date },
+        status:    { type: String },      // "pending" | "accepted" | "declined" | "withdrawn"
+        decidedAt: { type: Date },
+        by:        { type: String }       // who accepted or declined (owner's name)
+    },
     payments: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "Payment"

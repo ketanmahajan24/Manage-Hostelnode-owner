@@ -98,6 +98,8 @@
       </div>
     </div>
 
+    <%- include("_online7.ejs", { base: base }) %>
+
     <nav class="hn3-ptabs" aria-label="Tenant">
       <% [["overview", "Overview"], ["payments", "Payments"], ["documents", "Documents" + ((m.documents || []).length ? " (" + m.documents.length + ")" : "")], ["history", "History"]].forEach(function (t) { %>
         <a href="<%= base %><%= t[0] === 'overview' ? '' : '?tab=' + t[0] %>" <%- tab === t[0] ? 'aria-current="page"' : '' %>><%= t[1] %></a>

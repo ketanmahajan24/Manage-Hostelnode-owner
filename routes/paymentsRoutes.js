@@ -162,7 +162,7 @@ async function renderHome(req, res, tab) {
     list = data.collectedList.filter(x => matches(x.m, q)).map(x => ({
       id: String(x.m._id), pid: String(x.p._id), name: x.m.name, room: roomOf(x.m), tone: T.toneOf(x.m._id), initials: T.initials(x.m.name),
       amount: Number(x.p.amountPaid) || 0, mode: x.p.paymentMode || "", reference: x.p.reference || "", on: x.p.paymentDate, receiptNo: x.p.receiptNo || "",
-      by: x.p.recordedBy && x.p.recordedBy.id ? (String(x.p.recordedBy.id) === String(req.user.id) ? "you" : x.p.recordedBy.name || "") : "",
+      by: x.p.recordedBy && x.p.recordedBy.role === "tenant" ? "paid online by tenant" : x.p.recordedBy && x.p.recordedBy.id ? (String(x.p.recordedBy.id) === String(req.user.id) ? "you" : x.p.recordedBy.name || "") : "",   // (Phase 7: online)
       cancelled: !!x.p.cancelledAt, cancelReason: x.p.cancelReason || "",
     }));
   }
@@ -192,9 +192,18 @@ router.get("/dues", jwtAuthMiddleware, on, attachHostel, needHostel, async (req,
     const data = await propertyMoney(req.user.id, hostel._id, moment().tz(TZ).format("YYYY-MM"));
     const list = data.rows.filter(r => r.lg.due > 0 && !r.lg.notYetDue && matches(r.m, q))   // (rent not due yet: in Upcoming)
       .sort(sort === "amount" ? (a, b) => b.lg.due - a.lg.due : (a, b) => b.lg.daysLate - a.lg.daysLate || b.lg.due - a.lg.due)
-      .map(r => Object.assign(row(r), { remind: reminderLink(r.m, r.lg, hostel.hostelName) }));
+      .map(r => Object.assign(row(r), { remind: reminderLink(r.m, r.lg, hostel.hostelName), email: r.m.email || "" }));
+    // Phase 9: when each tenant was last reminded, and who "Send reminder" (from HostelNode) can reach.
+    let reminders = { any: false };
+    try {
+      const RR = require("../utils/rentReminders");
+      reminders = RR.channels();
+      const last = await RR.lastReminders(list.map(x => x.id));
+      const can = await RR.sendable(req.user.id, list.map(x => ({ id: x.id, hostelId: String(hostel._id), mobile: x.mobile, email: x.email, out: x.out, daysLate: x.daysLate })));
+      for (const x of list) { x.reminded = RR.lastText(last.get(x.id)); x.canSend = can.has(x.id); }
+    } catch (e) { console.error("Dues reminders (non-fatal):", e.message); }
     res.set("Cache-Control", "no-store");
-    res.render("payments5/dues.ejs", { user, hostel, list, sort, q, total: list.reduce((s, x) => s + x.due, 0), T, flash: flash(req), paid: await paidToast(req), self: req.originalUrl });
+    res.render("payments5/dues.ejs", { user, hostel, list, sort, q, total: list.reduce((s, x) => s + x.due, 0), T, flash: flash(req), paid: await paidToast(req), self: req.originalUrl, reminders });
   } catch (err) {
     console.error("Dues page error:", err.message);
     res.status(500).send("Something went wrong. Please try again.");

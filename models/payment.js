@@ -95,6 +95,33 @@ const paymentSchema = new mongoose.Schema({
     _id: false,
     id:   { type: mongoose.Schema.Types.ObjectId },
     name: { type: String }
+  },
+
+  // ── Property Operations Phase 7: rent paid online by the tenant (Razorpay) ──
+  // Empty on every other entry.
+  tenantName: { type: String, default: undefined },
+  online: {
+    _id: false,
+    orderId:   { type: String },        // order_… (Razorpay)
+    paymentId: { type: String },        // pay_…
+    method:    { type: String },        // upi, card, netbanking, wallet…
+    rentOrder: { type: mongoose.Schema.Types.ObjectId },   // the RentOrder it came from
+    total:     { type: Number },        // what the tenant paid in all (₹), with the fee when the tenant pays it
+    booking:   { type: mongoose.Schema.Types.ObjectId },   // Phase 8: the booking amount, credited at move-in
+  },
+  // What goes to the owner's bank (Razorpay Route transfer), and where it is.
+  payout: {
+    _id: false,
+    status:     { type: String },       // "pending" (on the way) | "on_hold" | "settled" (in the bank) | "failed" | "reversed"
+    amount:     { type: Number },       // to the owner's bank (₹)
+    gatewayFee: { type: Number },
+    commission: { type: Number },
+    feePaidBy:  { type: String },       // "tenant" | "owner"
+    accountId:  { type: String },       // acc_… (the owner's linked account)
+    transferId: { type: String },       // trf_…
+    settledAt:  { type: Date },
+    checkedAt:  { type: Date },
+    error:      { type: String }
   }
 
 });

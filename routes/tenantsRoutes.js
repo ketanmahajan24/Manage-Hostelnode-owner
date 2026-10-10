@@ -11,6 +11,7 @@
      POST /tenants/:id/deposit            record deposit received
      POST /tenants/:id/notice             give notice (leaving date)
      POST /tenants/:id/notice/cancel      cancel notice
+     POST /tenants/:id/notice-request/accept|decline   Phase 7: notice asked by the tenant in My PG
      GET  /tenants/:id/move-out           settlement screen
      POST /tenants/:id/move-out           move out + settlement slip
      POST /tenants/:id/undo-move-out      undo within 24 hours
@@ -172,11 +173,12 @@ router.get("/members", jwtAuthMiddleware, attachHostel, needHostel, async (req, 
 /* ════════════════ Add tenant (admission) ════════════════ */
 
 // Free beds of the selected property, for the bed picker.
-async function freeBeds(userId, hostelId) {
+async function freeBeds(userId, hostelId, exceptBooking = "") {
   const map = await buildBedMap(userId, hostelId);
   const out = [];
   for (const f of map.floors) for (const r of f.rooms) for (const b of r.beds) {
     if (b.member || b.blocked) continue;
+    if (b.booking && b.booking.id !== String(exceptBooking || "")) continue;   // Phase 8: booked by a student (except the booking being admitted)
     out.push({ value: `${r.id}:${b.label}`, roomId: r.id, label: b.label, room: r.number, floor: f.name, rent: b.rent,
       sharing: r.capacity, roomType: r.roomType || "" });
   }
@@ -185,7 +187,17 @@ async function freeBeds(userId, hostelId) {
 
 async function renderAdmit(req, res, { values = {}, errors = {}, status = 200 } = {}) {
   const userId = req.user.id, hostel = H(res);
-  const [user, { beds, totalBeds }] = await Promise.all([Owner.findById(userId), freeBeds(userId, hostel)]);
+  // Phase 8: move-in day of a booking (Bookings → Admit): fill in everything from it.
+  const booking = await bookingFor(userId, hostel, String(values.bookingId || req.query.booking || ""));
+  const [user, { beds, totalBeds }] = await Promise.all([Owner.findById(userId), freeBeds(userId, hostel, booking ? booking.id : "")]);
+  if (booking && !values._posted) {
+    const st = (await require("mongoose").connection.collection("students").findOne({ _id: booking.student }, { projection: { email: 1, gender: 1, dob: 1, collegeName: 1, course: 1 } })) || {};
+    Object.assign(values, {
+      bookingId: booking.id, name: booking.kycName || booking.studentName, mobileNo: booking.phone, email: st.email || "", gender: GENDERS.includes(st.gender) ? st.gender : "",
+      dob: ymd(st.dob), profession: [st.collegeName, st.course].filter(Boolean).join(", "), bed: booking.bed, joiningDate: ymd(booking.moveIn),
+      deposit: booking.deposit ? String(booking.deposit) : "", ...(booking.countsTowards === "deposit" ? { depositMode: "later" } : { firstPaid: "none" }),
+    });
+  }
   // From a lead (Leads & CRM "Admit as tenant"): fill in what the student gave us.
   let lead = null;
   const enquiryId = String(values.enquiryId || req.query.enquiry || "");
@@ -211,7 +223,7 @@ async function renderAdmit(req, res, { values = {}, errors = {}, status = 200 } 
   // Phase 4: Aadhaar KYC of the mobile number in the form (the panel then follows what is typed).
   const kycView = await require("./kycOwnerRoutes").viewFor(userId, values.mobileNo || "");
   res.status(status).render("tenants/admit.ejs", {
-    kycView,
+    kycView, booking,
     user, beds, totalBeds, lead, values, errors, step, today: ymd(new Date()),
     hostelName: res.locals.selectedHostel.hostelName || "", T, welcomeOn: T.welcomeOn(),
   });
@@ -227,13 +239,22 @@ router.get("/newmember", jwtAuthMiddleware, attachHostel, needHostel, async (req
 });
 
 // Which step each field is on, to open the form where the first problem is.
+/** Phase 8: an accepted booking of this owner in this property, for the admission form. */
+async function bookingFor(userId, hostel, id) {
+  if (!isId(id)) return null;
+  const b = await require("../models/booking").findOne({ _id: id, owner: userId, hostel, status: "accepted" }).lean();
+  if (!b) return null;
+  return { id: String(b._id), no: b.bookingNo, student: b.student, studentName: b.studentName, kycName: b.kycName, phone: b.studentPhone, amount: b.amount,
+    countsTowards: b.countsTowards, moveIn: b.moveIn, deposit: b.deposit, bed: b.bed && b.bed.room ? `${b.bed.room}:${b.bed.label}` : "" };
+}
+
 const STEP_OF = { kyc: 1, name: 1, mobileNo: 1, email: 1, gender: 1, dob: 1, guardianMobile: 1, bed: 2, joiningDate: 2, rent: 2, dueDay: 2, firstCharge: 2, earlier: 2, deposit: 2, depositMode: 2, firstPaid: 2, firstAmount: 2 };
 
 async function admitTenant(req, res) {
   const userId = req.user.id, hostel = H(res);
   const b = req.body.member || {};
   const values = {
-    _posted: true, enquiryId: clean(req.body.enquiryId || "", 30),
+    _posted: true, enquiryId: clean(req.body.enquiryId || "", 30), bookingId: clean(req.body.bookingId || "", 30),
     name: clean(b.name || "", 100), mobileNo: String(b.mobileNo || "").replace(/\D/g, "").slice(-10), email: clean(b.email || "", 120).toLowerCase(),
     gender: GENDERS.includes(b.gender) ? b.gender : "", dob: clean(b.dob || "", 10), profession: clean(b.profession || "", 100),
     address: clean(b.address || "", 500), guardianName: clean(b.guardianName || "", 100), guardianMobile: String(b.guardianMobile || "").replace(/\D/g, "").slice(-10),
@@ -274,6 +295,9 @@ async function admitTenant(req, res) {
       bed = beds.find(x => x.label === String(label || "").toUpperCase()) || null;
       if (legacy && (!bed || bed.member || bed.blocked)) bed = beds.find(x => !x.member && !x.blocked) || null;   // old form: first free bed
       if (!bed || bed.member || bed.blocked) { bad("bed", legacy ? "This room is full. Please choose another room." : "That bed is not free any more. Choose another."); bed = null; }
+      // Phase 8: a bed booked by a student is kept for them (only their own booking can be admitted into it).
+      const bk = bed ? await require("../utils/bookings").bookedBed(room._id, bed.label, values.bookingId) : null;
+      if (bk) { bad("bed", `That bed is booked by ${bk.studentName} (moving in ${T.day(bk.moveIn)}). Choose another.`); bed = null; }
       if (bed && legacy && values.rent === "") values.rent = String(bed.rent);
     }
     let joiningDate = values.joiningDate ? dateIn(values.joiningDate) : todayIST().toDate();
@@ -393,6 +417,12 @@ async function admitTenant(req, res) {
     if (enquiry) await closeEnquiryAfterConvert(String(enquiry._id), userId, newMember._id);
 
     const saved = await Member.findById(newMember._id, { bedLabel: 1, hostel: 1 }).lean();
+    // Phase 8: from a booking — the booking amount is credited (rent or deposit) and the booking is moved in.
+    let fromBooking = null;
+    if (values.bookingId && isId(values.bookingId)) {
+      try { fromBooking = await require("../utils/bookings").creditOnAdmit({ id: values.bookingId, ownerId: userId, memberId: newMember._id }); }
+      catch (e) { console.error("Booking credit on admit (non-fatal):", e.message); }
+    }
     await T.logEvent(req, newMember, "admitted",
       `Admitted to room ${room.room_number} · bed ${saved.bedLabel}${enquiry ? " from a lead" : ""}`,
       [`rent ${T.inr(rent)} on the ${T.ordinal(dueDay)}`,
@@ -405,7 +435,9 @@ async function admitTenant(req, res) {
     if (welcome) T.sendWelcome({ phone: values.mobileNo, name: values.name, property: res.locals.selectedHostel.hostelName || "your PG",
       room: room.room_number, bed: saved.bedLabel, rent, dueDay }).catch(() => {});
 
-    back(res, page(newMember._id), `${values.name} admitted to room ${room.room_number}, bed ${saved.bedLabel}.${welcome ? " Welcome message sent on WhatsApp." : ""}`);
+    const credited = fromBooking && fromBooking.status === "moved_in" ? ` Booking amount ${T.inr(fromBooking.amount)} credited to ${fromBooking.countsTowards === "deposit" ? "the deposit" : "rent"}.`
+      : values.bookingId ? " The booking amount is not credited yet: it is credited when the mobile number matches the booking's (checked again every 15 minutes)." : "";
+    back(res, page(newMember._id), `${values.name} admitted to room ${room.room_number}, bed ${saved.bedLabel}.${credited}${welcome ? " Welcome message sent on WhatsApp." : ""}`);
   } catch (err) {
     console.error("Admit tenant error:", err.message);
     errors._form = "The tenant could not be saved. Please try again.";
@@ -466,7 +498,9 @@ router.get("/tenants/:id", jwtAuthMiddleware, attachHostel, async (req, res) => 
     const L = require("../utils/ledger");
     const ledger = ledgerOn && tab === "payments" ? L.ledgerOf(m) : null;
     const paid = ledgerOn ? await require("./paymentsRoutes").paidToast(req) : null;
+    const online7 = await onlineView(m, hostel, living);   // Phase 7
     res.render("tenants/profile.ejs", {
+      online7,
       ledgerOn, ledger, L, chargeMonths: ledgerOn ? L.chargeMonths(m) : [], viewerId: req.user.id, paid, self: req.originalUrl,
       user, m, tab, room, floor, hostel, sameHostel, status, living, moveTo, payments, history, settlement: s, canUndo,
       money: T.moneyOf(m), rent: tenantRent(m, room || { room_fees: 0, beds: [] }), bedRentNow: room ? bedRent(room, m.bedLabel) : null, ownRent,
@@ -579,7 +613,10 @@ router.post("/tenants/:id/notice", jwtAuthMiddleware, attachHostel, async (req, 
     if (moment(d).isBefore(today)) return fail(res, page(m._id), `Choose today or a later date. If ${m.name} has already left, use Move out.`);
     if (m.joiningDate && d < new Date(m.joiningDate)) return fail(res, page(m._id), "The leaving date is before the joining date.");
     const reason = clean(req.body.reason || "", 60);
-    await Member.updateOne({ _id: m._id, user: req.user.id, ...LIVING }, { $set: { leavingDate: d, noticeAt: m.leavingDate ? m.noticeAt : new Date(), noticeReason: reason } });
+    // (Phase 7: a leaving date the tenant asked for in My PG is answered by this one.)
+    const asked = m.noticeRequest && m.noticeRequest.status === "pending" ? m.noticeRequest : null;
+    const answered = asked ? { "noticeRequest.status": moment(asked.date).tz(TZ).isSame(moment(d).tz(TZ), "day") ? "accepted" : "replaced", "noticeRequest.decidedAt": new Date() } : {};
+    await Member.updateOne({ _id: m._id, user: req.user.id, ...LIVING }, { $set: Object.assign({ leavingDate: d, noticeAt: m.leavingDate ? m.noticeAt : new Date(), noticeReason: reason }, answered) });
     await T.logEvent(req, m, "notice", `${m.leavingDate ? "Leaving date changed to" : "Gave notice, leaving on"} ${T.dayYear(d)}`, reason);
     back(res, page(m._id), `${m.name} is leaving on ${T.dayYear(d)}. Their bed shows "Leaving soon"; move them out on the day.`);
   } catch (err) {
@@ -601,6 +638,60 @@ router.post("/tenants/:id/notice/cancel", jwtAuthMiddleware, attachHostel, async
     fail(res, page(req.params.id), "That could not be saved. Please try again.");
   }
 });
+
+/* ── Property Operations Phase 7: notice asked by the tenant on hostelnode.com (My PG) ── */
+router.post("/tenants/:id/notice-request/:what(accept|decline)", jwtAuthMiddleware, attachHostel, async (req, res) => {
+  try {
+    const m = await actionable(req, res);
+    if (!m) return;
+    const r = m.noticeRequest && m.noticeRequest.status === "pending" ? m.noticeRequest : null;
+    if (!r) return back(res, page(m._id), "There is no notice request waiting.");
+    const byName = ((await Owner.findById(req.user.id, { name: 1 }).lean()) || {}).name || "owner";
+    const asked = r.at || new Date();
+    if (req.params.what === "decline") {
+      const u = await Member.updateOne({ _id: m._id, user: req.user.id, "noticeRequest.status": "pending", "noticeRequest.at": asked },
+        { $set: { "noticeRequest.status": "declined", "noticeRequest.decidedAt": new Date(), "noticeRequest.by": byName } });
+      if (!u.modifiedCount) return fail(res, page(m._id), "The request changed a moment ago. Please check and try again.");
+      await T.logEvent(req, m, "noticeCancel", `Declined ${m.name.split(" ")[0]}'s request to leave on ${T.dayYear(r.date)}`, r.reason || "");
+      return back(res, page(m._id), `Request declined. ${m.name.split(" ")[0]} sees it in My PG on hostelnode.com.`);
+    }
+    const d = r.date ? moment(r.date).tz(TZ).startOf("day") : null;
+    if (!d || d.isBefore(todayIST())) return fail(res, page(m._id), `The date asked for (${r.date ? T.dayYear(r.date) : "—"}) has passed. Give notice with a new date, or use Move out if ${m.name} has left.`);
+    const reason = clean(r.reason || "", 60);
+    const u = await Member.updateOne({ _id: m._id, user: req.user.id, ...LIVING, "noticeRequest.status": "pending", "noticeRequest.at": asked },
+      { $set: { leavingDate: d.toDate(), noticeAt: m.leavingDate ? m.noticeAt : new Date(), noticeReason: reason, "noticeRequest.status": "accepted", "noticeRequest.decidedAt": new Date(), "noticeRequest.by": byName } });
+    if (!u.modifiedCount) return fail(res, page(m._id), "The request changed a moment ago. Please check and try again.");
+    await T.logEvent(req, m, "notice", `Accepted ${m.name.split(" ")[0]}'s notice: leaving on ${T.dayYear(d)} (asked on hostelnode.com)`, reason);
+    back(res, page(m._id), `${m.name} is leaving on ${T.dayYear(d)}. Their bed shows "Leaving soon"; move them out on the day.`);
+  } catch (err) {
+    console.error("Notice request error:", err.message);
+    fail(res, page(req.params.id), "That could not be saved. Please try again.");
+  }
+});
+
+// What the tenant page shows about online rent and the tenant's notice request.
+async function onlineView(m, hostel, living) {
+  try {
+    const OR = require("../utils/onlineRent");
+    const request = OR.noticeOf(m);
+    const out = { can: false, why: "", invite: "", hasAccount: false, request: living && request && request.status === "pending" ? request : null };
+    if (!living) return out;
+    const av = await OR.availability(m);
+    out.can = av.can; out.why = av.why;
+    const mobile = OR.mobile10(m.mobileNo);
+    if (av.can && mobile) {
+      const site = String(process.env.HN_MAIN_SITE_URL || "https://hostelnode.com").trim().replace(/\/$/, "");
+      out.hasAccount = (await require("mongoose").connection.collection("students").countDocuments({ phone: mobile }, { limit: 1 })) > 0;
+      const first = String(m.name || "").trim().split(/\s+/)[0] || "there";
+      const text = `Hi ${first}, you can now pay your rent for ${(hostel && hostel.hostelName) || "your PG"} online on HostelNode (UPI, card or netbanking) and get your receipt at once.\n\nOpen ${site}/student/my-pg and log in with this mobile number (${mobile}).`;
+      out.invite = "https://wa.me/91" + mobile + "?text=" + encodeURIComponent(text);
+    }
+    return out;
+  } catch (err) {
+    console.error("Tenant page online rent (non-fatal):", err.message);
+    return { can: false, why: "", invite: "", hasAccount: false, request: null };
+  }
+}
 
 /* ── move out and settlement ── */
 // Settlement slip numbers count up per owner: SL-2026-0001, SL-2026-0002… (never repeated, even at the same moment).
@@ -733,6 +824,8 @@ async function undoMoveOut(req, res) {
     const beds = await ensureBeds(room);
     const bed = beds.find(b => b.label === m.bedLabel);
     if (!bed || bed.member || bed.blocked) return fail(res, page(m._id), `Bed ${room.room_number}-${m.bedLabel} is no longer free, so the move-out cannot be undone.`);
+    const bk = await require("../utils/bookings").bookedBed(room._id, m.bedLabel);   // Phase 8: booked by a student since
+    if (bk) return fail(res, page(m._id), `Bed ${room.room_number}-${m.bedLabel} is booked by ${bk.studentName} now, so the move-out cannot be undone. Cancel that booking first (Bookings).`);
     // Phase 4: while KYC is required, only a KYC-verified tenant can be living here again.
     if ((await kyc.settings()).enforced && !kyc.verifiedFor(await kyc.recordFor(m.mobileNo), req.user.id)) return fail(res, page(m._id), "KYC is required: this tenant's mobile number is not verified with DigiLocker, so the move-out cannot be undone.");
     // Re-admitted as a new tenant in the meantime? Then undoing would make two living records for one person.

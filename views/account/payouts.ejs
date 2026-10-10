@@ -1,0 +1,220 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Property Operations Phase 6 — Receive payments: the owner's bank account for online rent (Razorpay Route). %>
+<%- include("_style.ejs") %>
+<%- include("../tenants/_style.ejs") %>
+<%
+  const v = values || {};
+  const err = function (k) { return errors && errors[k] ? errors[k] : ""; };
+  const bad = function (k) { return errors && errors[k] ? "is-invalid" : ""; };
+  const day = function (d) { return d ? T.dayYear(d) : "—"; };
+  const bankLine = rec && rec.bankLast4 ? [(rec.bankName || "Bank") + " ••" + rec.bankLast4, rec.ifsc, rec.beneficiaryName].filter(Boolean).join(" · ") : "";
+  const commission = rec && rec.commission && rec.commission.own ? rec.commission : { type: fees.commissionType, value: fees.commissionValue };
+  const fmtRate = function (type, value) { return type === "fixed" ? T.inr(value) + " per payment" : (Number(value) || 0) + "%"; };
+%>
+<style>
+  .hn6 .hn2a-inner { max-width: 1140px; }
+  .hn6-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--hn-line); margin: 18px 0; }
+  .hn6-tabs a { padding: 10px 14px; font-size: 14px; font-weight: 700; color: var(--hn-soft); }
+  .hn6-tabs a[aria-current="page"] { color: var(--hn-ink); box-shadow: inset 0 -3px var(--hn-green); }
+  .hn6-grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 18px; align-items: start; }
+  .hn6 .hn2a-card { padding: 20px 22px; margin: 0 0 14px; }
+  .hn6 h3 { font-size: 16px; font-weight: 800; margin: 0 0 4px; color: var(--hn-ink); }
+  .hn6 .s { font-size: 13px; color: var(--hn-soft); font-weight: 500; margin-bottom: 14px; }
+  .hn6-f { margin-bottom: 14px; }
+  .hn6-f > label, .hn6-f > .lb { display: block; font-size: 13px; font-weight: 600; color: var(--hn-body); margin-bottom: 6px; }
+  .hn6-g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .hn6-g3 { display: grid; grid-template-columns: 2fr 1.3fr 1fr; gap: 12px; }
+  .hn6 .hn2a-input, .hn6 .hn2a-select { max-width: none; height: 44px; }
+  .hn6-help { font-size: 12.5px; color: var(--hn-soft); font-weight: 500; margin-top: 5px; }
+  .hn6-bank { display: inline-flex; gap: 8px; align-items: center; background: var(--hn-green-tint); border-radius: 10px; padding: 7px 12px; font-size: 13px; font-weight: 700; color: #0a5c38; margin-top: 8px; }
+  .hn6-bank.is-bad { background: var(--hn-coral-tint); color: var(--hn-coral); }
+  .hn6-step { display: flex; gap: 12px; padding: 9px 0; font-size: 13.5px; font-weight: 600; color: var(--hn-ink); }
+  .hn6-step i { width: 26px; height: 26px; border-radius: 50%; background: var(--hn-green-tint); color: var(--hn-green); display: inline-flex; align-items: center; justify-content: center; font-style: normal; font-weight: 800; flex: none; }
+  .hn6-step small { display: block; color: var(--hn-soft); font-weight: 500; margin-top: 2px; }
+  .hn6-lock { background: #f5faf7; border: 1px dashed #bfe8d2; border-radius: 12px; padding: 12px 14px; font-size: 12.5px; color: #0a5c38; font-weight: 600; margin-top: 12px; }
+  .hn6-st { border-radius: 16px; padding: 18px 20px; display: flex; gap: 14px; align-items: flex-start; margin-bottom: 14px; border: 1px solid; }
+  .hn6-st b { font-size: 16px; font-weight: 800; display: block; }
+  .hn6-st p { font-size: 13.5px; font-weight: 500; margin: 4px 0 0; line-height: 1.5; }
+  .hn6-st ul { margin: 6px 0 10px 18px; padding: 0; font-size: 13.5px; font-weight: 600; }
+  .hn6-st .ic { font-size: 22px; line-height: 1; }
+  .hn6-st .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+  .hn6-st .chip { display: inline-flex; background: #fff; border-radius: 10px; padding: 7px 12px; font-size: 13px; font-weight: 700; }
+  .hn6-st.t-ok { background: #f0fbf5; border-color: #bfe8d2; color: #0a5c38; }
+  .hn6-st.t-blue { background: #eef4fd; border-color: #c7d8f6; color: #17479c; }
+  .hn6-st.t-warn { background: #fff6e8; border-color: #f6d7a7; color: #7a3d06; }
+  .hn6-st.t-bad { background: #fff3f2; border-color: #f6c3be; color: #8f2a22; }
+  .hn6-st.t-hold { background: #f3f4f6; border-color: #d7dbe0; color: #334155; }
+  .hn6-chk { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; font-weight: 600; color: var(--hn-ink); margin: 6px 0 16px; }
+  .hn6-chk input { width: 18px; height: 18px; accent-color: var(--hn-green-bright); margin: 1px 0 0; flex: none; }
+  .hn6-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+  .hn6-sum .hn2a-card small { display: block; font-size: 12.5px; font-weight: 700; color: var(--hn-soft); }
+  .hn6-sum .hn2a-card b { display: block; font-size: 22px; font-weight: 800; margin-top: 6px; color: var(--hn-ink); }
+  .hn6-tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .hn6-tbl th { text-align: left; font-size: 12px; color: var(--hn-soft); font-weight: 700; padding: 10px 12px; border-bottom: 1px solid var(--hn-line); }
+  .hn6-tbl td { padding: 12px; border-bottom: 1px solid #eef4f1; font-weight: 600; }
+  .hn6-tbl .r { text-align: right; }
+  .hn6-tbl th, .hn6-tbl td { background: none; border-left: 0; border-right: 0; }   /* Phase 7: the page's own table look */
+  .hn6-tbl .hn3-pill { white-space: normal; }
+  .hn7-props { margin-bottom: 14px; }
+  .hn7-prop { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #eef4f1; margin: 0; }
+  .hn7-prop b { flex: 1; min-width: 0; font-size: 14px; font-weight: 800; color: var(--hn-ink); overflow-wrap: anywhere; }
+  .hn7-sw-l { font-size: 13px; font-weight: 600; color: var(--hn-soft); white-space: nowrap; }
+  .hn7-sw { width: 46px; height: 26px; border-radius: 99px; background: #cbd5e1; border: 0; position: relative; cursor: pointer; flex: none; padding: 0; transition: background .15s; }
+  .hn7-sw i { position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: left .15s; }
+  .hn7-sw.is-on { background: var(--hn-green-bright); } .hn7-sw.is-on i { left: 23px; }
+  .hn7-sw:focus-visible { outline: 3px solid rgba(14,169,104,.35); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .hn7-sw, .hn7-sw i { transition: none; } }
+  @media (max-width: 900px) { .hn6-grid { grid-template-columns: 1fr; } .hn6-sum { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) { .hn6 .hn3-seg label { flex: 1 1 calc(50% - 4px); } .hn6 .hn3-seg span { font-size: 13.5px; }
+    .hn6-g2, .hn6-g3 { grid-template-columns: 1fr; } .hn6 .hn2a-card { padding: 16px; } .hn6-tbl { font-size: 13px; } .hn6-tbl .hide-m { display: none; } }
+</style>
+<div class="hn2a hn3 hn6">
+  <div class="hn2a-inner">
+    <div style="font-size:13px;font-weight:700;color:var(--hn-soft);margin-bottom:8px">Account</div>
+    <h1 class="hn2a-title">Receive payments</h1>
+    <div class="hn2a-sub">Add the bank account where online rent from your tenants should land. Cash and UPI you collect yourself are not affected.</div>
+    <nav class="hn6-tabs" aria-label="Receive payments">
+      <a href="/user/account/payouts" <%- tab === "bank" ? 'aria-current="page"' : '' %>>Bank account</a>
+      <a href="/user/account/payouts?tab=payouts" <%- tab === "payouts" ? 'aria-current="page"' : '' %>>Payouts</a>
+    </nav>
+    <% if (notice) { %><div class="hn2a-notice is-<%= notice.kind %>" role="<%= notice.kind === 'bad' ? 'alert' : 'status' %>"><%= notice.text %></div><% } %>
+    <% if (!ready) { %><div class="hn3-callout t-amber">⏳ <div>Online rent is not switched on for HostelNode yet. You can come back here to add your bank account once it is.</div></div><% } %>
+    <% if (ready && mode === "test") { %><div class="hn3-callout t-blue">🧪 <div>Test mode: no real money moves. Use Razorpay's test details.</div></div><% } %>
+
+    <% if (tab === "bank") { %>
+    <% if (rec && rec.hold && rec.hold.on) { %>
+      <div class="hn6-st t-hold"><span class="ic" aria-hidden="true">⏸️</span><div><b>Payouts on hold by HostelNode</b><p>Online rent is still received and shown in your ledger, but is held before reaching your bank.<%= rec.hold.reason ? " Reason: “" + rec.hold.reason + "”." : "" %> Contact support@hostelnode.com.</p></div></div>
+    <% } %>
+    <% if (status === "under_review") { %>
+      <div class="hn6-st t-blue"><span class="ic" aria-hidden="true">⏳</span><div style="flex:1"><b>Under review by Razorpay</b><p>Submitted <%= day(rec.submittedAt) %>. Razorpay is checking your PAN and bank account (usually 1–2 working days). Tenants see cash and UPI until then.</p>
+        <div class="acts"><% if (bankLine) { %><span class="chip">🏦 <%= bankLine %></span><% } %><form method="POST" action="/user/account/payouts/refresh" style="margin:0"><button type="submit" class="hn2a-btn is-ghost is-sm">Check status now</button></form></div></div></div>
+    <% } else if (status === "active") { %>
+      <div class="hn6-st t-ok"><span class="ic" aria-hidden="true">✅</span><div style="flex:1"><b>Active — online rent goes to your bank</b><p>Since <%= day(rec.activatedAt) %>. Tenants can pay rent online; Razorpay pays it into this account.</p>
+        <div class="acts"><% if (bankLine) { %><span class="chip">🏦 <%= bankLine %></span><% } %><% if (form !== "bank") { %><a class="hn2a-btn is-ghost is-sm" href="/user/account/payouts?bank=1">Change bank account</a><% } %></div></div></div>
+    <% } else if (status === "needs_attention") { %>
+      <div class="hn6-st t-warn"><span class="ic" aria-hidden="true">⚠️</span><div style="flex:1"><b>Needs your attention</b><p>Razorpay could not finish the check:</p>
+        <ul><% (rec.requirements && rec.requirements.length ? rec.requirements : [{ reason: "Razorpay needs some details again." }]).forEach(function (r) { %><li><%= r.reason %></li><% }) %></ul>
+        <% if (form !== "full") { %><a class="hn2a-btn is-sm" href="/user/account/payouts?edit=1">Fix details</a><% } %></div></div>
+    <% } else if (status === "suspended") { %>
+      <div class="hn6-st t-bad"><span class="ic" aria-hidden="true">⛔</span><div><b>Suspended by Razorpay</b><p>Online rent is switched off for your properties. Contact support@hostelnode.com.</p></div></div>
+    <% } else if (rec && rec.lastError) { %>
+      <div class="hn3-callout t-amber">⚠️ <div>Your details were not sent yet. Please check them and submit again.</div></div>
+    <% } %>
+
+    <% if (status === "active" && properties && properties.length) { %>
+    <section class="hn2a-card hn7-props" aria-labelledby="h7-on"><h3 id="h7-on">Online rent for your properties</h3>
+      <div class="s">Tenants see “Pay rent” in My PG on hostelnode.com. Switch a property to cash only and its tenants pay you directly.</div>
+      <% properties.forEach(function (h) { const on = h.onlineRent !== false; %>
+      <form method="POST" action="/user/account/payouts/online" class="hn7-prop">
+        <input type="hidden" name="hostel" value="<%= h._id %>"><input type="hidden" name="on" value="<%= on ? '0' : '1' %>">
+        <b><%= h.hostelName %></b>
+        <span class="hn7-sw-l"><%= on ? "Online + cash" : "Cash only" %></span>
+        <button type="submit" class="hn7-sw<%= on ? ' is-on' : '' %>" role="switch" aria-checked="<%= on ? 'true' : 'false' %>" aria-label="Online rent at <%= h.hostelName %>"><i></i></button>
+      </form>
+      <% }) %>
+    </section>
+    <% } %>
+
+    <% if (form) { %>
+    <div class="hn6-grid"><div>
+      <form method="POST" action="/user/account/payouts<%= form === 'bank' ? '/bank' : '' %>" novalidate data-hn6-form>
+      <% if (form === "full") { %>
+        <section class="hn2a-card" aria-labelledby="h6-who"><h3 id="h6-who">Who is being paid</h3><div class="s">As on your PAN card and bank account. Razorpay checks these.</div>
+          <div class="hn6-f"><span class="lb" id="h6-type">Business type</span>
+            <div class="hn3-seg" role="radiogroup" aria-labelledby="h6-type">
+              <% Object.keys(TYPES).forEach(function (k) { %><label><input type="radio" name="businessType" value="<%= k %>" <%= v.businessType === k ? "checked" : "" %> <%= fixed && v.businessType !== k ? "disabled" : "" %>><span><%= TYPES[k].label %></span></label><% }) %>
+            </div><% if (fixed) { %><div class="hn6-help">The business type can't be changed now that Razorpay has your account. To change it, contact support@hostelnode.com.</div><% } %><% if (err("businessType")) { %><div class="hn3-err"><%= err("businessType") %></div><% } %></div>
+          <div class="hn6-g2">
+            <div class="hn6-f"><label for="p-legal">Legal name</label><input id="p-legal" class="hn2a-input <%= bad('legalName') %>" name="legalName" value="<%= v.legalName || '' %>" maxlength="200" autocomplete="off"><div class="hn6-help">Exactly as on the PAN</div><% if (err("legalName")) { %><div class="hn3-err"><%= err("legalName") %></div><% } %></div>
+            <div class="hn6-f"><label for="p-pan">PAN</label><input id="p-pan" class="hn2a-input <%= bad('pan') %>" name="pan" maxlength="10" autocomplete="off" style="text-transform:uppercase" placeholder="ABCDE1234F"><div class="hn6-help">Sent to Razorpay; not stored by HostelNode<%= rec && rec.panLast4 ? " (last given ending " + rec.panLast4 + ")" : "" %></div><% if (err("pan")) { %><div class="hn3-err"><%= err("pan") %></div><% } %></div>
+          </div>
+          <div class="hn6-f" style="margin:0"><label for="p-contact">Your name (contact person)</label><input id="p-contact" class="hn2a-input <%= bad('contactName') %>" name="contactName" value="<%= v.contactName || '' %>" maxlength="120" autocomplete="name"><% if (err("contactName")) { %><div class="hn3-err"><%= err("contactName") %></div><% } %></div>
+        </section>
+      <% } %>
+        <section class="hn2a-card" aria-labelledby="h6-bank"><h3 id="h6-bank"><%= form === "bank" ? "New bank account" : "Bank account" %></h3><div class="s"><%= form === "bank" ? "Razorpay checks the new account again; online rent is paid out once it is approved." : "Online rent is paid into this account by Razorpay." %></div>
+          <div class="hn6-g2">
+            <div class="hn6-f"><label for="p-acc">Account number</label><input id="p-acc" class="hn2a-input <%= bad('accountNumber') %>" name="accountNumber" inputmode="numeric" autocomplete="off" maxlength="22"><% if (err("accountNumber")) { %><div class="hn3-err"><%= err("accountNumber") %></div><% } %></div>
+            <div class="hn6-f"><label for="p-acc2">Type it again</label><input id="p-acc2" class="hn2a-input <%= bad('accountNumber2') %>" name="accountNumber2" inputmode="numeric" autocomplete="off" maxlength="22" data-hn6-nopaste><% if (err("accountNumber2")) { %><div class="hn3-err"><%= err("accountNumber2") %></div><% } %></div>
+          </div>
+          <div class="hn6-g2">
+            <div class="hn6-f"><label for="p-ifsc">IFSC</label><input id="p-ifsc" class="hn2a-input <%= bad('ifsc') %>" name="ifsc" value="<%= form === 'bank' ? '' : (v.ifsc || '') %>" maxlength="11" autocomplete="off" style="text-transform:uppercase" placeholder="HDFC0000317" data-hn6-ifsc><div data-hn6-bank aria-live="polite"></div><% if (err("ifsc")) { %><div class="hn3-err"><%= err("ifsc") %></div><% } %></div>
+            <div class="hn6-f"><label for="p-ben">Account holder name</label><input id="p-ben" class="hn2a-input <%= bad('beneficiaryName') %>" name="beneficiaryName" value="<%= v.beneficiaryName || '' %>" maxlength="120" autocomplete="off"><% if (err("beneficiaryName")) { %><div class="hn3-err"><%= err("beneficiaryName") %></div><% } %></div>
+          </div>
+        <% if (form === "bank") { %>
+          <label class="hn6-chk"><input type="checkbox" name="tnc" value="1"> <span>I agree to Razorpay's terms for receiving payouts.</span></label><% if (err("tnc")) { %><div class="hn3-err" style="margin-top:-10px;margin-bottom:12px"><%= err("tnc") %></div><% } %>
+          <div class="hn2a-row" style="margin:0;gap:8px"><button type="submit" class="hn2a-btn" style="min-height:48px;padding:0 24px" <%= ready ? "" : "disabled" %>>Send new bank account</button><a class="hn2a-btn is-ghost" href="/user/account/payouts">Cancel</a></div>
+        <% } %>
+        </section>
+      <% if (form === "full") { %>
+        <section class="hn2a-card" aria-labelledby="h6-contact"><h3 id="h6-contact">Contact and address</h3><div class="s">Razorpay sends payout updates here.</div>
+          <div class="hn6-g2">
+            <div class="hn6-f"><label for="p-email">Email</label><input id="p-email" class="hn2a-input <%= bad('email') %>" type="email" name="email" value="<%= v.email || '' %>" maxlength="120" autocomplete="email" <%= fixed ? "readonly" : "" %>><% if (fixed) { %><div class="hn6-help">Razorpay's payout account uses this email; it can't be changed here.</div><% } %><% if (err("email")) { %><div class="hn3-err"><%= err("email") %></div><% } %></div>
+            <div class="hn6-f"><label for="p-phone">Mobile</label><input id="p-phone" class="hn2a-input <%= bad('phone') %>" name="phone" value="<%= v.phone || '' %>" inputmode="numeric" maxlength="14" autocomplete="tel"><% if (err("phone")) { %><div class="hn3-err"><%= err("phone") %></div><% } %></div>
+          </div>
+          <div class="hn6-f"><label for="p-street">Address</label><input id="p-street" class="hn2a-input <%= bad('street') %>" name="street" value="<%= v.street || '' %>" maxlength="100" autocomplete="street-address"><% if (err("street")) { %><div class="hn3-err"><%= err("street") %></div><% } %></div>
+          <div class="hn6-g3">
+            <div class="hn6-f"><label for="p-city">City</label><input id="p-city" class="hn2a-input <%= bad('city') %>" name="city" value="<%= v.city || '' %>" maxlength="60"><% if (err("city")) { %><div class="hn3-err"><%= err("city") %></div><% } %></div>
+            <div class="hn6-f"><label for="p-state">State</label><select id="p-state" class="hn2a-select <%= bad('state') %>" name="state"><option value="">Choose</option><% STATES.forEach(function (s) { %><option <%= v.state === s ? "selected" : "" %>><%= s %></option><% }) %></select><% if (err("state")) { %><div class="hn3-err"><%= err("state") %></div><% } %></div>
+            <div class="hn6-f"><label for="p-pin">PIN</label><input id="p-pin" class="hn2a-input <%= bad('pin') %>" name="pin" value="<%= v.pin || '' %>" inputmode="numeric" maxlength="6" autocomplete="postal-code"><% if (err("pin")) { %><div class="hn3-err"><%= err("pin") %></div><% } %></div>
+          </div>
+          <label class="hn6-chk"><input type="checkbox" name="tnc" value="1"> <span>I agree to Razorpay's terms for receiving payouts.</span></label><% if (err("tnc")) { %><div class="hn3-err" style="margin-top:-10px;margin-bottom:12px"><%= err("tnc") %></div><% } %>
+          <div class="hn2a-row" style="margin:0;gap:8px"><button type="submit" class="hn2a-btn" style="min-height:48px;padding:0 26px" <%= ready ? "" : "disabled" %>><%= rec && rec.submittedAt ? "Send updated details" : "Submit for review" %></button><% if (rec && rec.submittedAt) { %><a class="hn2a-btn is-ghost" href="/user/account/payouts">Cancel</a><% } %></div>
+        </section>
+      <% } %>
+      </form>
+    </div><div>
+      <section class="hn2a-card" aria-labelledby="h6-how"><h3 id="h6-how">How online rent reaches you</h3>
+        <div class="hn6-step"><i>1</i><div>Tenant pays rent on hostelnode.com<small>UPI, card or netbanking, through Razorpay</small></div></div>
+        <div class="hn6-step"><i>2</i><div>Razorpay sends it to your bank<small>Usually within 2 working days</small></div></div>
+        <div class="hn6-step"><i>3</i><div>Your ledger shows it paid at once<small>“Paid online by tenant”, with the receipt</small></div></div>
+        <div class="hn6-lock">🔒 Your bank and PAN details go straight to Razorpay. HostelNode keeps only the last 4 digits of the account and the IFSC.</div>
+      </section>
+      <section class="hn2a-card" aria-labelledby="h6-fees"><h3 id="h6-fees">Fees on online rent</h3>
+        <div class="hn6-step" style="padding:4px 0"><div>Payment gateway fee: <%= fmtRate(fees.feeType, fees.feeValue) %><small><%= fees.feePaidBy === "tenant" ? "Added to what the tenant pays" : "Taken from the payout to you" %></small></div></div>
+        <div class="hn6-step" style="padding:4px 0"><div>HostelNode commission: <%= fmtRate(commission.type, commission.value) %><small>Taken from the payout to you</small></div></div>
+      </section>
+      <section class="hn2a-card"><h3>After you submit</h3><div class="s" style="margin:0">Razorpay checks the details, usually within 1–2 working days. You'll see the status here. Until it is active, tenants see only cash and UPI.</div></section>
+    </div></div>
+    <% } %>
+
+    <% } else { %>
+    <div class="hn6-sum">
+      <div class="hn2a-card"><small>Received online</small><b><%= T.inr(payouts.received) %></b><span class="hn6-help"><%= payouts.count %> payment<%= payouts.count === 1 ? "" : "s" %></span></div>
+      <div class="hn2a-card"><small>Sent to your bank</small><b style="color:var(--hn-green)"><%= T.inr(payouts.list.filter(function (p) { return p.payout && p.payout.status === "settled"; }).reduce(function (s, p) { return s + (Number(p.payout.amount) || 0); }, 0)) %></b><span class="hn6-help">after fees</span></div>
+      <div class="hn2a-card"><small>On the way</small><b style="color:var(--hn-blue)"><%= T.inr(payouts.list.filter(function (p) { return p.payout && !p.cancelledAt && (p.payout.status === "pending" || p.payout.status === "on_hold"); }).reduce(function (s, p) { return s + (Number(p.payout.amount) || 0); }, 0)) %></b><span class="hn6-help">usually 1–2 working days</span></div>
+    </div>
+    <section class="hn2a-card" style="padding:0;overflow:hidden" aria-label="Payouts">
+      <% if (!payouts.list.length) { %><div class="hn2a-empty">No online payments yet. Once tenants can pay rent online, each payment shows here with the fees and when it reached your bank.</div>
+      <% } else { %>
+      <div style="overflow-x:auto"><table class="hn6-tbl"><thead><tr><th>Date</th><th>Tenant</th><th class="r">Paid</th><th class="r hide-m">Gateway fee</th><th class="r hide-m">Commission</th><th class="r">To your bank</th><th>Status</th></tr></thead><tbody>
+        <% payouts.list.forEach(function (p) { const po = p.payout || {}; %>
+        <tr><td><%= T.day(p.paymentDate) %></td><td><%= p.tenantName || "" %></td><td class="r"><%= T.inr(p.amountPaid) %></td><td class="r hide-m"><%= T.inr(po.gatewayFee || 0) %></td><td class="r hide-m"><%= T.inr(po.commission || 0) %></td><td class="r" style="font-weight:800"><%= T.inr(po.amount || 0) %></td>
+          <td><span class="hn3-pill <%= po.status === 'settled' ? 't-ok' : po.status === 'on_hold' ? 't-slate' : po.status === 'failed' ? 't-warn' : po.status === 'reversed' ? 't-slate' : 't-blue' %>"><%= po.status === "settled" ? "In your bank" + (po.settledAt ? " " + T.day(po.settledAt) : "") : po.status === "on_hold" ? "On hold" : po.status === "failed" ? "Delayed · HostelNode is checking" : po.status === "reversed" ? "Returned" : "On the way" %></span><% if (p.cancelledAt) { %><div class="hn6-help" style="margin-top:4px">Refunded to the tenant</div><% } %></td></tr>
+        <% }) %>
+      </tbody></table></div>
+      <% } %>
+    </section>
+    <% } %>
+  </div>
+</div>
+<script>
+(function () {
+  var f = document.querySelector('[data-hn6-form]'); if (!f) return;
+  var ifsc = f.querySelector('[data-hn6-ifsc]'), out = f.querySelector('[data-hn6-bank]'), last = '';
+  function look() {
+    var c = (ifsc.value || '').trim().toUpperCase();
+    if (c === last) return; last = c; out.innerHTML = '';
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(c)) return;
+    fetch('/user/account/payouts/ifsc/' + c, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+      if (c !== (ifsc.value || '').trim().toUpperCase()) return;
+      var s = document.createElement('span');
+      s.className = 'hn6-bank' + (j.ok ? '' : ' is-bad');
+      s.textContent = j.ok ? '🏦 ' + j.bank + (j.branch ? ' · ' + j.branch : '') + ' ✓' : 'This IFSC was not found. Please check it.';
+      out.appendChild(s);
+    }).catch(function () {});
+  }
+  if (ifsc) { ifsc.addEventListener('input', look); ifsc.addEventListener('blur', look); look(); }
+  var again = f.querySelector('[data-hn6-nopaste]'); if (again) again.addEventListener('paste', function (e) { e.preventDefault(); });
+  f.addEventListener('submit', function () { var b = f.querySelector('button[type=submit]'); if (b) setTimeout(function () { b.disabled = true; }, 0); });
+})();
+</script>

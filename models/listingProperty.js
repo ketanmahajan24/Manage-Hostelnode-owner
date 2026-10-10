@@ -68,6 +68,17 @@ const listingSchema = new mongoose.Schema({
   // Free beds across the whole listing, kept up to date from the owner dashboard (null = not linked).
   freeBeds: { type: Number, default: null },
   bedsUpdatedAt: { type: Date, default: null },
+  // Property Operations Phase 8: students book a free bed from this listing and pay a booking amount.
+  // amountType "rent" = one month's rent of the room type; "fixed" = amount. countsTowards "rent" | "deposit".
+  // refundAfter: if the student cancels after the owner accepted: "full" | "half" | "none", up to refundDays before move-in.
+  booking: {
+    on:            { type: Boolean, default: false },
+    amountType:    { type: String, default: "rent" },
+    amount:        { type: Number, default: 0 },
+    countsTowards: { type: String, default: "rent" },
+    refundAfter:   { type: String, default: "half" },
+    refundDays:    { type: Number, default: 7 },
+  },
 
   /* 🏷️ BASIC INFO */
   title: {

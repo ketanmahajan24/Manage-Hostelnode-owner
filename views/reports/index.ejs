@@ -1,0 +1,332 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Property Operations Phase 9 — Reports: Money, Dues, Occupancy, Leads & bookings, Expenses & profit.
+    Every number comes from utils/reports.js (the same ledgers as Payments and Dues). %>
+<%- include("../account/_style.ejs") %>
+<%- include("../tenants/_style.ejs") %>
+<%- include("../payments5/_style.ejs") %>
+<%
+  const TABS = [["money", "Money"], ["dues", "Dues"], ["occupancy", "Occupancy"], ["leads", "Leads & bookings"], ["expenses", "Expenses & profit"]];
+  const many = !none && hostels.length > 1;
+  const pq = none ? "" : (scope.p === "all" || !many ? "" : scope.p);
+  const url = function (o) { return reportUrl(Object.assign({ tab: tab === "money" ? "" : tab, month: key === cur ? "" : key, p: pq }, o || {})); };
+  const pct = function (a, b) { return b > 0 ? Math.min(100, Math.round((a / b) * 100)) : 0; };
+  const monthName = function (k) { return L_monthLabel(k); };
+  function L_monthLabel(k) { const p = String(k).split("-"); const n = ["January","February","March","April","May","June","July","August","September","October","November","December"][Number(p[1]) - 1]; return n + " " + p[0]; }
+  const shortMonth = function (k) { return L_monthLabel(k).split(" ")[0]; };
+%>
+<style>
+  .hn9 .hn2a-inner { max-width: 1180px; }
+  .hn9-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .hn9-pick { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0; }
+  .hn9-pick .hn2a-select { width: auto; min-width: 150px; height: 40px; font-weight: 700; font-size: 13.5px; }
+  .hn9-pick .hn2a-btn { min-height: 40px; padding: 8px 14px; font-size: 13.5px; }
+  .hn9-sum { grid-template-columns: repeat(5, 1fr); }
+  .hn9-g2 { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  .hn9-g2e { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  .hn9 .hn2a-card { padding: 16px 18px; margin-bottom: 14px; }
+  .hn9 h2.hn9-h { font-size: 15px; font-weight: 800; margin: 0 0 10px; color: var(--hn-ink); letter-spacing: -0.01em; }
+  .hn9-ln { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #eef4f1; font-size: 13.5px; font-weight: 600; color: var(--hn-ink); }
+  .hn9-ln:last-child { border-bottom: 0; }
+  .hn9-ln .v { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-weight: 700; }
+  .hn9-bar { width: 120px; height: 8px; border-radius: 99px; background: #e4eee9; overflow: hidden; display: inline-block; flex: none; }
+  .hn9-bar i { display: block; height: 100%; }
+  .hn9-key { font-size: 12px; color: var(--hn-soft); font-weight: 600; display: flex; gap: 12px; align-items: center; }
+  .hn9-key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .hn9-chart svg { display: block; width: 100%; height: auto; }
+  .hn9-chart .hn9-cm { display: none; }
+  @media (max-width: 640px) { .hn9-chart .hn9-cd { display: none; } .hn9-chart .hn9-cm { display: block; } }
+  .hn9-chart text { font-family: var(--hn-font); }
+  .hn9-age { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+  .hn9-age div { border-radius: 12px; padding: 10px 12px; font-size: 12px; font-weight: 700; }
+  .hn9-age b { display: block; font-size: 17px; font-weight: 800; margin: 2px 0; }
+  .hn9-tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .hn9 .hn9-tbl th { text-align: left; font-size: 12px; font-weight: 700; color: var(--hn-soft); background: transparent; border: 0; border-bottom: 1px solid var(--hn-line); padding: 8px 10px; white-space: nowrap; }
+  .hn9 .hn9-tbl td { padding: 11px 10px; border: 0; border-bottom: 1px solid #eef4f1; font-weight: 600; color: var(--hn-ink); vertical-align: middle; }
+  .hn9 .hn9-tbl tr, .hn9 .hn9-tbl tr:nth-child(even), .hn9 .hn9-tbl tr:hover { background: transparent; }
+  .hn9 .hn9-tbl th.r, .hn9 .hn9-tbl td.r { text-align: right; }
+  .hn9 .hn9-tbl tr:last-child td { border-bottom: 0; }
+  .hn9-tbl .r { text-align: right; white-space: nowrap; }
+  .hn9 .hn9-tbl tr.tot td { font-weight: 800; border-top: 1px solid var(--hn-line); }
+  .hn9-tbl small { display: block; color: var(--hn-soft); font-weight: 500; font-size: 12px; margin-top: 2px; }
+  .hn9-scroll { overflow-x: auto; }
+  .hn9-pos { color: var(--hn-green); } .hn9-neg { color: var(--hn-coral); }
+  .hn9-acts { display: flex; gap: 12px; justify-content: flex-end; align-items: center; white-space: nowrap; }
+  .hn9-acts form { margin: 0; }
+  .hn9-help { font-size: 12.5px; color: var(--hn-soft); font-weight: 500; margin-top: 8px; }
+  .hn9-up { border: 1.5px dashed #bfe8d2; border-radius: 12px; padding: 12px; background: #f7fcf9; font-size: 13px; }
+  .hn9-up input { font-size: 13px; max-width: 100%; }
+  @media (max-width: 1100px) { .hn9-sum { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 900px) {
+    .hn9-g2, .hn9-g2e { grid-template-columns: minmax(0, 1fr); }
+    .hn9-sum { grid-template-columns: 1fr 1fr; }
+    .hn9-sum > :last-child { grid-column: 1 / -1; }
+    .hn9-age { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    .hn9-top > div:first-child { width: 100%; }
+    .hn9-pick { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .hn9-pick > label, .hn9-pick .hn2a-select { width: 100%; min-width: 0; }
+    .hn9-pick .hn2a-btn { width: 100%; }
+    .hn9-ln { flex-wrap: wrap; }
+    .hn9-ln .v { white-space: normal; }
+    .hn9-bar { width: 70px; }
+    .hn9-tbl .hide-s { display: none; }
+    .hn9-tbl th, .hn9-tbl td { padding-left: 6px; padding-right: 6px; }
+  }
+</style>
+<div class="hn2a hn3 hn5 hn9">
+  <div class="hn2a-inner">
+    <div class="hn9-top">
+      <div><h1 class="hn2a-title">Reports</h1><div class="hn2a-sub" style="margin:6px 0 0">Real numbers from your ledgers<% if (!none) { %> · <%= scope.name %><% } %></div></div>
+      <% if (!none) { %>
+      <form class="hn9-pick" method="GET" action="/user/revenue" data-hn9-pick>
+        <% if (tab !== "money") { %><input type="hidden" name="tab" value="<%= tab %>"><% } %>
+        <label><span style="position:absolute;left:-9999px">Month</span>
+          <select class="hn2a-select" name="month"><% months.forEach(function (m) { %><option value="<%= m.key %>" <%= m.key === key ? "selected" : "" %>>📅 <%= m.label %></option><% }) %></select></label>
+        <% if (many) { %><label><span style="position:absolute;left:-9999px">Property</span>
+          <select class="hn2a-select" name="p"><option value="all" <%= scope.p === "all" ? "selected" : "" %>>🏠 All properties</option><% hostels.forEach(function (h) { %><option value="<%= h._id %>" <%= scope.p === String(h._id) ? "selected" : "" %>>🏠 <%= h.hostelName %></option><% }) %></select></label><% } %>
+        <button class="hn2a-btn is-ghost" type="submit" data-hn9-show>Show</button>
+        <a class="hn2a-btn is-ghost" href="<%= url({ format: 'csv' }) %>" download>⬇ Excel</a>
+        <a class="hn2a-btn is-ghost" href="<%= url({ format: 'pdf' }) %>" target="_blank" rel="noopener">⬇ PDF</a>
+      </form>
+      <% } %>
+    </div>
+    <% if (flash.err) { %><div class="hn2a-notice is-bad" role="alert" style="margin-top:14px"><%= flash.err %></div><% } %>
+    <% if (flash.msg) { %><div class="hn2a-notice is-ok" role="status" style="margin-top:14px"><%= flash.msg %></div><% } %>
+
+    <% if (none) { %>
+    <div class="hn2a-card" style="margin-top:16px"><div class="hn2a-empty">Add a property to see reports. <a href="/user/addnewhostel" style="color:var(--hn-green);font-weight:700">Add property</a></div></div>
+    <% } else { %>
+    <nav class="hn3-tabs" aria-label="Reports" style="margin:16px 0 14px">
+      <% TABS.forEach(function (t) { %><a href="<%= url({ tab: t[0] === 'money' ? '' : t[0] }) %>" <%- tab === t[0] ? 'aria-current="page"' : '' %>><%= t[1] %></a><% }) %>
+    </nav>
+
+    <div class="hn5-sum hn9-sum">
+      <div class="hn2a-card"><small>Expected</small><b><%= T.inr(r.money.expected) %></b><em>rent + extras charged</em></div>
+      <div class="hn2a-card is-ok"><small>Collected</small><b><%= T.inr(r.money.collected) %></b><em><%= r.money.expected > 0 ? (r.money.collected > r.money.expected ? "incl. earlier dues" : pct(r.money.collected, r.money.expected) + "% of expected") : r.money.paidTenants + " paid" %></em></div>
+      <div class="hn2a-card is-bad"><small>Still due <span style="font-weight:600">(today)</span></small><b><%= T.inr(r.dues.total) %></b><em><%= r.dues.rows.length %> tenant<%= r.dues.rows.length === 1 ? "" : "s" %></em></div>
+      <div class="hn2a-card"><small>Expenses</small><b><%= T.inr(r.expenses.total) %></b><em><%= r.expenses.list.length %> bill<%= r.expenses.list.length === 1 ? "" : "s" %></em></div>
+      <div class="hn2a-card <%= r.profit < 0 ? 'is-bad' : 'is-ok' %>"><small>Profit</small><b><%= r.profit < 0 ? "−" : "" %><%= T.inr(Math.abs(r.profit)) %></b><em>collected − expenses</em></div>
+    </div>
+
+    <% if (tab === "money") { %>
+    <%
+      const maxV = Math.max(1000, ...r.chart.map(function (c) { return Math.max(c.expected, c.collected); }));
+      const stepRaw = maxV / 3, mag = Math.pow(10, Math.floor(Math.log10(stepRaw)));
+      const step = [1, 2, 2.5, 5, 10].map(function (f) { return f * mag; }).find(function (s) { return s >= stepRaw; });
+      const ceil = step * 3;
+      const kfmt = function (v) { return v >= 100000 ? "₹" + (v / 100000).toFixed(v % 100000 ? 1 : 0) + "L" : v >= 1000 ? "₹" + Math.round(v / 1000) + "k" : "₹" + v; };
+    %>
+    <div class="hn9-g2">
+      <section class="hn2a-card hn9-chart" aria-label="Collected vs expected, last 12 months">
+        <div class="hn2a-row" style="margin-bottom:6px"><h2 class="hn9-h" style="margin:0">Collected vs expected · last 12 months</h2>
+          <span class="hn9-key"><span><i style="background:#d7efe2"></i>expected</span><span><i style="background:#0a7d4c"></i>collected</span></span></div>
+        <% [[720, 240, 46, 10.5, "hn9-cd"], [360, 230, 38, 10, "hn9-cm"]].forEach(function (cfg) {
+          const W = cfg[0], H = cfg[1], left = cfg[2], fs = cfg[3], top = 12, bottom = 26, plotH = H - top - bottom, bw = (W - left) / r.chart.length;
+          const y = function (v) { return top + plotH - (v / ceil) * plotH; }; %>
+        <svg class="<%= cfg[4] %>" viewBox="0 0 <%= W %> <%= H %>" role="img" aria-label="Bar chart: <%= r.chart.map(function (c) { return c.label + ' collected ' + T.inr(c.collected) + ' of ' + T.inr(c.expected); }).join('; ') %>">
+          <% [0, 1, 2, 3].forEach(function (i) { const v = step * i; %>
+          <line x1="<%= left %>" x2="<%= W %>" y1="<%= y(v).toFixed(1) %>" y2="<%= y(v).toFixed(1) %>" stroke="#e8efeb"/>
+          <text x="<%= left - 6 %>" y="<%= (y(v) + 4).toFixed(1) %>" text-anchor="end" font-size="<%= fs %>" fill="#6b7c75"><%= kfmt(v) %></text>
+          <% }) %>
+          <% r.chart.forEach(function (c, i) { const x = left + i * bw; const eh = (c.expected / ceil) * plotH, ch = (c.collected / ceil) * plotH; const isSel = c.key === key; %>
+          <g><title><%= c.label %>: collected <%= T.inr(c.collected) %> of <%= T.inr(c.expected) %> expected</title>
+            <a href="<%= url({ month: c.key === cur ? '' : c.key }) %>">
+            <rect x="<%= (x + 4).toFixed(1) %>" y="<%= (top + plotH - eh).toFixed(1) %>" width="<%= (bw - 10).toFixed(1) %>" height="<%= Math.max(0, eh).toFixed(1) %>" rx="4" fill="#d7efe2"/>
+            <rect x="<%= (x + 9).toFixed(1) %>" y="<%= (top + plotH - ch).toFixed(1) %>" width="<%= Math.max(2, bw - 20).toFixed(1) %>" height="<%= Math.max(0, ch).toFixed(1) %>" rx="3" fill="<%= isSel ? '#0EA968' : '#0a7d4c' %>"/>
+            <rect x="<%= x.toFixed(1) %>" y="<%= top %>" width="<%= bw.toFixed(1) %>" height="<%= plotH %>" fill="transparent"/>
+            </a>
+            <text x="<%= (x + bw / 2 - 1).toFixed(1) %>" y="<%= H - 8 %>" text-anchor="middle" font-size="<%= fs %>" fill="<%= isSel ? '#10231b' : '#6b7c75' %>" font-weight="<%= isSel ? 800 : 500 %>"><%= c.short %></text>
+          </g>
+          <% }) %>
+        </svg>
+        <% }) %>
+        <div class="hn9-help">Tap a month to open it. Expected: rent and extras charged that month. Collected: payments received that month (not deposits used up at move-out).</div>
+      </section>
+      <div>
+        <section class="hn2a-card" aria-label="Collection by way of payment">
+          <h2 class="hn9-h">Collection by way of payment · <%= shortMonth(key) %></h2>
+          <% const modeMax = Math.max(1, r.money.collected); %>
+          <% r.modes.forEach(function (m) { %>
+          <div class="hn9-ln"><span><%= m.icon %> <%= m.label %></span><span class="v"><span class="hn9-bar"><i style="width:<%= pct(m.amount, modeMax) %>%;background:<%= m.color %>"></i></span><%= T.inr(m.amount) %></span></div>
+          <% }) %>
+        </section>
+        <section class="hn2a-card" aria-label="Move-ins and move-outs">
+          <h2 class="hn9-h">Move-ins and move-outs</h2>
+          <% r.occupancy.months.slice(-3).reverse().forEach(function (m) { %>
+          <div class="hn9-ln"><span><%= L_monthLabel(m.key).split(" ")[0] %></span><span class="v"><span><b class="hn9-pos">+<%= m.ins %></b> in · <b class="hn9-neg">−<%= m.outs %></b> out</span></span></div>
+          <% }) %>
+          <div class="hn9-help"><a href="<%= url({ tab: 'occupancy' }) %>" style="color:var(--hn-green);font-weight:700">All months and occupancy</a></div>
+        </section>
+      </div>
+    </div>
+    <% if (many && scope.p === "all") { %>
+    <section class="hn2a-card" aria-label="By property">
+      <h2 class="hn9-h">By property · <%= r.label %></h2>
+      <div class="hn9-scroll"><table class="hn9-tbl"><thead><tr><th>Property</th><th class="r">Expected</th><th class="r">Collected</th><th class="r hide-s">Expenses</th><th class="r">Profit</th></tr></thead><tbody>
+        <% r.byProperty.forEach(function (p) { %><tr><td><a href="<%= url({ p: p.id }) %>" style="color:var(--hn-ink)"><%= p.name %></a></td><td class="r"><%= T.inr(p.expected) %></td><td class="r"><%= T.inr(p.collected) %></td><td class="r hide-s"><%= T.inr(p.expenses) %></td><td class="r <%= p.profit < 0 ? 'hn9-neg' : 'hn9-pos' %>"><%= p.profit < 0 ? "−" : "" %><%= T.inr(Math.abs(p.profit)) %></td></tr><% }) %>
+      </tbody></table></div>
+    </section>
+    <% } %>
+    <% } %>
+
+    <% if (tab === "dues") { %>
+    <section class="hn2a-card" aria-label="Dues by age">
+      <h2 class="hn9-h">Dues by age · <%= T.inr(r.dues.total) %> <span class="hn5-mut">(as of today)</span></h2>
+      <% const AGE_TONE = [["var(--hn-amber-tint)", "var(--hn-amber)"], ["#fde9d7", "#b4530a"], ["var(--hn-coral-tint)", "var(--hn-coral)"], ["#f6d4d0", "#8f2a22"]]; %>
+      <div class="hn9-age">
+        <% r.dues.buckets.forEach(function (b, i) { %><div style="background:<%= AGE_TONE[i][0] %>;color:<%= AGE_TONE[i][1] %>"><%= b.label %><b><%= T.inr(b.amount) %></b><%= b.tenants %> tenant<%= b.tenants === 1 ? "" : "s" %></div><% }) %>
+      </div>
+      <% if (!r.dues.rows.length) { %><div class="hn2a-empty">No dues. Everyone has paid. 🎉</div><% } else { %>
+      <div class="hn9-scroll"><table class="hn9-tbl"><thead><tr><th>Tenant</th><% if (many && scope.p === "all") { %><th class="hide-s">Property</th><% } %><th class="hide-s">Room</th><th>Owed since</th><th class="r">Due</th><th class="hide-s">Reminded</th><th></th></tr></thead><tbody>
+        <% r.dues.rows.forEach(function (x) { %>
+        <tr>
+          <td><a href="/user/tenants/<%= x.id %>?tab=payments" style="color:var(--hn-ink)"><%= x.name %></a><small><%= x.dueFor %></small></td>
+          <% if (many && scope.p === "all") { %><td class="hide-s"><%= x.property %></td><% } %>
+          <td class="hide-s"><%= x.room %></td>
+          <td><%= x.since ? T.day(x.since) : "—" %><small><%= x.daysLate > 0 ? x.daysLate + (x.daysLate === 1 ? " day" : " days") : "due today" %></small></td>
+          <td class="r" style="font-weight:800"><%= T.inr(x.due) %></td>
+          <td class="hide-s hn5-mut"><%= last[x.id] || "—" %></td>
+          <td class="r"><% if (canSend.indexOf(x.id) >= 0) { %><form method="POST" action="/user/tenants/<%= x.id %>/remind" style="margin:0"><input type="hidden" name="back" value="<%= self %>"><button type="submit" class="hn2a-btn is-ghost is-sm" style="min-height:34px;padding:6px 12px;font-size:13px">Send reminder</button></form><% } else if (!x.out) { %><a class="hn5-lnk" href="/user/dues">Remind</a><% } else { %><span class="hn5-mut">Moved out</span><% } %></td>
+        </tr>
+        <% }) %>
+      </tbody></table></div>
+      <% } %>
+      <div class="hn9-help">Each month's unpaid amount is aged from that month's due day. Moved-out tenants who still owe are included, as on Dues.<% if (!reminders.any) { %> “Remind” opens Dues, where 💬 sends it from your own WhatsApp.<% } %></div>
+    </section>
+    <% } %>
+
+    <% if (tab === "occupancy") { const o = r.occupancy; %>
+    <div class="hn9-g2e">
+      <section class="hn2a-card" aria-label="Beds now">
+        <h2 class="hn9-h">Occupancy now · <%= o.total.filled %> of <%= o.total.beds %> beds filled</h2>
+        <% o.now.forEach(function (h) { %>
+        <div class="hn9-ln"><span><%= h.name %></span><span class="v"><span class="hn9-bar"><i style="width:<%= h.pct %>%;background:var(--hn-green-bright)"></i></span><span><%= h.filled %> of <%= h.beds %> · <b><%= h.free %> free</b></span></span></div>
+        <% if (h.booked || h.blocked) { %><div class="hn5-mut" style="margin:-4px 0 6px;font-size:12px"><%= [h.booked ? h.booked + " booked" : "", h.blocked ? h.blocked + " blocked" : ""].filter(Boolean).join(" · ") %></div><% } %>
+        <% }) %>
+        <% if (!o.now.some(function (h) { return h.beds; })) { %><div class="hn2a-empty">No rooms yet. <a href="/user/rooms" style="color:var(--hn-green);font-weight:700">Add rooms</a></div><% } %>
+      </section>
+      <section class="hn2a-card" aria-label="Tenants each month">
+        <h2 class="hn9-h">Tenants each month</h2>
+        <div class="hn9-scroll"><table class="hn9-tbl"><thead><tr><th>Month</th><th class="r">Living here at month end</th><th class="r">Moved in</th><th class="r">Moved out</th></tr></thead><tbody>
+          <% o.months.slice().reverse().forEach(function (m) { %><tr><td><%= L_monthLabel(m.key) %><%= m.key === cur ? " (so far)" : "" %></td><td class="r"><%= m.living %></td><td class="r hn9-pos">+<%= m.ins %></td><td class="r hn9-neg">−<%= m.outs %></td></tr><% }) %>
+        </tbody></table></div>
+      </section>
+    </div>
+    <% } %>
+
+    <% if (tab === "leads") { const lm = r.leads[r.leads.length - 1]; %>
+    <div class="hn9-g2e">
+      <section class="hn2a-card" aria-label="Leads and bookings to tenants">
+        <h2 class="hn9-h">Leads and bookings to tenants · <%= shortMonth(key) %></h2>
+        <div class="hn9-ln"><span>Leads (enquiries on your listings)</span><b><%= lm.leads %></b></div>
+        <div class="hn9-ln"><span>Bookings paid <span class="hn5-mut">(not cancelled)</span></span><b><%= lm.bookings %><% if (lm.bookingAmount) { %> <span class="hn5-mut">· <%= T.inr(lm.bookingAmount) %></span><% } %></b></div>
+        <div class="hn9-ln"><span>Moved in from leads</span><b><%= lm.fromLeads %></b></div>
+        <div class="hn9-ln"><span>Moved in from bookings</span><b><%= lm.fromBookings %></b></div>
+        <div class="hn9-ln"><span>Walk-ins (added directly)</span><b><%= lm.walkIns %></b></div>
+        <div class="hn9-ln"><span>Lead → tenant</span><b class="hn9-pos"><%= lm.rate === null ? "—" : lm.rate + "%" %></b></div>
+        <div class="hn9-help"><%= scope.p === "all" ? "All your listings." : "Listings linked to this property." %> A tenant counts “from a lead” when added from Leads, and “from a booking” when admitted from Bookings.</div>
+      </section>
+      <section class="hn2a-card" aria-label="Last 12 months">
+        <h2 class="hn9-h">Last 12 months</h2>
+        <div class="hn9-scroll"><table class="hn9-tbl"><thead><tr><th>Month</th><th class="r">Leads</th><th class="r">Bookings</th><th class="r">Moved in</th><th class="r">Rate</th></tr></thead><tbody>
+          <% r.leads.slice().reverse().forEach(function (m) { %><tr><td><%= L_monthLabel(m.key) %></td><td class="r"><%= m.leads %></td><td class="r"><%= m.bookings %></td><td class="r"><%= m.converted %><% if (m.walkIns) { %> <span class="hn5-mut">+<%= m.walkIns %></span><% } %></td><td class="r"><%= m.rate === null ? "—" : m.rate + "%" %></td></tr><% }) %>
+        </tbody></table></div>
+        <div class="hn9-help">Moved in: from leads or bookings (+ walk-ins).</div>
+      </section>
+    </div>
+    <% } %>
+
+    <% if (tab === "expenses") { %>
+    <div class="hn9-g2e">
+      <section class="hn2a-card" aria-label="Profit">
+        <h2 class="hn9-h">Profit · <%= r.label %></h2>
+        <div class="hn9-scroll"><table class="hn9-tbl"><thead><tr><th>Property</th><th class="r">Income collected</th><th class="r">Expenses</th><th class="r">Profit</th></tr></thead><tbody>
+          <% r.byProperty.forEach(function (p) { %><tr><td><%= p.name %></td><td class="r"><%= T.inr(p.collected) %></td><td class="r"><%= T.inr(p.expenses) %></td><td class="r <%= p.profit < 0 ? 'hn9-neg' : 'hn9-pos' %>" style="font-weight:800"><%= p.profit < 0 ? "−" : "" %><%= T.inr(Math.abs(p.profit)) %></td></tr><% }) %>
+          <% if (r.byProperty.length > 1) { %><tr class="tot"><td>All</td><td class="r"><%= T.inr(r.money.collected) %></td><td class="r"><%= T.inr(r.expenses.total) %></td><td class="r <%= r.profit < 0 ? 'hn9-neg' : 'hn9-pos' %>"><%= r.profit < 0 ? "−" : "" %><%= T.inr(Math.abs(r.profit)) %></td></tr><% } %>
+        </tbody></table></div>
+        <div class="hn9-help">Income collected: rent and other payments received this month, as on Payments.</div>
+      </section>
+      <section class="hn2a-card" aria-label="Profit, last 12 months">
+        <h2 class="hn9-h">Profit · last 12 months</h2>
+        <div class="hn9-scroll"><table class="hn9-tbl"><thead><tr><th>Month</th><th class="r">Collected</th><th class="r">Expenses</th><th class="r">Profit</th></tr></thead><tbody>
+          <% r.profitMonths.slice().reverse().slice(0, 6).forEach(function (m) { %><tr><td><%= m.label %></td><td class="r"><%= T.inr(m.collected) %></td><td class="r"><%= T.inr(m.expenses) %></td><td class="r <%= m.profit < 0 ? 'hn9-neg' : 'hn9-pos' %>"><%= m.profit < 0 ? "−" : "" %><%= T.inr(Math.abs(m.profit)) %></td></tr><% }) %>
+        </tbody></table></div>
+        <div class="hn9-help">All 12 months are in the Excel and PDF downloads.</div>
+      </section>
+    </div>
+    <section class="hn2a-card" aria-label="Expenses">
+      <div class="hn2a-row" style="margin-bottom:6px"><h2 class="hn9-h" style="margin:0">Expenses · <%= r.label %></h2><a class="hn2a-btn is-sm" href="<%= url({ add: 1 }) %>" data-hn9-add style="min-height:38px;padding:8px 14px;font-size:13.5px">+ Add expense</a></div>
+      <% if (!r.expenses.list.length) { %><div class="hn2a-empty">No expenses in <%= r.label %>. Add bills like electricity, salaries or repairs to see your profit.</div><% } else { %>
+      <div class="hn9-scroll"><table class="hn9-tbl"><thead><tr><th>Date</th><th>Category</th><% if (many && scope.p === "all") { %><th class="hide-s">Property</th><% } %><th class="r">Amount</th><th class="hide-s">Bill</th><th></th></tr></thead><tbody>
+        <% r.expenses.list.forEach(function (e) { %>
+        <tr>
+          <td style="white-space:nowrap"><%= T.day(e.date) %></td>
+          <td><%= e.cat.icon %> <%= e.cat.label %><% if (e.note) { %><small><%= e.note %></small><% } %></td>
+          <% if (many && scope.p === "all") { %><td class="hide-s"><%= e.property %></td><% } %>
+          <td class="r" style="font-weight:800"><%= T.inr(e.amount) %></td>
+          <td class="hide-s"><% if (e.bill && e.bill.file) { %><a class="hn5-lnk" href="/user/expenses/<%= e._id %>/bill" target="_blank" rel="noopener">View</a><% } else { %><span class="hn5-mut">—</span><% } %></td>
+          <td><div class="hn9-acts"><a class="hn5-lnk" href="<%= url({ edit: String(e._id) }) %>">Edit</a>
+            <form method="POST" action="/user/expenses/<%= e._id %>/delete" data-hn9-confirm="Delete this expense (<%= e.cat.label %> <%= T.inr(e.amount) %>)?"><input type="hidden" name="back" value="<%= self %>"><button type="submit" class="hn5-lnk is-red">Delete</button></form></div></td>
+        </tr>
+        <% }) %>
+        <tr class="tot"><td>Total</td><td></td><% if (many && scope.p === "all") { %><td class="hide-s"></td><% } %><td class="r"><%= T.inr(r.expenses.total) %></td><td class="hide-s"></td><td></td></tr>
+      </tbody></table></div>
+      <% } %>
+    </section>
+    <% } %>
+    <div class="hn9-help">Made <%= made %>. Expected and collected match Payments; Still due matches Dues.</div>
+    <% } %>
+  </div>
+
+  <% if (!none && drawer) { const cats = R.EXPENSE_CATS; %>
+  <a class="hn5-shade" href="<%= self %>" aria-label="Close"></a>
+  <div class="hn5-drawer" role="dialog" aria-modal="true" aria-labelledby="hn9-exp-title" data-hn9-drawer>
+    <div class="hn2a-row" style="align-items:flex-start;margin-bottom:12px">
+      <div><div class="hn5-mut" style="font-size:12px;font-weight:700"><%= drawer.id ? "CHANGE EXPENSE" : "ADD EXPENSE" %></div><h2 id="hn9-exp-title" style="font-size:20px;font-weight:800;margin:4px 0 0"><%= drawer.id ? "Edit expense" : "New expense" %></h2></div>
+      <a class="hn5-x" href="<%= self %>" aria-label="Close" style="display:inline-flex;align-items:center;justify-content:center">✕</a>
+    </div>
+    <% if (flash.err) { %><div class="hn2a-notice is-bad" role="alert"><%= flash.err %></div><% } %>
+    <form method="POST" action="/user/expenses<%= drawer.id ? '/' + drawer.id : '' %>" enctype="multipart/form-data">
+      <input type="hidden" name="back" value="<%= self %>">
+      <div class="hn5-f"><span class="lb" id="hn9-cat">Category</span>
+        <div class="hn5-cats" role="radiogroup" aria-labelledby="hn9-cat">
+          <% Object.keys(cats).forEach(function (k) { %><label><input type="radio" name="category" value="<%= k %>" <%= drawer.category === k ? "checked" : "" %> required><span><%= cats[k].icon %> <%= cats[k].label %></span></label><% }) %>
+        </div></div>
+      <div class="hn5-g2">
+        <div class="hn5-f"><label for="hn9-amt">Amount (₹)</label><input class="hn2a-input" id="hn9-amt" name="amount" inputmode="numeric" value="<%= drawer.amount %>" placeholder="14600" required autocomplete="off"></div>
+        <div class="hn5-f"><label for="hn9-date">Date</label><input class="hn2a-input" id="hn9-date" type="date" name="date" value="<%= drawer.date %>" max="<%= T.ymd(new Date()) %>" required></div>
+      </div>
+      <div class="hn5-f"><label for="hn9-h">Property</label>
+        <select class="hn2a-select" id="hn9-h" name="hostel" style="max-width:none"><% hostels.forEach(function (h) { %><option value="<%= h._id %>" <%= String(h._id) === drawer.hostel ? "selected" : "" %>><%= h.hostelName %></option><% }) %></select></div>
+      <div class="hn5-f"><label for="hn9-note">Note <span class="hn5-mut">(optional; needed for “Other”)</span></label><input class="hn2a-input" id="hn9-note" name="note" value="<%= drawer.note %>" maxlength="120" placeholder="MSEDCL bill, Sept" style="max-width:none"></div>
+      <div class="hn5-f"><label for="hn9-bill">Bill photo <span class="hn5-mut">(optional · JPG, PNG or PDF, up to 5 MB)</span></label>
+        <div class="hn9-up">📷 <input id="hn9-bill" type="file" name="bill" accept="image/jpeg,image/png,image/webp,application/pdf">
+          <% if (drawer.bill) { %><div style="margin-top:8px" class="hn5-mut">Saved: <a class="hn5-lnk" href="/user/expenses/<%= drawer.id %>/bill" target="_blank" rel="noopener"><%= drawer.bill.name %></a> · a new file replaces it.
+            <label class="hn5-chk" style="margin:8px 0 0"><input type="checkbox" name="removeBill" value="1"> Remove the saved bill</label></div><% } %>
+        </div></div>
+      <button type="submit" class="hn2a-btn hn5-go"><%= drawer.id ? "Save changes" : "Save expense" %></button>
+    </form>
+  </div>
+  <% } %>
+</div>
+<script>
+(function () {
+  var f = document.querySelector('[data-hn9-pick]');
+  if (f) {
+    var show = f.querySelector('[data-hn9-show]'); if (show) show.style.display = 'none';
+    f.addEventListener('change', function (e) { if (e.target.tagName === 'SELECT') f.submit(); });
+  }
+  document.addEventListener('submit', function (e) {
+    var c = e.target.getAttribute('data-hn9-confirm');
+    if (c && !window.confirm(c)) { e.preventDefault(); return; }
+    var b = e.target.querySelector('button[type=submit]'); if (b) setTimeout(function () { b.disabled = true; }, 0);
+  });
+  var d = document.querySelector('[data-hn9-drawer]');
+  if (d) {
+    document.body.style.overflow = 'hidden';
+    var first = d.querySelector('input[name=amount]'); if (first && !first.value) first.focus();
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { var x = d.querySelector('.hn5-x'); if (x) window.location.href = x.getAttribute('href'); } });
+  }
+})();
+</script>

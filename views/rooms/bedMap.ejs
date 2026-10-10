@@ -32,6 +32,7 @@
   .hn2r-legend i { width: 14px; height: 14px; border-radius: 5px; display: inline-block; }
   .lg-o { background: var(--hn-slate-tint); border: 1px solid #cbd5e1; } .lg-f { background: #fff; border: 2px dashed var(--hn-green-bright); }
   .lg-x { background: repeating-linear-gradient(45deg, #e5e7eb 0 3px, #f3f4f6 3px 6px); border: 1px solid #d1d5db; }
+  .lg-b { background: var(--hn-violet-tint); border: 1.5px solid #c9b8f7; }
   .hn2r-floor { margin-bottom: 24px; }
   .hn2r-fh { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
   .hn2r-fh h2 { font-size: 17px; font-weight: 800; margin: 0; color: var(--hn-ink); }
@@ -57,6 +58,7 @@
   .hn2r-bed.is-f { background: #fff; border: 2px dashed var(--hn-green-bright); color: var(--hn-green); }
   .hn2r-bed.is-f .go { font-size: 12px; font-weight: 700; background: var(--hn-green); color: #fff; padding: 3px 9px; border-radius: 7px; }
   .hn2r-bed.is-x { background: repeating-linear-gradient(45deg, #eef0f2 0 4px, #f7f8f9 4px 8px); color: #5b6470; }
+  .hn2r-bed.is-b { background: var(--hn-violet-tint); color: var(--hn-violet); box-shadow: inset 0 0 0 1.5px #c9b8f7; }   /* Phase 8: booked */
   .hn2r-empty { text-align: center; padding: 48px 20px; }
   .hn2r-empty b { display: block; font-size: 18px; margin-bottom: 6px; }
   .hn2r-empty p { color: var(--hn-soft); font-size: 14px; margin: 0 0 16px; }
@@ -142,7 +144,7 @@
           <button type="button" class="hn2r-chip" data-type="AC" aria-pressed="false">AC</button>
           <button type="button" class="hn2r-chip" data-type="Non-AC" aria-pressed="false">Non-AC</button>
         </div>
-        <div class="hn2r-legend"><span><i class="lg-o"></i>Occupied</span><span><i class="lg-f"></i>Free</span><span><i class="lg-x"></i>Blocked</span></div>
+        <div class="hn2r-legend"><span><i class="lg-o"></i>Occupied</span><span><i class="lg-f"></i>Free</span><span><i class="lg-x"></i>Blocked</span><span><i class="lg-b"></i>Booked</span></div>
       </div>
 
       <% map.floors.forEach(function (f) { %>
@@ -160,6 +162,8 @@
                   <% r.beds.forEach(function (b) { %>
                     <% if (b.member) { %>
                       <span class="hn2r-bed is-o"><span class="l"><%= b.label %></span><span class="who"><%= b.member.name %></span></span>
+                    <% } else if (b.booking) { %>
+                      <span class="hn2r-bed is-b"><span class="l"><%= b.label %></span><span class="who">Booked · <%= b.booking.name %><% if (b.booking.moveIn) { %> · <%= new Date(b.booking.moveIn).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }) %><% } %></span></span>
                     <% } else if (b.blocked) { %>
                       <span class="hn2r-bed is-x"><span class="l"><%= b.label %></span><span class="who">Blocked</span><% if (b.blockNote) { %><small><%= b.blockNote %></small><% } %></span>
                     <% } else { %>
@@ -181,7 +185,7 @@
   <aside class="hn2r-drawer" id="hn2rDrawer" role="dialog" aria-modal="true" aria-labelledby="hn2rDTitle" tabindex="-1" aria-hidden="true"></aside>
 </div>
 
-<script type="application/json" id="hn2rData"><%- JSON.stringify({ rooms: map.rooms.map(function (r) { return { id: r.id, number: r.number, rent: r.rent, capacity: r.capacity, roomType: r.roomType, amenities: r.amenities, free: r.free, occupied: r.occupied, floor: (map.floors.find(function (f) { return f.id === r.floorId; }) || { name: "" }).name, beds: r.beds.map(function (b) { return { label: b.label, rent: b.rent, ownRent: b.ownRent, blocked: b.blocked, blockNote: b.blockNote, note: b.note, member: b.member ? { id: b.member.id, name: b.member.name, since: b.member.since, rent: b.member.rent } : null }; }) }; }) }).replace(/</g, "\\u003c") %></script>
+<script type="application/json" id="hn2rData"><%- JSON.stringify({ rooms: map.rooms.map(function (r) { return { id: r.id, number: r.number, rent: r.rent, capacity: r.capacity, roomType: r.roomType, amenities: r.amenities, free: r.free, occupied: r.occupied, floor: (map.floors.find(function (f) { return f.id === r.floorId; }) || { name: "" }).name, beds: r.beds.map(function (b) { return { label: b.label, rent: b.rent, ownRent: b.ownRent, blocked: b.blocked, blockNote: b.blockNote, note: b.note, booking: b.booking ? { id: b.booking.id, name: b.booking.name, moveIn: b.booking.moveIn } : null, member: b.member ? { id: b.member.id, name: b.member.name, since: b.member.since, rent: b.member.rent } : null }; }) }; }) }).replace(/</g, "\\u003c") %></script>
 <script>
 (function () {
   var data = JSON.parse(document.getElementById('hn2rData').textContent);
@@ -231,7 +235,7 @@
   var link = function (text, href, ghost) { return el('a', { href: href, cls: 'hn2a-btn hn2r-sm' + (ghost ? ' is-ghost' : ''), text: text }); };
   function freeBedOptions(exceptRoom) {
     var sel = el('select', { name: 'to', cls: 'hn2r-sel', 'aria-label': 'Move to bed', required: 'required' }, [el('option', { value: '', text: 'Choose a free bed' })]);
-    data.rooms.forEach(function (r) { r.beds.forEach(function (b) { if (!b.member && !b.blocked) sel.appendChild(el('option', { value: r.id + ':' + b.label, text: 'Room ' + r.number + ' · bed ' + b.label + (r.floor ? ' · ' + r.floor : '') })); }); });
+    data.rooms.forEach(function (r) { r.beds.forEach(function (b) { if (!b.member && !b.blocked && !b.booking) sel.appendChild(el('option', { value: r.id + ':' + b.label, text: 'Room ' + r.number + ' · bed ' + b.label + (r.floor ? ' · ' + r.floor : '') })); }); });
     return sel;
   }
   function open(id) {
@@ -249,9 +253,10 @@
     if (r.amenities && r.amenities.length) drawer.appendChild(el('div', { cls: 'hn2a-help', text: 'Includes: ' + r.amenities.join(', ') }));
     drawer.appendChild(el('div', { cls: 'hn2r-h3', text: 'Beds' }));
     r.beds.forEach(function (b) {
-      var box = el('div', { cls: 'hn2r-bl' + (!b.member && !b.blocked ? ' is-free' : '') });
+      var box = el('div', { cls: 'hn2r-bl' + (!b.member && !b.blocked && !b.booking ? ' is-free' : '') });
       var title = 'Bed ' + b.label + (b.note ? ' · ' + b.note : '') + (b.member ? ' · ' + b.member.name : '');
       var pill = b.member ? el('span', { cls: 'hn2r-pill', style: 'background:var(--hn-slate-tint);color:var(--hn-slate)', text: 'Occupied' })
+        : b.booking ? el('span', { cls: 'hn2r-pill', style: 'background:var(--hn-violet-tint);color:var(--hn-violet)', text: 'Booked' })
         : b.blocked ? el('span', { cls: 'hn2r-pill', style: 'background:#eef0f2;color:#5b6470', text: 'Blocked' })
         : el('span', { cls: 'hn2r-pill', style: 'background:var(--hn-green-tint);color:var(--hn-green)', text: 'Free' });
       box.appendChild(el('div', { cls: 't' }, [el('span', { text: title }), pill]));
@@ -269,6 +274,10 @@
         if (typeof b.member.rent === 'number' && b.member.rent !== b.rent) {
           box.appendChild(el('div', { cls: 'a' }, [form('/user/members/' + encodeURIComponent(b.member.id) + '/rent-reset', {}, [btn('Charge this bed’s rent (' + inr(b.rent) + ') from next month', true)])]));
         }
+      } else if (b.booking) {   // Property Operations Phase 8
+        var mi = b.booking.moveIn ? new Date(b.booking.moveIn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }) : '';
+        box.appendChild(el('div', { cls: 'm', text: 'Booked by ' + b.booking.name + (mi ? ', moving in ' + mi : '') + '. Kept for them until move-in.' }));
+        box.appendChild(el('div', { cls: 'a' }, [link('Open booking', '/user/bookings?tab=accepted&open=' + encodeURIComponent(b.booking.id), true)]));
       } else if (b.blocked) {
         box.appendChild(el('div', { cls: 'm', text: b.blockNote ? 'Reason: ' + b.blockNote : 'Not available for now.' }));
         box.appendChild(el('div', { cls: 'a' }, [form(base + encodeURIComponent(b.label) + '/block', { unblock: '1' }, [btn('Make it free again', true)])]));

@@ -1,0 +1,31 @@
+<%# Property Operations Phase 7 — on the tenant page: the tenant's notice request (asked in My PG on
+    hostelnode.com) and "Invite to pay online". Needs: online7, m, T, sameHostel, base. %>
+<% if (typeof online7 !== "undefined" && online7) { const rq = online7.request, first = String(m.name || "").split(" ")[0]; %>
+<% if (rq) { %>
+<div class="hn3-callout t-amber hn7-req" role="status">
+  <span aria-hidden="true">📅</span>
+  <div style="flex:1;min-width:0">
+    <%= first %> asked to leave on <b><%= T.dayYear(rq.date) %></b><%= rq.reason ? " — “" + rq.reason + "”" : "" %>.
+    <span style="font-weight:500">Sent from hostelnode.com on <%= T.day(rq.at) %>.</span>
+    <% if (sameHostel) { %>
+    <div class="hn7-acts">
+      <form method="POST" action="<%= base %>/notice-request/accept" style="margin:0"><button type="submit" class="hn2a-btn is-sm">Accept notice</button></form>
+      <form method="POST" action="<%= base %>/notice-request/decline" style="margin:0" data-confirm="Decline <%= T.plain(first) %>'s request to leave on <%= T.dayYear(rq.date) %>? They will see it in My PG."><button type="submit" class="hn2a-btn is-ghost is-sm">Decline</button></form>
+    </div>
+    <% } else { %><div style="font-weight:500;margin-top:4px">Switch to this tenant's property to accept or decline.</div><% } %>
+  </div>
+</div>
+<% } %>
+<% if (online7.can && online7.invite) { %>
+<div class="hn7-inv">
+  <a class="hn2a-btn is-ghost is-sm" href="<%= online7.invite %>" target="_blank" rel="noopener">💬 <%= online7.hasAccount ? "Send the My PG link" : "Invite to pay online" %></a>
+  <span><%= online7.hasAccount ? first + " is on HostelNode and can pay rent online in My PG. This sends the link from your WhatsApp." : "Not on HostelNode yet: sends the My PG link from your WhatsApp. " + first + " logs in with this mobile number." %></span>
+</div>
+<% } %>
+<style>
+  .hn7-req { margin: 14px 0 0; }
+  .hn7-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .hn7-inv { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0 0; font-size: 13px; color: var(--hn-soft); font-weight: 500; }
+  @media (max-width: 640px) { .hn7-inv .hn2a-btn { width: 100%; justify-content: center; } }
+</style>
+<% } %>

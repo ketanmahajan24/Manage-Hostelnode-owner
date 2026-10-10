@@ -60,7 +60,7 @@ async function nextReceiptNo(ownerId, when) {
  * { ownerId, member, amount, mode ("Cash" | "UPI" | "Bank transfer"), reference, date, note }
  * Returns { payment, dup } — dup: the same payment was sent a moment ago (double tap), nothing new saved.
  */
-async function recordPayment({ ownerId, member, amount, mode, reference = "", date = new Date(), note = "" }) {
+async function recordPayment({ ownerId, member, amount, mode, reference = "", date = new Date(), note = "", by = null, extra = null }) {
   const Payment = require("../models/payment");
   const Member = require("../models/member");
   return locked([`pay:${member._id}`, `receipt:${ownerId}`], async () => {
@@ -73,14 +73,15 @@ async function recordPayment({ ownerId, member, amount, mode, reference = "", da
     }).sort({ _id: -1 }).lean()).find(p => (p.reference || "") === (reference || "") && moment(p.paymentDate).tz(TZ).isSame(day, "day"));
     if (recent) return { payment: recent, dup: true };
 
-    const name = await ownerName(ownerId);
     const receiptNo = await nextReceiptNo(ownerId, date);
-    const saved = await new Payment({
+    // Phase 7: by = { id, name, role: "tenant" } for rent paid online; extra = the online and payout details.
+    const recordedBy = by && by.role ? { id: by.id || undefined, name: by.name || "", role: by.role } : { id: ownerId, name: await ownerName(ownerId), role: "owner" };
+    const saved = await new Payment(Object.assign({
       user: ownerId, memberId: member._id, roomId: member.assignedRoom_id || undefined,
       amountPaid: amount, paymentMode: mode, paymentDate: date, status: "Paid",
       kind: "payment", reference: reference || undefined, note: note || undefined, receiptNo,
-      recordedBy: { id: ownerId, name, role: "owner" },
-    }).save();
+      recordedBy,
+    }, extra || {})).save();
     // On the tenant. Someone who moved out stays moved out (paying old dues does not move them back in).
     await Member.updateOne({ _id: member._id }, { $addToSet: { payments: saved._id }, ...(member.leftDate ? {} : { $set: { status: "Active" } }) });
 

@@ -46,6 +46,7 @@ const EMPTY = {
   unreadMessages: 0,
   newEnquiries: 0,
   unreadNotifications: 0,
+  newBookings: 0,   // Property Operations Phase 8: bookings waiting for the owner's answer
   setup: { done: SETUP_STEPS.length, total: SETUP_STEPS.length, next: null },
 };
 
@@ -136,12 +137,13 @@ async function fill(req, res) {
     return; // the route's own auth middleware decides what to do
   }
 
-  const [unreadMessages, newEnquiries, unreadNotifications, setup] = await Promise.all([
+  const [unreadMessages, newEnquiries, unreadNotifications, setup, newBookings] = await Promise.all([
     safe(() => countUnreadMessages(ownerId), 0),
     safe(() => countNewEnquiries(ownerId), 0),
     safe(() => countUnreadNotifications(ownerId), 0),
     safe(() => setupProgress(ownerId), EMPTY.setup),
+    safe(() => require("../models/booking").countDocuments({ owner: ownerId, status: "requested" }), 0),   // Phase 8
   ]);
 
-  if (!res.headersSent) res.locals.hn2 = { unreadMessages, newEnquiries, unreadNotifications, setup };
+  if (!res.headersSent) res.locals.hn2 = { unreadMessages, newEnquiries, unreadNotifications, setup, newBookings };
 }

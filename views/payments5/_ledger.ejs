@@ -14,6 +14,9 @@
     const attrs = { action: "/user/tenants/" + mid + "/entries/" + e._id + "/cancel", what: what, receipt: e.receiptNo || "—", when: T.day(e.paymentDate) + (byWho(e) ? " · by " + byWho(e) : ""), after: T.inr(afterCancel(e)) };
     return '<button type="button" class="hn5-lnk is-red" data-hn5-open="hn5-cancel"' + Object.keys(attrs).map(function (k) { return ' data-set-' + k + '="' + String(attrs[k]).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;") + '"'; }).join("") + '>' + (L.isPayment(e) ? "Cancel entry" : "Cancel") + '</button>';
   };
+  // Phase 7: rent paid online by the tenant (My PG on hostelnode.com).
+  const isOnline = function (e) { return !!(e.recordedBy && e.recordedBy.role === "tenant"); };
+  const onlineWay = function (e) { return String(e.paymentMode || "").replace(/ \(online\)$/, ""); };
   const dep = Number(m.depositPaid) || 0, depAgreed = Number(m.depositAmount) || 0;
   const settled = settlement && !settlement.undoneAt;
   const latestKey = lg.months.length ? lg.months[0].key : "";
@@ -45,8 +48,8 @@
   <% if (lg.advance > 0) { %><div class="hn3-callout t-green">💰 <div><b><%= T.inr(lg.advance) %> paid in advance.</b> It is used by the next rent automatically.</div></div>
   <div class="hn5-mon"><div class="d" style="border-top:0">
     <% lg.advanceFrom.forEach(function (a) { const e = a.entry; %>
-      <div class="hn5-li"><span aria-hidden="true">💰</span><span><%= a.amount !== a.total ? T.inr(a.amount) + " of " + T.inr(a.total) : T.inr(a.total) %> in advance<%= e.paymentMode ? " · " + e.paymentMode : "" %><%= e.reference ? " · ref " + e.reference : "" %></span>
-        <small><%= T.day(e.paymentDate) %><%= e.receiptNo ? " · " + e.receiptNo : "" %><%= byWho(e) ? " · recorded by " + byWho(e) : "" %><%= e.note ? " · " + e.note : "" %></small>
+      <div class="hn5-li"><span aria-hidden="true">💰</span><span><%= a.amount !== a.total ? T.inr(a.amount) + " of " + T.inr(a.total) : T.inr(a.total) %> in advance<% if (isOnline(e)) { %> · <b class="hn7-on">Paid online by tenant</b><%= onlineWay(e) && onlineWay(e) !== "Online" ? " · " + onlineWay(e) : "" %><% } else { %><%= e.paymentMode ? " · " + e.paymentMode : "" %><%= e.reference ? " · ref " + e.reference : "" %><% } %></span>
+        <small><%= T.day(e.paymentDate) %><%= e.receiptNo ? " · " + e.receiptNo : "" %><% if (isOnline(e)) { %><%= e.reference ? " · Razorpay " + e.reference : "" %><% } else { %><%= byWho(e) ? " · recorded by " + byWho(e) : "" %><% } %><%= e.note ? " · " + e.note : "" %></small>
         <span class="x"><a class="hn5-lnk" href="/user/payments/<%= e._id %>/receipt.pdf" target="_blank" rel="noopener">Receipt</a><%- cancelBtn(e, "Payment " + T.inr(a.total) + (e.paymentMode ? " · " + e.paymentMode : "")) %></span></div>
     <% }) %>
   </div></div><% } %>
@@ -72,8 +75,8 @@
           <span class="x"><span><%= T.inr(c.amount) %></span><%- cancelBtn(e, c.label + " " + T.inr(c.amount)) %></span></div>
       <% }) %>
       <% mo.applied.forEach(function (a) { const e = a.entry; %>
-        <div class="hn5-li"><span aria-hidden="true">✅</span><span><%= a.amount !== a.total ? T.inr(a.amount) + " of " + T.inr(a.total) : T.inr(a.total) %> <%= a.kind === "depositAdjust" ? "from the deposit" : "paid" %><%= e.paymentMode && a.kind !== "depositAdjust" ? " · " + e.paymentMode : "" %><%= e.reference ? " · ref " + e.reference : "" %></span>
-          <small><%= T.day(e.paymentDate) %><%= e.receiptNo ? " · " + e.receiptNo : "" %><%= byWho(e) ? " · recorded by " + byWho(e) : "" %><%= e.note ? " · " + e.note : "" %></small>
+        <div class="hn5-li"><span aria-hidden="true">✅</span><span><%= a.amount !== a.total ? T.inr(a.amount) + " of " + T.inr(a.total) : T.inr(a.total) %> <%= a.kind === "depositAdjust" ? "from the deposit" : "paid" %><% if (isOnline(e)) { %> · <b class="hn7-on">Paid online by tenant</b><%= onlineWay(e) && onlineWay(e) !== "Online" ? " · " + onlineWay(e) : "" %><% } else { %><%= e.paymentMode && a.kind !== "depositAdjust" ? " · " + e.paymentMode : "" %><%= e.reference ? " · ref " + e.reference : "" %><% } %></span>
+          <small><%= T.day(e.paymentDate) %><%= e.receiptNo ? " · " + e.receiptNo : "" %><% if (isOnline(e)) { %><%= e.reference ? " · Razorpay " + e.reference : "" %><% } else { %><%= byWho(e) ? " · recorded by " + byWho(e) : "" %><% } %><%= e.note ? " · " + e.note : "" %></small>
           <span class="x"><% if (a.kind === "payment") { %><a class="hn5-lnk" href="/user/payments/<%= e._id %>/receipt.pdf" target="_blank" rel="noopener">Receipt</a><% } %><%- cancelBtn(e, "Payment " + T.inr(a.total) + (e.paymentMode ? " · " + e.paymentMode : "")) %></span></div>
       <% }) %>
       <% mo.cancelled.forEach(function (c) { const e = c.entry; %>

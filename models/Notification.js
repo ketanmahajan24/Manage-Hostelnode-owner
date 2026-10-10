@@ -64,6 +64,8 @@ const notificationSchema = new mongoose.Schema({
       // Flatmate event already gets its own), and keeping PG/Hostel
       // activity separately queryable from Flatmate activity.
       "PG_NEW_MESSAGE",
+      // Property Operations Phase 8 — a student booked a bed (and reminders to answer it).
+      "PG_BOOKING",
     ],
     required: true,
   },

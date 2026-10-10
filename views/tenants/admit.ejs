@@ -73,6 +73,7 @@
       <%# Pressing Enter in a field uses this button (never the KYC buttons further down). %>
       <button type="submit" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">Admit tenant</button>
       <% if (lead) { %><input type="hidden" name="enquiryId" value="<%= lead.id %>"><% } %>
+      <% if (typeof booking !== "undefined" && booking) { %><input type="hidden" name="bookingId" value="<%= booking.id %>"><% } %>
       <ol class="hn3-steps" aria-label="Steps">
         <li data-s="1"><i></i><span>1 · Person</span></li>
         <li data-s="2"><i></i><span>2 · Room and money</span></li>
@@ -82,6 +83,7 @@
       <!-- Step 1 -->
       <fieldset data-step-panel="1">
         <legend>Person</legend>
+        <% if (typeof booking !== "undefined" && booking) { %><div class="hn3-callout t-green"><span aria-hidden="true">🛏️</span><div>Move-in from booking <b><%= booking.no %></b>: filled in from <%= booking.studentName %>'s booking. The <b><%= T.inr(booking.amount) %></b> paid online is credited to <%= booking.countsTowards === "deposit" ? "the deposit" : "the first rent" %> when you save.</div></div><% } %>
         <% if (lead) { %><div class="hn3-callout t-violet"><span aria-hidden="true">✨</span><div>Filled in from <%= lead.name || "the" %>'s enquiry<% if (lead.listing) { %> on <b><%= lead.listing %></b><% } %><%= lead.roomType ? " (" + lead.roomType + ")" : "" %>. Check each field and change anything.</div></div><% } %>
         <div class="hn2a-field"><label class="hn2a-label" for="f-name">Full name</label>
           <input class="hn2a-input<%= pre('name') %> <%- inv('name') %>" id="f-name" name="member[name]" value="<%= v.name || '' %>" required maxlength="100" autocomplete="off"><%- err("name") %></div>

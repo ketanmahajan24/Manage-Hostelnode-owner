@@ -199,6 +199,10 @@ router.put("/manageroom/:id", jwtAuthMiddleware, attachHostel, needHostel, async
     // Fewer beds: tenants in the removed beds need a free bed that is not blocked.
     if (f.capacity < (Number(room.sharing_capacity) || 0)) {
       const keep = new Set(bedLabels(f.capacity));
+      // Phase 8: a bed booked by a student is not removed.
+      const booked = await require("../models/booking").find({ status: "accepted", "bed.room": room._id }, { bed: 1, studentName: 1 }).lean();
+      const gone = booked.find(x => x.bed && !keep.has(x.bed.label));
+      if (gone) return fail(res, url, `Bed ${room.room_number}-${gone.bed.label} is booked by ${gone.studentName}. Cancel that booking (Bookings) before removing the bed.`);
       const people = await Member.find({ assignedRoom_id: room._id, ...LIVING }, { bedLabel: 1 }).lean();
       const homeless = people.filter(m => !m.bedLabel || !keep.has(m.bedLabel)).length;
       const used = new Set(people.map(m => m.bedLabel).filter(l => keep.has(l)));
@@ -237,6 +241,8 @@ router.delete("/managerooms/:id", jwtAuthMiddleware, attachHostel, needHostel, a
     if (!room) return res.status(404).send("Room not found.");
     const living = await Member.countDocuments({ assignedRoom_id: room._id, ...LIVING });
     if (living) return fail(res, "/user/allrooms", `${living} tenant${living === 1 ? " lives" : "s live"} in room ${room.room_number}. Move ${living === 1 ? "them" : "them"} out or to another room first.`);
+    const bkd = await require("../models/booking").findOne({ status: "accepted", "bed.room": room._id }, { studentName: 1 }).lean();   // Phase 8
+    if (bkd) return fail(res, "/user/allrooms", `A bed in room ${room.room_number} is booked by ${bkd.studentName}. Cancel that booking (Bookings) first.`);
     await Room.deleteOne({ _id: room._id, user: req.user.id });
     await syncFloor(room.floor_id).catch(() => {});
     await refreshListings(H(res));
@@ -263,6 +269,8 @@ router.post("/rooms/:id/beds/:label/block", jwtAuthMiddleware, attachHostel, nee
     if (!room || !bed) return res.status(404).send("Bed not found.");
     const block = req.body.unblock !== "1";
     if (block && bed.member) return fail(res, "/user/allrooms", `${bed.member.name} lives in bed ${bed.label}. Only a free bed can be blocked.`);
+    const bk = block ? await require("../utils/bookings").bookedBed(room._id, bed.label) : null;   // Phase 8
+    if (bk) return fail(res, "/user/allrooms", `Bed ${room.room_number}-${bed.label} is booked by ${bk.studentName}. Cancel the booking first (Bookings).`);
     await Room.updateOne(where, { $set: { [`beds.${at}.blocked`]: block, [`beds.${at}.blockNote`]: block ? clean(req.body.note || "", 60) : "" } });
     await refreshListings(H(res));
     back(res, "/user/allrooms", `Bed ${room.room_number}-${bed.label} ${block ? "blocked" : "is free again"}.`);
@@ -317,6 +325,8 @@ async function moveTenant(req, res) {
     const beds = await ensureBeds(target.toObject());
     const bed = beds.find(b => b.label === String(label || ""));
     if (!bed || bed.member || bed.blocked) return fail(res, done, "That bed is not free any more. Please choose another.");
+    const bk = await require("../utils/bookings").bookedBed(target._id, bed.label);   // Phase 8
+    if (bk) return fail(res, done, `That bed is booked by ${bk.studentName}. Please choose another.`);
     const from = member.assignedRoom_id;
     const before = { assignedRoom_id: member.assignedRoom_id, assignedRoom: member.assignedRoom, bedLabel: member.bedLabel, rent: member.rent === undefined ? null : member.rent };
     const set = { assignedRoom_id: target._id, assignedRoom: target.room_number, bedLabel: bed.label };
@@ -476,7 +486,11 @@ router.get("/listing/:id/link", jwtAuthMiddleware, attachHostel, async (req, res
           matched: matched.map(r => ({ id: r.id, number: r.number })), free: matched.reduce((s, r) => s + r.free, 0) };
       });
     }
-    res.render("rooms/listingLink.ejs", { user, listing, hostels, hostel, rows, rooms, flash: flash(req) });
+    // Phase 8: online booking settings for this listing.
+    const BK = require("../utils/bookings");
+    const bookingView = { s: BK.settingsOf(listing), ready: require("../utils/payouts").canReceive(await require("../models/payoutAccount").findOne({ owner: req.user.id }).lean()), saved: req.query.msg === "booking",
+      types: (listing.rooms || []).map(lr => ({ type: lr.type, price: Number(lr.price) || 0 })), MIN: BK.MIN_AMOUNT };
+    res.render("rooms/listingLink.ejs", { user, listing, hostels, hostel, rows, rooms, flash: flash(req), bookingView });
   } catch (err) {
     console.error("Listing link page error:", err.message);
     res.status(500).send("Something went wrong. Please try again.");

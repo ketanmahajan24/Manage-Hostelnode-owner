@@ -23,6 +23,11 @@ const hostelSchema = new mongoose.Schema({
     type: String,
     enum: ["Active", "Inactive"],
     default: "Active"
+  },
+  // Property Operations Phase 7: tenants may pay rent online here (when the owner's payout
+  // account is active). false = cash only. Empty = on.
+  onlineRent: {
+    type: Boolean
   }
 }, { timestamps: true });
 

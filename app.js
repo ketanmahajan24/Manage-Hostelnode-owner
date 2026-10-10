@@ -116,11 +116,14 @@ app.use(require("./Middlewares/planGate"));     // Subscriptions Phase 4: plan l
 app.use(require("./Middlewares/planPopup"));    // Subscriptions: upgrade popup, limit notice and saved drafts (only on the pages that need them)
 
 app.use("/webhook",     waBot);
-app.use((req, res, next) => { res.locals.hnLedger = require("./utils/payments").ledgerOn(); next(); });   // Phase 5 switch (HN_LEDGER=off → old Payments pages)
+app.use((req, res, next) => { res.locals.hnLedger = require("./utils/payments").ledgerOn(); res.locals.hnPayouts = require("./utils/payouts").enabled(); next(); });   // Phase 5 switch (HN_LEDGER=off → old Payments pages)
 app.use("/user",        require("./routes/roomsRoutes")); // Property Operations Phase 2 — rooms, beds, floors, listing link
 app.use("/user",        require("./routes/tenantsRoutes")); // Property Operations Phase 3 — tenants, admission, move-out
 app.use("/user",        require("./routes/kycOwnerRoutes")); // Property Operations Phase 4 — DigiLocker KYC (status, ask, verify on this phone)
 app.use("/user",        require("./routes/paymentsRoutes")); // Property Operations Phase 5 — rent ledger, collect payment, dues, receipts
+app.use("/user",        require("./routes/payoutsRoutes"));  // Property Operations Phase 6 — Receive payments (owner bank payouts, Razorpay Route)
+app.use("/user",        require("./routes/bookingsRoutes")); // Property Operations Phase 8 — Bookings from listings (accept, decline, admit)
+app.use("/user",        require("./routes/reportsRoutes"));  // Property Operations Phase 9 — Reports, expenses, rent reminders
 app.use("/user",        userRouter);
 app.use("/user",        ownerMessagesRouter); // Phase 4 — /user/messages, /user/messages/:conversationId
 app.use("/user",        require("./routes/leadsRoutes")); // Phase 3 (redesign) — /user/leads, /user/enquiries/:id/status
@@ -165,6 +168,27 @@ cron.schedule("0 10 * * *", async () => {
   }
 }, { timezone: "Asia/Kolkata" });
 
+// Property Operations Phase 6 — owners' payout accounts still being checked by Razorpay: ask for news every 3 hours
+// (the webhook usually tells us first).
+cron.schedule("20 */3 * * *", async () => {
+  try { const n = await require("./utils/payouts").refreshPending(); if (n) console.log(`Payout accounts checked: ${n}`); }
+  catch (err) { console.error("Payout status check (non-fatal):", err.message); }
+}, { timezone: "Asia/Kolkata" });
+
+// Property Operations Phase 8 — bookings: reminders to the owner (24 h, 48 h), no answer in 72 h → cancelled and
+// refunded, refunds Razorpay could not take yet, and the owner's share after move-in. Every 15 minutes.
+cron.schedule("*/15 * * * *", async () => {
+  try { const s = await require("./utils/bookings").tick(); if (s.reminded || s.expired || s.refunds) console.log("Bookings:", JSON.stringify(s)); }
+  catch (err) { console.error("Bookings job (non-fatal):", err.message); }
+}, { timezone: "Asia/Kolkata" });
+
+// Property Operations Phase 7 — rent paid online: where each owner's share is ("On the way", "In your bank"),
+// every 30 minutes (the webhook usually tells us first).
+cron.schedule("10,40 * * * *", async () => {
+  try { await require("./utils/onlineRent").syncPending(); }
+  catch (err) { console.error("Rent payout check (non-fatal):", err.message); }
+}, { timezone: "Asia/Kolkata" });
+
 // Property Operations Phase 1 — monthly rent charges (utils/monthlyRent.js): India time,
 // once per tenant per month however often it runs, and catches up after downtime.
 // Runs at 00:05 every night and once a minute after the server starts.
@@ -177,6 +201,14 @@ setTimeout(() => {
     .then(r => { if (r.charged || r.errors) console.log(`Monthly rent (startup check): ${r.charged} charged, ${r.errors} errors`); })
     .catch(() => {});
 }, Number(process.env.HN_RENT_STARTUP_DELAY_MS) || 60 * 1000).unref();
+
+// Property Operations Phase 9 — automatic rent reminders to tenants (WhatsApp from HostelNode, email):
+// before the due day, on it, and after it if unpaid. 10:00 India time, and again at 15:00 for any the
+// morning run missed (each reminder is sent once; a tenant gets at most one a day).
+cron.schedule("0 10,15 * * *", async () => {
+  try { const r = await require("./utils/rentReminders").run(); if (r.sent || r.errors) console.log(`Rent reminders: ${r.sent} sent, ${r.errors} errors`); }
+  catch (err) { console.error("Rent reminders (non-fatal):", err.message); }
+}, { timezone: "Asia/Kolkata" });
 
 // (Flatmate reminder cron removed — Flatmate doesn't run on this
 //   deployment at all, so there's nothing for it to sweep here.)

@@ -16,6 +16,8 @@
   .hn5-dues .acts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
   .hn5-dues .acts .hn2a-btn { justify-content: center; width: 100%; padding-left: 8px; padding-right: 8px; }
   .hn5-dues .for { font-size: 12.5px; color: var(--hn-soft); font-weight: 600; margin-top: 8px; }
+  .hn9-rem { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12.5px; color: var(--hn-soft); font-weight: 600; margin-top: 6px; }   /* Phase 9 */
+  .hn9-rem button { white-space: nowrap; }
 </style>
 <div class="hn2a hn3 hn5">
   <div class="hn2a-inner">
@@ -23,10 +25,13 @@
     <div class="hn3-head" style="align-items:flex-end">
       <div><h1 class="hn2a-title" style="margin:0">Dues</h1>
         <div class="hn2a-sub" style="margin:6px 0 0"><% if (list.length) { %><b style="color:var(--hn-coral)"><%= T.inr(total) %></b> due from <%= list.length %> tenant<%= list.length === 1 ? "" : "s" %> · <%= hostel.hostelName %><% } else { %><%= hostel.hostelName %><% } %></div></div>
+      <div class="hn2a-row" style="gap:8px">
+      <a class="hn2a-btn is-ghost" href="/user/dues/reminders">Reminder settings</a>
       <form class="hn2a-row" method="GET" action="/user/dues" style="margin:0;gap:8px" role="search">
         <% if (sort === "amount") { %><input type="hidden" name="sort" value="amount"><% } %>
         <label class="hn3-search" style="margin:0"><span style="position:absolute;left:-9999px">Search</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input class="hn2a-input" name="q" value="<%= q %>" placeholder="Name, mobile or room" autocomplete="off"></label>
       </form>
+      </div>
     </div>
     <% if (flash.err) { %><div class="hn2a-notice is-bad" role="alert" style="margin-top:14px"><%= flash.err %></div><% } %>
     <% if (flash.msg && !paid) { %><div class="hn2a-notice is-ok" role="status" style="margin-top:14px"><%= flash.msg %></div><% } %>
@@ -43,6 +48,7 @@
           <div class="amt"><b><%= T.inr(r.due) %></b><span class="hn3-pill <%= r.out ? 't-slate' : TONE[r.status.tone] || 't-warn' %>"><%= r.out ? "Moved out" + (r.daysLate > 0 ? " · " + r.daysLate + " days" : "") : (r.monthsOwed > 1 ? r.monthsOwed + " months · " : "") + (r.daysLate > 0 ? r.daysLate + (r.daysLate === 1 ? " day late" : " days late") : r.status.label) %></span></div>
         </div>
         <div class="for">For: <%= r.dueFor %></div>
+        <% if (r.reminded || r.canSend) { %><div class="hn9-rem"><span><%= r.reminded ? "Reminded " + r.reminded : "" %></span><% if (r.canSend) { %><form method="POST" action="/user/tenants/<%= r.id %>/remind" style="margin:0"><input type="hidden" name="back" value="<%= self %>"><button type="submit" class="hn5-lnk">Send reminder</button></form><% } %></div><% } %>
         <div class="acts">
           <a class="hn2a-btn is-ghost is-sm" href="tel:+91<%= r.mobile %>"><%- PHONE %> Call</a>
           <a class="hn2a-btn is-ghost is-sm" href="<%= r.remind %>" target="_blank" rel="noopener">💬 Remind</a>
@@ -51,7 +57,7 @@
       </div>
       <% }) %>
     </div>
-    <div class="hn5-help">“Remind” opens WhatsApp on your phone with a short message about the amount due. Nothing is sent until you send it.</div>
+    <div class="hn5-help">“Remind” opens WhatsApp on your phone with a short message about the amount due. Nothing is sent until you send it.<% if (reminders && reminders.any) { %> “Send reminder” sends it now from HostelNode (WhatsApp and email), with a Pay now link.<% } %></div>
   </div>
   <%- include("_drawer.ejs", { paid: paid, flash: flash, self: self }) %>
 </div>

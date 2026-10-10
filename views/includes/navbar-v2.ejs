@@ -22,6 +22,7 @@
   const hnUnread  = Number(hnData.unreadMessages) || 0;
   const hnNewEnq  = Number(hnData.newEnquiries) || 0;
   const hnNotif   = Number(hnData.unreadNotifications) || 0;
+  const hnBookings = Number(hnData.newBookings) || 0;   // Property Operations Phase 8
 
   const hnName     = String(hnUser.name || "Owner").trim();
   const hnFirst    = hnName.split(/\s+/)[0] || "Owner";
@@ -160,6 +161,13 @@
         <a class="hn2-subitem" href="/user/newmember"    data-hn2-match="^/user/(newmember|newMember|newAdded)">Add Tenant</a>
         <a class="hn2-subitem" href="/user/members?tab=notice" data-hn2-match="^/user/members/?$" data-hn2-query="tab=notice">Moving Out</a>
       </div>
+
+      <%# Property Operations Phase 8: beds booked from listings on hostelnode.com %>
+      <a class="hn2-item" href="/user/bookings" data-hn2-match="^/user/bookings" title="Bookings">
+        <%- svg('bed', 16, '#828b96', 2, 'hn2-ic') %>
+        <span class="hn2-label hn2-hide-rail">Bookings</span>
+        <% if (hnBookings > 0) { %><span class="hn2-count" aria-label="<%= hnBookings %> waiting for your answer"><%= hnCount(hnBookings) %></span><% } %>
+      </a>
 
       <button type="button" class="hn2-item" data-hn2-sub="hn2SubPayments" aria-controls="hn2SubPayments" title="Payments" aria-expanded="false">
         <%- svg('rupee', 16, '#828b96', 2, 'hn2-ic') %>
@@ -328,6 +336,7 @@
               <%- svg('card', 15, '#667085', 2) %> <span class="hn2-grow">Billing</span>
               <span class="hn2-status <%= hnStatusClass %>"><%= String(hnStatus).toUpperCase() %></span>
             </a>
+            <% if (typeof hnPayouts === "undefined" || hnPayouts) { /* Property Operations Phase 6 */ %><a class="hn2-pop-item" href="/user/account/payouts"><%- svg('rupee', 15, '#667085', 2) %> Receive payments</a><% } %>
           </div>
 
           <div class="hn2-pop-sep"></div>

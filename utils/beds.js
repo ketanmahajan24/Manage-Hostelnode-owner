@@ -101,11 +101,14 @@ async function buildBedMap(ownerId, hostelId) {
   const Floor = require("../models/floor");
   const Room = require("../models/room");
   const Member = require("../models/member");
-  const [floors, rooms, living] = await Promise.all([
+  const [floors, rooms, living, booked] = await Promise.all([
     Floor.find({ user: ownerId, hostel: hostelId }).lean(),
     Room.find({ user: ownerId, hostel: hostelId }).lean(),
     Member.find({ user: ownerId, hostel: hostelId, ...LIVING }, { name: 1, bedLabel: 1, joiningDate: 1, mobileNo: 1, assignedRoom_id: 1, rent: 1 }).lean(),
+    // Property Operations Phase 8: beds booked by a student (accepted, not moved in yet).
+    require("../models/booking").find({ owner: ownerId, hostel: hostelId, status: "accepted" }, { bed: 1, studentName: 1, moveIn: 1 }).lean(),
   ]);
+  const bookingOf = (roomId, label) => booked.find(x => x.bed && String(x.bed.room) === String(roomId) && x.bed.label === label) || null;
   const byRoom = new Map();
   for (const m of living) {
     const k = String(m.assignedRoom_id || "");
@@ -114,14 +117,15 @@ async function buildBedMap(ownerId, hostelId) {
   }
   const roomViews = [];
   for (const r of rooms) {
-    const beds = await ensureBeds(r, byRoom.get(String(r._id)) || []);
-    const free = beds.filter(b => !b.member && !b.blocked).length;
+    const beds = (await ensureBeds(r, byRoom.get(String(r._id)) || [])).map(b => Object.assign(b, { booking: bookingOf(r._id, b.label) }));
+    const free = beds.filter(b => !b.member && !b.blocked && !b.booking).length;
     roomViews.push({
       id: String(r._id), number: r.room_number, floorId: String(r.floor_id || ""), rent: Number(r.room_fees) || 0,
       capacity: Number(r.sharing_capacity) || 0, roomType: r.roomType || "", amenities: r.amenities || [],
-      free, occupied: beds.filter(b => b.member).length, blocked: beds.filter(b => b.blocked).length,
+      free, occupied: beds.filter(b => b.member).length, blocked: beds.filter(b => b.blocked).length, booked: beds.filter(b => b.booking && !b.member).length,
       over: Math.max(0, (byRoom.get(String(r._id)) || []).length - beds.length),
       beds: beds.map(b => ({ label: b.label, rent: b.rent, ownRent: b.ownRent, blocked: b.blocked, blockNote: b.blockNote, note: b.note,
+        booking: b.booking ? { id: String(b.booking._id), name: b.booking.studentName || "", moveIn: b.booking.moveIn } : null,
         member: b.member ? { id: String(b.member._id), name: b.member.name, since: b.member.joiningDate || null, rent: typeof b.member.rent === "number" ? b.member.rent : null } : null })),
     });
   }
@@ -179,10 +183,13 @@ async function refreshListings(hostelId) {
     const living = await Member.find({ hostel: hostelId, ...LIVING, assignedRoom_id: { $in: rooms.map(r => r._id) } }, { assignedRoom_id: 1 }).lean();
     const count = new Map();
     for (const m of living) count.set(String(m.assignedRoom_id), (count.get(String(m.assignedRoom_id)) || 0) + 1);
+    // Phase 8: a bed booked by a student is not free.
+    const booked = new Map();
+    for (const b of await require("../models/booking").find({ hostel: hostelId, status: "accepted" }, { bed: 1 }).lean()) if (b.bed && b.bed.room) booked.set(String(b.bed.room), (booked.get(String(b.bed.room)) || 0) + 1);
     const freeIn = r => {
       const cap = Number(r.sharing_capacity) || 0;
       const blocked = (r.beds || []).filter(b => b.blocked).length;
-      return Math.max(0, cap - (count.get(String(r._id)) || 0) - blocked);
+      return Math.max(0, cap - (count.get(String(r._id)) || 0) - blocked - (booked.get(String(r._id)) || 0));
     };
     for (const l of listings) {
       const set = { bedsUpdatedAt: new Date() };

@@ -1,0 +1,158 @@
+<% layout("/layouts/boilerplate") -%>
+<%# Property Operations Phase 8 — Bookings: students who booked a bed from a listing on hostelnode.com. %>
+<%- include("../account/_style.ejs") %>
+<%- include("../tenants/_style.ejs") %>
+<%
+  const TONE = { warn: "t-warn", ok: "t-ok", blue: "t-blue", slate: "t-slate", bad: "t-bad" };
+  const hoursLeft = function (b) { return Math.max(0, Math.round((BK.answerBy(b) - now) / 3600e3)); };
+  const leftPill = function (b) { const h = hoursLeft(b); const past = BK.answerBy(b) <= now; return { text: past ? "answer now" : h < 1 ? "in under an hour" : "in " + h + " hour" + (h === 1 ? "" : "s"), tone: past || h <= 12 ? "t-bad" : "t-warn" }; };
+  const tabUrl = function (k) { return "/user/bookings?tab=" + k; };
+  const kycPill = function (b) { return b.kycName ? '<span class="hn3-pill t-ok">✓ KYC</span>' : '<span class="hn3-pill t-slate">KYC not needed</span>'; };
+  const cnt = TABS[tab] ? counts[tab] : 0;
+%>
+<style>
+  .hn8 .hn2a-inner { max-width: 1180px; }
+  .hn8-tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .hn8-tbl th { text-align: left; font-size: 12px; color: var(--hn-soft); font-weight: 700; padding: 10px 14px; border-bottom: 1px solid var(--hn-line); background: none; }
+  .hn8-tbl td { padding: 12px 14px; border-bottom: 1px solid #eef4f1; font-weight: 600; vertical-align: middle; background: none; }
+  .hn8-tbl tr:last-child td { border-bottom: 0; }
+  .hn8-tbl .r { text-align: right; white-space: nowrap; }
+  .hn8-who { display: flex; gap: 10px; align-items: center; color: var(--hn-ink); }
+  .hn8-who small { display: block; color: var(--hn-soft); font-weight: 500; font-size: 12.5px; margin-top: 2px; }
+  .hn8-acts { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+  .hn8-shade { position: fixed; inset: 0; background: rgba(16,35,27,0.32); z-index: 1100; }
+  .hn8-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 100vw); background: #fff; z-index: 1101; box-shadow: -20px 0 60px -30px rgba(16,35,27,0.5); overflow-y: auto; padding: 22px 24px 28px; }
+  .hn8-drawer h2 { font-size: 20px; font-weight: 800; margin: 4px 0 2px; color: var(--hn-ink); }
+  .hn8-x { position: absolute; top: 14px; right: 16px; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--hn-line); display: inline-flex; align-items: center; justify-content: center; color: var(--hn-ink); font-size: 16px; }
+  .hn8-k { font-size: 12px; font-weight: 700; color: var(--hn-soft); letter-spacing: .04em; }
+  .hn8-beds { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 10px; }
+  .hn8-beds label { margin: 0; cursor: pointer; }
+  .hn8-beds input { position: absolute; opacity: 0; pointer-events: none; }
+  .hn8-beds span { display: block; border: 1.5px dashed #cfdcd5; border-radius: 12px; padding: 10px; font-size: 13px; font-weight: 800; color: var(--hn-ink); background: #fff; }
+  .hn8-beds span small { display: block; font-size: 11.5px; color: var(--hn-soft); font-weight: 500; margin-top: 2px; }
+  .hn8-beds input:checked + span { border: 2px solid var(--hn-green); background: var(--hn-green-tint); }
+  .hn8-beds input:focus-visible + span { outline: 3px solid rgba(14,169,104,.35); outline-offset: 2px; }
+  .hn8-beds .other span { opacity: .85; }
+  .hn8-rw { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #eef4f1; font-size: 13.5px; font-weight: 600; }
+  .hn8-rw span:first-child { color: var(--hn-soft); font-weight: 500; }
+  .hn8-hist { font-size: 12.5px; color: var(--hn-body); padding: 6px 0; border-bottom: 1px dashed #e3ece7; }
+  .hn8-hist small { color: var(--hn-soft); display: block; }
+  .hn8-set { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid #eef4f1; font-size: 14px; font-weight: 700; }
+  @media (max-width: 760px) {
+    .hn8-tbl .hide-m { display: none; }
+    .hn8-tbl td, .hn8-tbl th { padding: 10px; }
+    .hn8-drawer { top: auto; left: 0; width: 100vw; max-height: 92vh; border-radius: 22px 22px 0 0; padding: 18px 16px 22px; }
+  }
+</style>
+<div class="hn2a hn3 hn8">
+  <div class="hn2a-inner">
+    <h1 class="hn2a-title">Bookings</h1>
+    <div class="hn2a-sub">Students who booked a bed from your listings on hostelnode.com. Answer within <%= BK.ANSWER_H %> hours; after <%= BK.EXPIRE_H %> hours a booking is cancelled and refunded.</div>
+    <% if (flash.msg) { %><div class="hn2a-notice is-ok" role="status"><%= flash.msg %></div><% } %>
+    <% if (flash.err && !open) { %><div class="hn2a-notice is-bad" role="alert"><%= flash.err %></div><% } %>
+    <nav class="hn3-tabs" aria-label="Bookings" style="margin:4px 0 14px">
+      <% Object.keys(TABS).forEach(function (k) { %><a href="<%= tabUrl(k) %>" <%- tab === k ? 'aria-current="page"' : '' %>><%= TABS[k].label %><% if (counts[k]) { %><em><%= counts[k] %></em><% } %></a><% }) %>
+    </nav>
+
+    <section class="hn2a-card" style="padding:0;overflow:hidden" aria-label="<%= TABS[tab].label %>">
+      <% if (!list.length) { %>
+        <div class="hn2a-empty" style="padding:24px"><%= tab === "requested" ? "No bookings waiting for you. When a student books a bed from your listing, it shows here." : tab === "accepted" ? "No accepted bookings. Accepted ones wait here until move-in day." : tab === "moved" ? "Nobody has moved in from a booking yet." : "Nothing declined or cancelled." %></div>
+      <% } else { %>
+      <div style="overflow-x:auto"><table class="hn8-tbl">
+        <thead><tr><th>Student</th><th class="hide-m">Room</th><th>Move in</th><th class="r hide-m">Paid</th><th><%= tab === "requested" ? "Answer by" : "Status" %></th><th></th></tr></thead>
+        <tbody>
+        <% list.forEach(function (b) { const st = BK.STATUS[b.status] || BK.STATUS.declined; %>
+          <tr>
+            <td><a class="hn8-who" href="/user/bookings?tab=<%= tab %>&open=<%= b._id %>"><span class="hn3-ini c-<%= T.toneOf(b._id) %>" aria-hidden="true"><%= T.initials(b.studentName) %></span><div><%= b.studentName %> <%- kycPill(b) %><small><%= T.maskMobile(b.studentPhone) %> · <%= b.bookingNo %></small></div></a></td>
+            <td class="hide-m"><%= b.roomType %><%= b.bed && b.bed.label ? " · " + b.bed.roomNumber + "-" + b.bed.label : "" %></td>
+            <td><%= T.day(b.moveIn) %></td>
+            <td class="r hide-m" style="font-weight:800"><%= T.inr(b.amount) %></td>
+            <td><% if (b.status === "requested") { const lp = leftPill(b); %><span class="hn3-pill <%= lp.tone %>"><%= lp.text %></span><% } else { %><span class="hn3-pill <%= TONE[st.tone] %>"><%= st.label %></span><% if (b.refund && b.refund.status) { %><div class="hn2a-help" style="margin:3px 0 0"><%= BK.refundLine(b) %></div><% } %><% } %></td>
+            <td class="r"><div class="hn8-acts">
+              <% if (b.status === "requested") { %><a class="hn2a-btn is-sm" href="/user/bookings?tab=requested&open=<%= b._id %>">Answer</a>
+              <% } else if (b.status === "accepted") { %><a class="hn2a-btn is-sm" href="/user/bookings/<%= b._id %>/admit">Admit</a><a class="hn2a-btn is-ghost is-sm" href="/user/bookings?tab=accepted&open=<%= b._id %>">Open</a>
+              <% } else if (b.status === "moved_in" && b.member) { %><a class="hn2a-btn is-ghost is-sm" href="/user/tenants/<%= b.member %>">Tenant</a>
+              <% } else { %><a class="hn2a-btn is-ghost is-sm" href="/user/bookings?tab=<%= tab %>&open=<%= b._id %>">Open</a><% } %>
+            </div></td>
+          </tr>
+        <% }) %>
+        </tbody>
+      </table></div>
+      <% } %>
+    </section>
+
+    <section class="hn2a-card" style="margin-top:16px" aria-labelledby="h8-set">
+      <h3 id="h8-set" style="font-size:15px;font-weight:800;margin:0 0 4px">Online booking on your listings</h3>
+      <% if (!ready) { %><div class="hn3-callout t-amber" style="margin:8px 0 6px">⏳ <div>Students can book once your payout account is Active. <a href="/user/account/payouts" style="color:inherit;text-decoration:underline">Receive payments</a></div></div><% } %>
+      <% if (!listings.length) { %><div class="hn2a-help">Link a listing to your property first (My Listings → Show real free beds), then switch booking on there.</div>
+      <% } else { listings.forEach(function (l) { const s = BK.settingsOf(l); %>
+        <div class="hn8-set"><span><%= l.title %> <span class="hn3-pill <%= s.on ? 't-ok' : 't-slate' %>" style="margin-left:6px"><%= s.on ? "Booking on" : "Booking off" %></span></span><a class="hn2a-btn is-ghost is-sm" href="/user/listing/<%= l._id %>/link#booking">Settings</a></div>
+      <% }) } %>
+    </section>
+  </div>
+
+<% if (open) { const st = BK.STATUS[open.status] || BK.STATUS.declined; const closeUrl = "/user/bookings?tab=" + tab; %>
+<a class="hn8-shade" href="<%= closeUrl %>" aria-label="Close"></a>
+<div class="hn8-drawer" role="dialog" aria-modal="true" aria-labelledby="h8-name">
+  <a class="hn8-x" href="<%= closeUrl %>" aria-label="Close">✕</a>
+  <div class="hn8-k"><%= open.status === "requested" ? "ANSWER BOOKING" : "BOOKING " + (open.bookingNo || "") %></div>
+  <h2 id="h8-name"><%= open.studentName %></h2>
+  <div class="hn2a-help" style="margin:0"><%= open.roomType %> · move in <%= T.dayYear(open.moveIn) %> · <%= T.inr(open.amount) %> paid</div>
+  <% if (flash.err) { %><div class="hn2a-notice is-bad" role="alert" style="margin-top:12px"><%= flash.err %></div><% } %>
+  <% if (open.kycName) { %><div class="hn3-callout t-green" style="margin:12px 0">✅ <div>Aadhaar verified with DigiLocker: <b><%= open.kycName %></b>. Shared with you for this booking.</div></div><% } %>
+  <div style="margin:10px 0 14px">
+    <div class="hn8-rw"><span>Status</span><span><span class="hn3-pill <%= TONE[st.tone] %>"><%= st.label %></span></span></div>
+    <div class="hn8-rw"><span>Mobile</span><span><a href="tel:+91<%= open.studentPhone %>" style="color:var(--hn-green)">+91 <%= open.studentPhone %></a></span></div>
+    <div class="hn8-rw"><span>Booking amount</span><span><%= T.inr(open.amount) %> · counts towards <%= open.countsTowards === "deposit" ? "deposit" : "first month's rent" %></span></div>
+    <div class="hn8-rw"><span>Listing rent</span><span><%= T.inr(open.rent) %> a month<%= open.deposit ? " · deposit " + T.inr(open.deposit) : "" %></span></div>
+    <% if (open.bed && open.bed.label) { %><div class="hn8-rw"><span>Bed</span><span>Room <%= open.bed.roomNumber %> · bed <%= open.bed.label %></span></div><% } %>
+    <% if (open.status === "requested") { %><div class="hn8-rw"><span>Answer by</span><span><%= BK.dayTime(BK.answerBy(open)) %></span></div><% } %>
+    <% if (open.refund && open.refund.status) { %><div class="hn8-rw"><span>Refund</span><span><%= BK.refundLine(open) %></span></div><% } %>
+    <% if (open.reason) { %><div class="hn8-rw"><span>Reason</span><span><%= open.reason %></span></div><% } %>
+  </div>
+
+  <% if (!sameHostel) { %><div class="hn3-callout t-blue">🏠 <div>This booking is for another property. Switch to it from the property menu to answer.</div></div>
+  <% } else if (open.status === "requested") { %>
+    <form method="POST" action="/user/bookings/<%= open._id %>/accept" data-once>
+      <span class="hn2a-label" id="h8-beds">Pick the bed</span>
+      <% if (!beds.length) { %><div class="hn2a-notice is-bad">No bed is free on <%= T.dayYear(open.moveIn) %>. Decline the booking, or free a bed first.</div>
+      <% } else { %>
+      <div class="hn8-beds" role="radiogroup" aria-labelledby="h8-beds">
+        <% beds.slice(0, 40).forEach(function (o, i) { %><label class="<%= o.match ? '' : 'other' %>"><input type="radio" name="bed" value="<%= o.value %>" <%= i === 0 ? "checked" : "" %> required><span>Room <%= o.room %> · <%= o.label %><small><%= T.inr(o.rent) %> · <%= o.freeFrom ? "free from " + T.day(o.freeFrom) : "free now" %><%= o.match ? "" : " · other type" %></small></span></label><% }) %>
+      </div>
+      <div class="hn2a-help" style="margin:0 0 12px">The bed shows as Booked on your bed map until move-in. <%= open.studentName.split(" ")[0] %> is told on WhatsApp.</div>
+      <button type="submit" class="hn2a-btn" style="width:100%;justify-content:center">Accept booking</button>
+      <% } %>
+    </form>
+    <form method="POST" action="/user/bookings/<%= open._id %>/decline" style="margin-top:16px;border-top:1px solid var(--hn-line);padding-top:14px" data-once>
+      <label class="hn2a-label" for="h8-dr">Or decline</label>
+      <input id="h8-dr" class="hn2a-input" name="reason" maxlength="200" required minlength="3" placeholder="Reason (the student sees it), e.g. Full for November" style="max-width:none">
+      <button type="submit" class="hn2a-btn is-ghost" style="width:100%;justify-content:center;margin-top:8px;color:var(--hn-coral)">Decline · refund <%= T.inr(open.total) %></button>
+    </form>
+  <% } else if (open.status === "accepted") { const noShow = BK.cancelPreview(open, "student"); const fromMoveIn = new Date(open.moveIn) < now && BK.day(open.moveIn) !== BK.day(now); /* (from the day after move-in) */ %>
+    <a class="hn2a-btn" style="width:100%;justify-content:center" href="/user/bookings/<%= open._id %>/admit">Admit <%= open.studentName.split(" ")[0] %></a>
+    <% if (fromMoveIn) { %>
+    <form method="POST" action="/user/bookings/<%= open._id %>/noshow" style="margin-top:8px" data-once data-confirm="Mark <%= T.plain(open.studentName) %> as not moved in? The bed is freed. <%= noShow.refund > 0 ? T.inr(noShow.refund) + ' goes back to them, by your rule.' : 'You keep the booking amount, by your rule.' %>">
+      <button type="submit" class="hn2a-btn is-ghost" style="width:100%;justify-content:center">Didn't move in<%= noShow.refund > 0 ? " · refund " + T.inr(noShow.refund) : " · you keep " + T.inr(noShow.keep) %></button></form>
+    <% } %>
+    <div class="hn2a-help" style="margin:6px 0 0">Opens Add tenant filled in. The <%= T.inr(open.amount) %> is credited to <%= open.countsTowards === "deposit" ? "the deposit" : "the first rent" %>.</div>
+    <form method="POST" action="/user/bookings/<%= open._id %>/cancel" style="margin-top:16px;border-top:1px solid var(--hn-line);padding-top:14px" data-once data-confirm="Cancel this booking? <%= T.plain(open.studentName) %> gets the full <%= T.inr(open.total) %> back.">
+      <label class="hn2a-label" for="h8-cr">Can't keep the bed?</label>
+      <input id="h8-cr" class="hn2a-input" name="reason" maxlength="200" required minlength="3" placeholder="Reason (the student sees it)" style="max-width:none">
+      <button type="submit" class="hn2a-btn is-ghost" style="width:100%;justify-content:center;margin-top:8px;color:var(--hn-coral)">Cancel booking · refund <%= T.inr(open.total) %></button>
+    </form>
+  <% } else if (open.status === "moved_in" && open.member) { %>
+    <a class="hn2a-btn is-ghost" style="width:100%;justify-content:center" href="/user/tenants/<%= open.member %>">Open tenant</a>
+  <% } %>
+
+  <div style="margin-top:18px"><div class="hn8-k" style="margin-bottom:4px">HISTORY</div>
+    <% (open.history || []).slice().reverse().forEach(function (h) { %><div class="hn8-hist"><%= h.text %><small><%= T.dayYear(h.at) %><%= h.by ? " · " + h.by : "" %></small></div><% }) %>
+  </div>
+</div>
+<% } %>
+</div><%# (the drawer sits inside the page wrapper so it keeps the page's look) %>
+<script>
+document.querySelectorAll('form[data-confirm]').forEach(function (f) { f.addEventListener('submit', function (e) { if (!confirm(f.getAttribute('data-confirm'))) e.preventDefault(); }); });
+document.querySelectorAll('form[data-once]').forEach(function (f) { f.addEventListener('submit', function (e) { if (e.defaultPrevented) return; var b = f.querySelector('button[type=submit]'); setTimeout(function () { if (b) b.disabled = true; }, 0); }); });
+document.addEventListener('keydown', function (e) { var x = document.querySelector('.hn8-x'); if (e.key === 'Escape' && x) x.click(); });
+</script>

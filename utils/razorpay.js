@@ -47,7 +47,8 @@ function call(method, path, body) {
         try { json = JSON.parse(raw); } catch { /* not JSON */ }
         if (res.statusCode >= 200 && res.statusCode < 300 && json) return resolve(json);
         const msg = (json && json.error && json.error.description) || `Razorpay answered ${res.statusCode}`;
-        reject(new Error(msg));
+        const e = new Error(msg); e.status = res.statusCode;   // (Phase 6: an answer from Razorpay, not a lost connection)
+        reject(e);
       });
     });
     req.on("timeout", () => req.destroy(new Error("Razorpay did not answer in time")));
@@ -95,3 +96,6 @@ function validWebhookSignature(rawBody, signature) {
 }
 
 module.exports = { configured, isTestMode, keyId, webhookSecret, createOrder, fetchPayment, capturePayment, validCheckoutSignature, validWebhookSignature };
+// Property Operations Phase 6: the Route (owner payouts) calls use the same connection.
+module.exports.call = call;
+module.exports.keySecret = keySecret;

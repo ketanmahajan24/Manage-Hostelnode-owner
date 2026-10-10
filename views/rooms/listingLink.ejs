@@ -83,6 +83,40 @@
         <a class="hn2a-btn is-ghost" href="/user/my-listings">Not now</a>
       </div>
     </form>
+    <% if (typeof bookingView !== "undefined" && bookingView) { const bs = bookingView.s; %>
+    <%# Property Operations Phase 8: students book a free bed from this listing and pay a booking amount. %>
+    <form class="hn2a-card" id="booking" method="POST" action="/user/listing/<%= listing._id %>/booking" style="margin-top:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <h2 style="font-size:17px;font-weight:800;margin:0;color:var(--hn-ink)">Online booking</h2>
+        <label class="hn2k2-auto" style="margin:0;font-size:14px"><input type="checkbox" name="on" value="1" <%= bs.on ? "checked" : "" %> <%= listing.linkedHostel ? "" : "disabled" %>> Students can book a bed</label>
+      </div>
+      <div class="hn2a-help" style="margin:4px 0 12px">Students pick a room type with free beds and a move-in date, verify their Aadhaar, and pay a booking amount online. You accept with the exact bed, or decline (full refund).</div>
+      <% if (bookingView.saved) { %><div class="hn2a-notice is-ok" role="status">Booking settings saved.</div><% } %>
+      <% if (!listing.linkedHostel) { %><div class="hn2a-notice is-bad">Link this listing to your property above first.</div><% } %>
+      <% if (!bookingView.ready) { %><div class="hn2a-notice is-bad">Your payout account (Account → Receive payments) must be Active before students can book.</div><% } %>
+      <span class="hn2a-label">Booking amount</span>
+      <div class="hn3-seg" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <label class="hn2k2-auto" style="margin:0"><input type="radio" name="amountType" value="rent" <%= bs.amountType === "rent" ? "checked" : "" %>> One month's rent of the room type</label>
+        <label class="hn2k2-auto" style="margin:0"><input type="radio" name="amountType" value="fixed" <%= bs.amountType === "fixed" ? "checked" : "" %>> Fixed ₹</label>
+        <input class="hn2a-input" name="amount" value="<%= bs.amountType === 'fixed' ? bs.amount : '' %>" inputmode="numeric" placeholder="₹ amount" style="max-width:140px;height:40px" aria-label="Fixed booking amount">
+      </div>
+      <div class="hn2a-help" style="margin:0 0 14px"><%= bookingView.types.map(function (t) { return t.type + " ₹" + (bs.amountType === "fixed" ? bs.amount : t.price).toLocaleString("en-IN"); }).join(" · ") || "Add room types to the listing first." %></div>
+      <span class="hn2a-label">It counts towards</span>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+        <label class="hn2k2-auto" style="margin:0"><input type="radio" name="countsTowards" value="rent" <%= bs.countsTowards === "rent" ? "checked" : "" %>> First month's rent</label>
+        <label class="hn2k2-auto" style="margin:0"><input type="radio" name="countsTowards" value="deposit" <%= bs.countsTowards === "deposit" ? "checked" : "" %>> Deposit</label>
+      </div>
+      <span class="hn2a-label">If the student cancels after you accept</span>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+        <label class="hn2k2-auto" style="margin:0"><input type="radio" name="refundAfter" value="full" <%= bs.refundAfter === "full" ? "checked" : "" %>> Full refund</label>
+        <label class="hn2k2-auto" style="margin:0"><input type="radio" name="refundAfter" value="half" <%= bs.refundAfter === "half" ? "checked" : "" %>> Half refund</label>
+        <label class="hn2k2-auto" style="margin:0"><input type="radio" name="refundAfter" value="none" <%= bs.refundAfter === "none" ? "checked" : "" %>> No refund</label>
+        <span class="hn2k2-auto" style="margin:0">up to <input class="hn2a-input" name="refundDays" value="<%= bs.refundDays %>" inputmode="numeric" style="width:64px;height:36px;margin:0 6px" aria-label="Days before move-in"> days before move-in</span>
+      </div>
+      <div class="hn2a-help" style="margin:0 0 14px">Before you accept, and if you decline or don't answer in 72 hours, the student always gets a full refund. The rule is shown to students before they pay.</div>
+      <button type="submit" class="hn2a-btn">Save booking settings</button>
+    </form>
+    <% } %>
     <% if (listing.linkedHostel) { %>
       <form method="POST" action="/user/listing/<%= listing._id %>/link" style="margin-top:6px"><input type="hidden" name="unlink" value="1"><button type="submit" class="hn2a-btn is-ghost" style="color:var(--hn-coral)">Unlink (show the "Available" tick again)</button></form>
     <% } %>

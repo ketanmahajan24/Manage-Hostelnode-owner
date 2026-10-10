@@ -52,6 +52,8 @@ const PAGES = [
   "/user/account/settings",
   "/user/account/billing",
   "/user/account/kyc",
+  "/user/account/payouts",          // Property Operations Phase 6 (Receive payments)
+  "/user/account/payouts?tab=payouts",
   "/user/notifications",
 ];
 

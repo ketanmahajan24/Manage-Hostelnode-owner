@@ -193,6 +193,8 @@ function chargeDateFor(member, key, now = new Date(), { rent = false } = {}) {
 /** Can this entry be cancelled? (Not one made by a move-out settlement that still stands: undo the move-out instead.) */
 function cancellable(member, p) {
   if (!p || p.cancelledAt) return false;
+  // Phase 7: rent paid online by the tenant is real money confirmed by Razorpay (refunds go through HostelNode support).
+  if (p.recordedBy && p.recordedBy.role === "tenant") return false;
   const k = kindOf(p);
   if (k === "depositAdjust" || k === "deduction" || k === "refund") return false;
   const s = member.settlement;

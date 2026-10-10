@@ -333,7 +333,8 @@ router.get("/account/checkout/receipt/:id", jwtAuthMiddleware, async (req, res) 
    does not keep retrying things we have already handled. */
 webhook.post("/webhook", async (req, res) => {
   try {
-    if (!rzp.configured() || !rzp.webhookSecret()) return res.status(503).send("not configured");
+    // (Phase 6: owner payout events only need the keys and the webhook secret, even with plan billing off.)
+    if (!rzp.webhookSecret() || !rzp.keyId()) return res.status(503).send("not configured");
     const raw = Buffer.isBuffer(req.body) ? req.body : null;
     const signature = req.get("x-razorpay-signature") || "";
     if (!raw || !rzp.validWebhookSignature(raw, signature)) return res.status(400).send("bad signature");
@@ -341,6 +342,35 @@ webhook.post("/webhook", async (req, res) => {
     let evt;
     try { evt = JSON.parse(raw.toString("utf8")); } catch { return res.status(400).send("bad body"); }
     const type = typeof evt.event === "string" ? evt.event : "";
+    // Property Operations Phase 6: an owner's linked account (payouts) changed. The payload is not
+    // trusted: the latest status is fetched from Razorpay for that account.
+    if (/^(account|product)\./.test(type)) {
+      const p = evt.payload || {};
+      const ids = [p.account && p.account.entity && p.account.entity.id, p.merchant_product && p.merchant_product.entity && p.merchant_product.entity.account_id,
+        p.product && p.product.entity && p.product.entity.account_id, evt.account_id].filter(x => typeof x === "string" && /^acc_/.test(x));
+      // Answered at once; the status is fetched from Razorpay just after (Razorpay does not wait for it).
+      const unique = [...new Set(ids)];
+      if (unique.length) setImmediate(() => { (async () => { for (const id of unique) await require("../utils/payouts").refreshAccount(id); })().catch(e => console.error("Payout webhook refresh (non-fatal):", e.message)); });
+      return res.status(200).send(unique.length ? "ok" : "ignored");
+    }
+    // Property Operations Phase 7: rent paid online by a tenant (My PG on hostelnode.com).
+    // Transfers: where the owner's share is. The payload is not trusted: it is fetched from Razorpay.
+    if (/^transfer\./.test(type) || type === "settlement.processed") {
+      const OR = require("../utils/onlineRent");
+      const t = evt.payload && evt.payload.transfer && evt.payload.transfer.entity;
+      setImmediate(() => { (t ? OR.syncForTransfer(t) : OR.syncPending({ limit: 40 })).catch(e => console.error("Rent transfer webhook (non-fatal):", e.message)); });
+      return res.status(200).send("ok");
+    }
+    const rentPay = evt.payload && evt.payload.payment && evt.payload.payment.entity;
+    const rentOrder = rentPay && typeof rentPay.order_id === "string" && /^order_/.test(rentPay.order_id)
+      ? await require("../models/rentOrder").findOne({ razorpayOrderId: rentPay.order_id }).select("_id amountPaise status").lean() : null;
+    if (rentOrder) return rentWebhook(type, rentPay, rentOrder, res);
+    // Property Operations Phase 8: a payment on a booking from a listing.
+    const bookingOrder = rentPay && typeof rentPay.order_id === "string" && /^order_/.test(rentPay.order_id)
+      ? await require("../models/booking").findOne({ razorpayOrderId: rentPay.order_id }).select("_id amountPaise status razorpayPaymentId").lean() : null;
+    if (bookingOrder) return bookingWebhook(type, rentPay, bookingOrder, res);
+
+    if (!rzp.configured()) return res.status(503).send("not configured");
     const pay = evt.payload && evt.payload.payment && evt.payload.payment.entity;
     const orderId = pay && typeof pay.order_id === "string" ? pay.order_id : "";
     if (!pay || !orderId) return res.status(200).send("ignored");
@@ -382,6 +412,87 @@ webhook.post("/webhook", async (req, res) => {
     res.status(500).send("error");   // Razorpay will retry
   }
 });
+
+/* Property Operations Phase 7: a payment on a tenant's rent order. Works even if the
+   tenant closed the page right after paying; recorded once, however often we hear of it. */
+async function rentWebhook(type, pay, ro, res) {
+  const OR = require("../utils/onlineRent");
+  const RentOrder = require("../models/rentOrder");
+  const matches = Number(pay.amount) === ro.amountPaise && pay.currency === "INR";
+  if (type === "payment.authorized" && matches && pay.status === "authorized" && ro.status !== "paid") {
+    // Razorpay holds the money but has not collected it (accounts without automatic capture): collect it.
+    let p = null;
+    try { p = await rzp.capturePayment(pay.id, ro.amountPaise); } catch (e) { try { p = await rzp.fetchPayment(pay.id); } catch { /* answered below */ } }
+    if (!p || p.status !== "captured" || p.order_id !== pay.order_id) return res.status(503).send("not captured yet, retry");
+    pay = p;
+    type = "payment.captured";
+  }
+  if (type === "payment.captured" || type === "order.paid") {
+    if (pay.status !== "captured" || !matches) {
+      console.error("Razorpay webhook: rent payment does not match order", pay.order_id, pay.status, pay.amount);
+      return res.status(200).send("mismatch");
+    }
+    // Asked again from Razorpay (a retried event can be old): still collected, and not refunded since.
+    let now = null;
+    try { now = await rzp.fetchPayment(pay.id); } catch (e) { return res.status(503).send("razorpay not reachable, retry"); }
+    if (!now || now.status !== "captured" || Number(now.amount_refunded) >= Number(now.amount) || now.order_id !== pay.order_id || Number(now.amount) !== ro.amountPaise) {
+      console.error("Razorpay webhook: rent payment no longer collected, not recorded", pay.order_id, pay.id, now && now.status);
+      return res.status(200).send("not captured now");
+    }
+    let result;
+    try { result = await OR.fulfil({ id: ro._id }, { paymentId: now.id, method: now.method || "", via: "webhook", at: now.created_at }); }
+    catch (e) { console.error("ONLINE RENT: captured payment not recorded yet (will retry)", pay.order_id, pay.id, e.message); return res.status(500).send("error, retry"); }
+    OR.afterPaid(result);
+    if (result.ok && result.pending) return res.status(503).send("busy, retry");
+    if (!result.ok) {
+      // Can never be recorded (the tenant record was deleted): kept on the order for HostelNode admin, Razorpay not asked again.
+      console.error("ONLINE RENT: captured payment could not be recorded", pay.order_id, pay.id, result.why);
+      await RentOrder.updateOne({ _id: ro._id }, { $set: { failureReason: "Paid but not recorded: " + result.why } });
+      return res.status(200).send("not recorded");
+    }
+    return res.status(200).send("ok");
+  }
+  if (type === "refund.processed" || type === "payment.refunded") {
+    // Refunded in full in the Razorpay Dashboard: the rent shows as due again (the entry is cancelled, with the reason).
+    if (await OR.refunded(pay)) console.log("Online rent refunded, ledger entry cancelled:", pay.id);
+    return res.status(200).send("ok");
+  }
+  if (type === "payment.failed") {
+    // Only a note: the tenant can try again on the same order.
+    await RentOrder.updateOne({ _id: ro._id, status: { $in: ["created", "failed"] } },
+      { $set: { status: "failed", failureReason: String(pay.error_description || pay.error_reason || "Payment failed").slice(0, 200) } });
+    return res.status(200).send("ok");
+  }
+  return res.status(200).send("ignored");
+}
+
+/* Property Operations Phase 8: a payment on a booking. Recorded once (the student may have closed the page);
+   refunds are made by HostelNode itself (utils/bookings.js), so refund events need nothing here. */
+async function bookingWebhook(type, pay, bo, res) {
+  const BK = require("../utils/bookings");
+  const matches = Number(pay.amount) === bo.amountPaise && pay.currency === "INR";
+  if (type === "payment.authorized" && matches && pay.status === "authorized" && bo.status === "pending_payment") {
+    let p = null;
+    try { p = await rzp.capturePayment(pay.id, bo.amountPaise); } catch (e) { try { p = await rzp.fetchPayment(pay.id); } catch { /* answered below */ } }
+    if (!p || p.status !== "captured" || p.order_id !== pay.order_id) return res.status(503).send("not captured yet, retry");
+    type = "payment.captured";
+  }
+  if (type === "payment.captured" || type === "order.paid") {
+    if (!matches) { console.error("Razorpay webhook: booking payment does not match order", pay.order_id, pay.amount); return res.status(200).send("mismatch"); }
+    let now = null;
+    try { now = await rzp.fetchPayment(pay.id); } catch (e) { return res.status(503).send("razorpay not reachable, retry"); }
+    if (!now || now.status !== "captured" || Number(now.amount_refunded) >= Number(now.amount) || now.order_id !== pay.order_id || Number(now.amount) !== bo.amountPaise) {
+      return res.status(200).send("not captured now");
+    }
+    let result;
+    try { result = await BK.fulfil({ id: bo._id }, { paymentId: now.id, method: now.method || "", via: "webhook", at: now.created_at }); }
+    catch (e) { console.error("BOOKING: captured payment not recorded yet (will retry)", pay.order_id, e.message); return res.status(500).send("error, retry"); }
+    BK.afterPaid(result);
+    if (result.ok && result.pending) return res.status(503).send("busy, retry");
+    return res.status(200).send(result.ok ? "ok" : "not recorded");
+  }
+  return res.status(200).send("ignored");
+}
 
 module.exports = router;
 module.exports.webhook = webhook;
