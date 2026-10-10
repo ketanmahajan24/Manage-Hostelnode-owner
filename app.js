@@ -1,7 +1,10 @@
 /* ============================================================
    app.js  —  HostelNode Main Server
 ============================================================ */
-require('dotenv').config();
+ require('dotenv').config({
+  path: '/root/hostelnode-envs/manage.hostelnode.com'
+ });
+
 // At the top with other requires
 const userRouter = require("./routes/userRoutes.js"); // or whatever your owner router file is named
 
