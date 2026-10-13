@@ -30,26 +30,11 @@ const nodemailer = require("nodemailer");
 // ============================================================
 //  SEND MAIL (defined once at top, used everywhere below)
 // ============================================================
+// Admin Console Phase 1: one mailer for the whole app (utils/sendMail.js) — it reads
+// MAIL_USER / MAIL_PASS from .env (no password in the code) and logs each email.
 const sendMail = async (to, subject, html) => {
-  try {
-    if (!to || !subject || !html) return; // guard against bad calls
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.MAIL_USER || "hostelnodehelp@gmail.com",
-        pass: process.env.MAIL_PASS || "sxiwxzxbdujxiyra"
-      }
-    });
-    await transporter.sendMail({
-      from: `"HostelNode" <${process.env.MAIL_USER || "hostelnodehelp@gmail.com"}>`,
-      to,
-      subject,
-      html
-    });
-  } catch (error) {
-    console.error("❌ Email Error (non-fatal):", error.message);
-    // Never re-throw — email failure must never crash a route
-  }
+  if (!to || !subject || !html) return; // guard against bad calls
+  await require("../utils/sendMail").sendMail(to, subject, html);   // never throws
 };
 
 // ============================================================

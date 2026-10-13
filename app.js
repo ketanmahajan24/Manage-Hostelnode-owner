@@ -59,6 +59,8 @@ app.use(cookieParser());                          // 1. cookies parse
 // Subscriptions Phase 3: Razorpay's webhook must be read as raw bytes (its
 // signature is checked against them), so it is parsed here, before JSON.
 app.use("/payments/razorpay/webhook", express.raw({ type: "*/*", limit: "1mb" }));
+// Admin Console Phase 1: keep the WhatsApp webhook's raw bytes so Meta's signature can be checked (WA_APP_SECRET).
+app.use("/webhook", express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.json());                          // 2. JSON body
 app.use(express.urlencoded({ extended: true }));  // 3. form body
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -85,6 +87,14 @@ app.use(async (req, res, next) => {
   }
   next();
 });
+
+// ── Admin Console Phase 1: what people do, for admin.hostelnode.com ──
+// Pages, sign-ins, actions, who is online, city (or GPS when allowed).
+// Written in the background; HN_TRACKING=off in .env stops it.
+const hnActivity = require("./utils/activity");
+app.use(hnActivity.middleware("owner"));
+app.use(hnActivity.routes());   // /hn/track.js, /hn/ping, /hn/loc
+require("./utils/hnFeatures").start();   // feature switches set in the admin console (HN_BOOKINGS, HN_REPORTS, …)
 
 // ════════════════════════════════════════════════════════════
 //   STATIC FILES

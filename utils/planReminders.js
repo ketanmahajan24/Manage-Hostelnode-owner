@@ -20,14 +20,10 @@ const MAX_PER_RUN = 500;
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const day = d => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" });
 
+// Admin Console Phase 1: through utils/sendMail.js (MAIL_USER / MAIL_PASS from .env; logged).
 async function mail(to, subject, html) {
-  if (process.env.MAIL_USER && process.env.MAIL_PASS) {
-    const nodemailer = require("nodemailer");
-    const t = nodemailer.createTransport({ service: "gmail", auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS } });
-    await t.sendMail({ from: `"HostelNode" <${process.env.MAIL_USER}>`, to, subject, html });
-  } else {
-    await require("./sendMail").sendMail(to, subject, html);
-  }
+  const ok = await require("./sendMail").sendMail(to, subject, html, { purpose: "plan_reminder" });
+  if (!ok) throw new Error("email not sent");   // the caller un-marks it so tomorrow's run tries again
 }
 
 // Link to the Plans page, if you set HN_OWNER_DASHBOARD_URL in .env.

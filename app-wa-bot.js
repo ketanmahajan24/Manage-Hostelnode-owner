@@ -264,20 +264,12 @@ const IMG = {
 };
 
 // ── API Caller ───────────────────────────────────────────────
+// Admin Console Phase 1: bot replies go through utils/waSend.js (logged as "bot").
 async function callAPI(payload) {
-  try {
-    const res = await axios.post(BASE_URL, payload, {
-      headers: {
-        'Authorization': `Bearer ${WA_TOKEN}`,
-        'Content-Type':  'application/json'
-      },
-      timeout: 15000
-    });
-    return { success: true, data: res.data };
-  } catch (err) {
-    error("API Error:", JSON.stringify(err.response?.data || err.message));
-    return { success: false };
-  }
+  const r = await require("./utils/waSend").post(payload, { category: "bot" });
+  if (r.ok) return { success: true, data: r.data };
+  if (!r.off) error("API Error:", JSON.stringify(r.error));
+  return { success: false };
 }
 
 // ── Send Plain Text ──────────────────────────────────────────
@@ -532,6 +524,14 @@ router.get("/", (req, res) => {
 // ── Main Message Handler (POST) ──────────────────────────────
 router.post("/", async (req, res) => {
   res.sendStatus(200); // Meta ko turant 200 chahiye
+
+  // Admin Console Phase 1: Meta's delivery receipts (sent / delivered / read /
+  // failed) and incoming messages are logged for the admin console. Only when
+  // the request really came from Meta (checked when WA_APP_SECRET is set).
+  try {
+    const waSend = require("./utils/waSend");
+    if (waSend.signedByMeta(req)) { waSend.receipts(req.body).catch(() => {}); waSend.inbound(req.body).catch(() => {}); }
+  } catch (err) { error("Receipt log (non-fatal):", err.message); }
 
   try {
     const value = req.body?.entry?.[0]?.changes?.[0]?.value;

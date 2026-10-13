@@ -33,13 +33,8 @@ const Notification = require("../models/Notification");
       .env win if set; otherwise the project's existing utils/sendMail.js. ── */
 async function mail(to, subject, html) {
   try {
-    if (process.env.MAIL_USER && process.env.MAIL_PASS) {
-      const nodemailer = require("nodemailer");
-      const t = nodemailer.createTransport({ service: "gmail", auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS } });
-      await t.sendMail({ from: `"HostelNode" <${process.env.MAIL_USER}>`, to, subject, html });
-    } else {
-      await require("../utils/sendMail").sendMail(to, subject, html);
-    }
+    // Admin Console Phase 1: through utils/sendMail.js (MAIL_USER / MAIL_PASS from .env; logged).
+    await require("../utils/sendMail").sendMail(to, subject, html);
   } catch (err) {
     console.error("Account mail (non-fatal):", err.message);
   }

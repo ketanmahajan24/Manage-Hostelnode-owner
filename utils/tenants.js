@@ -175,16 +175,13 @@ async function sendWelcome({ phone, name, property, room, bed, rent, dueDay }) {
     if (!mobile) return { sent: false, why: "no mobile number" };
     const tidy = v => String(v === null || v === undefined ? "" : v).replace(/[\r\n\t]+/g, " ").replace(/ {2,}/g, " ").trim().slice(0, 120) || "-";
     const values = [name, property, room, bed, inr(rent), dueDay ? ordinal(dueDay) : "-"].map(tidy);
-    const base = String(process.env.WA_API_BASE || "https://graph.facebook.com/v19.0").replace(/\/$/, "") + "/" + process.env.WA_PHONE_ID;
-    const res = await fetch(base + "/messages", {
-      method: "POST", signal: AbortSignal.timeout(15000),
-      headers: { Authorization: "Bearer " + process.env.WA_TOKEN, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messaging_product: "whatsapp", to: "91" + mobile, type: "template",
-        template: { name: welcomeTemplate(), language: { code: welcomeLang() }, components: [{ type: "body", parameters: values.map(v => ({ type: "text", text: v })) }] },
-      }),
-    });
-    if (!res.ok) { let m = ""; try { m = (await res.json()).error.message; } catch { /* ignore */ } throw new Error(m || "WhatsApp answered " + res.status); }
+    // Admin Console Phase 1: through utils/waSend.js (logged; honours the admin's switches).
+    const r = await require("./waSend").post({
+      messaging_product: "whatsapp", to: "91" + mobile, type: "template",
+      template: { name: welcomeTemplate(), language: { code: welcomeLang() }, components: [{ type: "body", parameters: values.map(v => ({ type: "text", text: v })) }] },
+    }, { category: "tenants" });
+    if (r.off) return { sent: false, why: "off" };
+    if (!r.ok) throw new Error((r.error && r.error.message) || "WhatsApp answered " + r.status);
     return { sent: true };
   } catch (err) {
     console.error("Tenant welcome WhatsApp (non-fatal):", err.message);

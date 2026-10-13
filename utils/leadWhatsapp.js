@@ -55,7 +55,8 @@ async function sendTemplateMessage(phone, templateName, variables, headerImageUr
       });
     }
 
-    const res = await axios.post(BASE_URL, {
+    // Admin Console Phase 1: sent through utils/waSend.js (logged, and honours the admin's switches).
+    const r = await require("./waSend").post({
       messaging_product: "whatsapp",
       to:   fullPhone,
       type: "template",
@@ -64,13 +65,9 @@ async function sendTemplateMessage(phone, templateName, variables, headerImageUr
         language:   { code: languageCode },
         components
       }
-    }, {
-      headers: {
-        'Authorization': `Bearer ${WA_TOKEN}`,
-        'Content-Type':  'application/json'
-      },
-      timeout: 15000
     });
+    if (!r.ok) throw Object.assign(new Error((r.error && r.error.message) || "not sent"), { response: { data: r.off ? "Switched off in the admin console" : { error: r.error } } });
+    const res = { data: r.data };
 
     console.log(`🟢 Template sent → ${fullPhone}`);
     return { success: true, data: res.data };
@@ -89,18 +86,14 @@ async function sendWAMessage(phone, message) {
     const fullPhone = formatPhone(phone);
     console.log(`🔵 Plain text WA → ${fullPhone}`);
 
-    const res = await axios.post(BASE_URL, {
+    const r = await require("./waSend").post({
       messaging_product: "whatsapp",
       to:   fullPhone,
       type: "text",
       text: { body: message }
-    },{
-      headers: {
-        'Authorization': `Bearer ${WA_TOKEN}`,
-        'Content-Type':  'application/json'
-      },
-      timeout: 15000
-    });
+    }, { category: "chat" });
+    if (!r.ok) throw Object.assign(new Error((r.error && r.error.message) || "not sent"), { response: { data: r.off ? "Switched off in the admin console" : { error: r.error } } });
+    const res = { data: r.data };
 
     console.log(`🟢 WA sent → ${fullPhone}`);
     return { success: true, data: res.data };

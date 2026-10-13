@@ -71,21 +71,19 @@ const live = {
     if (!data.id) throw new Error("WhatsApp did not return a file id");
     return String(data.id);
   },
+  // Admin Console Phase 1: through utils/waSend.js (logged; honours the admin's switches). Throws when not sent, as before.
   async sendTemplate(to, name, lang, values, mediaId, filename) {
-    await call(apiBase() + "/messages", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + process.env.WA_TOKEN, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messaging_product: "whatsapp", to, type: "template",
-        template: {
-          name, language: { code: lang },
-          components: [
-            { type: "header", parameters: [{ type: "document", document: { id: mediaId, filename } }] },
-            { type: "body", parameters: values.map(v => ({ type: "text", text: v })) },
-          ],
-        },
-      }),
+    const r = await require("./waSend").post({
+      messaging_product: "whatsapp", to, type: "template",
+      template: {
+        name, language: { code: lang },
+        components: [
+          { type: "header", parameters: [{ type: "document", document: { id: mediaId, filename } }] },
+          { type: "body", parameters: values.map(v => ({ type: "text", text: v })) },
+        ],
+      },
     });
+    if (!r.ok) throw new Error(r.off ? "Switched off in the admin console" : (r.error && r.error.message) || "WhatsApp answered " + r.status);
   },
 };
 

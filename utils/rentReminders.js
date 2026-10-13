@@ -147,14 +147,11 @@ async function sendWa(name, phone, values) {
     if (!mobile) return { sent: false, why: "no mobile number" };
     const lang = String(process.env[name + "_LANG"] || "en").trim();
     const tidy = v => String(v === null || v === undefined ? "" : v).replace(/[\r\n\t]+/g, " ").replace(/ {2,}/g, " ").trim().slice(0, 120) || "-";
-    const base = String(process.env.WA_API_BASE || "https://graph.facebook.com/v19.0").replace(/\/$/, "") + "/" + process.env.WA_PHONE_ID;
-    const res = await fetch(base + "/messages", {
-      method: "POST", signal: AbortSignal.timeout(15000),
-      headers: { Authorization: "Bearer " + process.env.WA_TOKEN, "Content-Type": "application/json" },
-      body: JSON.stringify({ messaging_product: "whatsapp", to: "91" + mobile, type: "template",
-        template: { name: t, language: { code: lang }, components: [{ type: "body", parameters: values.map(v => ({ type: "text", text: tidy(v) })) }] } }),
-    });
-    if (!res.ok) { let msg = ""; try { msg = (await res.json()).error.message; } catch { /* ignore */ } throw new Error(msg || "WhatsApp answered " + res.status); }
+    // Admin Console Phase 1: through utils/waSend.js (logged; honours the admin's switches).
+    const r = await require("./waSend").post({ messaging_product: "whatsapp", to: "91" + mobile, type: "template",
+      template: { name: t, language: { code: lang }, components: [{ type: "body", parameters: values.map(v => ({ type: "text", text: tidy(v) })) }] } }, { category: "rent" });
+    if (r.off) return { sent: false, why: "off" };
+    if (!r.ok) throw new Error((r.error && r.error.message) || "WhatsApp answered " + r.status);
     return { sent: true, why: "" };
   } catch (err) {
     console.error("Rent reminder WhatsApp (non-fatal):", err.message);
@@ -189,7 +186,7 @@ async function deliver({ m, property, amount, step, dueOn, online, lg, noEmail =
   else if (emailOn() && to) {
     const owing = step === "before" ? [] : lg.owing;
     const e = emailOf({ name: m.name, property, amount, phrase, owing, online: online && step !== "before" });
-    try { email = (await require("./sendMail").sendMail(to, e.subject, e.html)) ? { sent: true, why: "" } : { sent: false, why: "not sent" }; }
+    try { email = (await require("./sendMail").sendMail(to, e.subject, e.html, { purpose: "rent_reminder" })) ? { sent: true, why: "" } : { sent: false, why: "not sent" }; }
     catch (err) { console.error("Rent reminder email (non-fatal):", err.message); email = { sent: false, why: "not sent" }; }
   } else if (emailOn()) email = { sent: false, why: "no email" };
   return { wa, email };

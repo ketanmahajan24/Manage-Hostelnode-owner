@@ -16,21 +16,13 @@ function formatNumber(phone) {
 }
 
 // ================= API CALL =================
-async function callWAAPI(payload) {
-  try {
-    const res = await axios.post(BASE_URL, payload, {
-      headers: {
-        'Authorization': `Bearer ${WA_TOKEN}`,
-        'Content-Type':  'application/json'
-      },
-      timeout: 15000
-    });
-    return { success: true, data: res.data };
-  } catch (err) {
-    const errData = err.response?.data || err.message;
-    error("❌ API Error:", JSON.stringify(errData));
-    return { success: false, error: errData };
-  }
+// Admin Console Phase 1: every message goes through utils/waSend.js, which
+// logs it for the admin console and honours its on/off switches.
+async function callWAAPI(payload, category) {
+  const r = await require("../utils/waSend").post(payload, { category });
+  if (r.ok) return { success: true, data: r.data };
+  if (!r.off) error("❌ API Error:", JSON.stringify(r.error));
+  return { success: false, error: r.error };
 }
 
 // ================= SEND OTP =================
@@ -65,8 +57,8 @@ const sendWhatsAppOTP = async (phone, otp) => {
       }
     };
 
-    const result = await callWAAPI(payload);
-    if (result.success) log("✅ OTP sent:", {phone, otp}); 
+    const result = await callWAAPI(payload, "otp");
+    if (result.success) log("✅ OTP sent:", phone);
     else               error("❌ OTP failed:", phone);
     return result;
 
@@ -108,7 +100,7 @@ const sendOwnerEnquiryMessage = async (phone, data) => {
       }
     };
 
-    const result = await callWAAPI(payload);
+    const result = await callWAAPI(payload, "leads");
     if (result.success) log("✅ Enquiry sent to owner:", phone);
     else               error("❌ Enquiry failed:", phone);
     return result;
@@ -134,7 +126,7 @@ const sendWhatsAppMessage = async (phone, text) => {
       text:              { body: text }
     };
 
-    const result = await callWAAPI(payload);
+    const result = await callWAAPI(payload, "chat");
     if (result.success) log("✅ Message sent:", phone);
     else               error("❌ Message failed:", phone);
     return result.success;
